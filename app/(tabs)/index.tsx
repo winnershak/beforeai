@@ -68,9 +68,20 @@ export default function TabOneScreen() {
   const toggleAlarm = async (id: string) => {
     const updatedAlarms = alarms.map(alarm => {
       if (alarm.id === id) {
-        const updatedAlarm = { ...alarm, enabled: !alarm.enabled };
+        const updatedAlarm = { 
+          ...alarm, 
+          enabled: !alarm.enabled,
+          soundVolume: alarm.volume // Map volume to soundVolume
+        };
         if (updatedAlarm.enabled) {
-          scheduleAlarmNotification(updatedAlarm);
+          scheduleAlarmNotification({
+            id: updatedAlarm.id,
+            time: updatedAlarm.time,
+            days: updatedAlarm.days,
+            label: updatedAlarm.mission,
+            sound: updatedAlarm.sound,
+            soundVolume: updatedAlarm.soundVolume
+          });
         } else {
           cancelAlarmNotification(id);
         }

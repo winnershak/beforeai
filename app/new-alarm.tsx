@@ -29,6 +29,7 @@ export default function NewAlarmScreen() {
   const [missionIcon, setMissionIcon] = useState('calculator');
   const [missionColor, setMissionColor] = useState('#4CAF50');
   const [label, setLabel] = useState(params.currentLabel as string || '');
+  const [soundVolume, setSoundVolume] = useState(1);
 
   const days = [
     { label: 'S', value: 0 },
@@ -62,6 +63,7 @@ export default function NewAlarmScreen() {
         days: selectedDays.map(index => days[index].label),
         label: label || '',
         sound: sound || 'Orkney',
+        soundVolume: soundVolume,
         vibration: vibrationEnabled,
       };
 
@@ -146,6 +148,7 @@ export default function NewAlarmScreen() {
             const newDate = new Date();
             newDate.setHours(parseInt(hours), parseInt(minutes));
             setDate(newDate);
+            setSoundVolume(currentAlarm.soundVolume ?? 1);
           }
         }
       }
@@ -315,14 +318,14 @@ export default function NewAlarmScreen() {
             <View style={styles.volumeContainer}>
               <Ionicons name="volume-low" size={24} color="#fff" />
               <Slider
-                style={styles.slider}
-                value={volume}
-                onValueChange={setVolume}
+                style={styles.volumeSlider}
+                value={soundVolume}
+                onValueChange={setSoundVolume}
                 minimumValue={0}
                 maximumValue={1}
-                minimumTrackTintColor="#00BCD4"
-                maximumTrackTintColor="#333"
-                thumbTintColor="#fff"
+                minimumTrackTintColor="#00B4D8"
+                maximumTrackTintColor="#666"
+                thumbTintColor="#00B4D8"
               />
             </View>
             <View style={styles.vibrationToggle}>
@@ -467,7 +470,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  slider: {
+  volumeSlider: {
     flex: 1,
     height: 40,
   },

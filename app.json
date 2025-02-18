@@ -1,69 +1,45 @@
 {
   "expo": {
-    "name": "alarmy-clone",
-    "slug": "alarmy-clone",
+    "name": "alarmyclone",
+    "slug": "alarmyclone",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "myapp",
-    "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/images/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
+      "bundleIdentifier": "com.winnershak.alarmyclone",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
-          "audio",
-          "fetch",
-          "remote-notification"
+          "audio"
         ]
       }
     },
-    "android": {
-      "adaptiveIcon": {
-        "foregroundImage": "./assets/images/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      }
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
-    },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 200,
-          "resizeMode": "contain",
-          "backgroundColor": "#ffffff"
-        }
-      ],
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#ffffff",
           "sounds": [
-            "./assets/sound/circuit.mp3",
-            "./assets/sound/orkney.mp3",
-            "./assets/sound/radar.mp3",
-            "./assets/sound/reflection.mp3",
-            "./assets/sound/beacon.mp3",
-            "./assets/sound/chimes.mp3"
+            "./assets/sounds/orkney.mp3",
+            "./assets/sounds/radar.mp3",
+            "./assets/sounds/beacon.mp3",
+            "./assets/sounds/chimes.mp3",
+            "./assets/sounds/circuit.mp3",
+            "./assets/sounds/reflection.mp3"
           ]
         }
       ]
     ],
-    "experiments": {
-      "typedRoutes": true
-    },
-    "extra": {
-      "eas": {
-        "projectId": "d43d4d10-e1e4-4b3e-8fbf-eb5981d8c9d5"
-      }
-    },
-    "assets": ["./assets/sounds/"]
+    "android": {
+      "package": "com.winnershak.alarmyclone"
+    }
   }
 }

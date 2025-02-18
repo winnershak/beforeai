@@ -1,47 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Audio } from 'expo-av';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { stopAlarmSound } from './notifications';
 
-// Make sure these paths exactly match your sound files
-const SOUND_FILES = {
-  'circuit.mp3': require('../assets/sounds/circuit.mp3'),
-  'orkney.mp3': require('../assets/sounds/orkney.mp3'),
-  'radar.mp3': require('../assets/sounds/radar.mp3'),
-  'reflection.mp3': require('../assets/sounds/reflection.mp3'),
-};
-
 export default function AlarmRingScreen() {
-  const [sound, setSound] = useState<Audio.Sound>();
   const params = useLocalSearchParams();
-  const alarmSound = params.sound as string || 'circuit.mp3';
-
-  async function playSound() {
-    try {
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-      });
-
-      const soundFile = SOUND_FILES[alarmSound as keyof typeof SOUND_FILES] || SOUND_FILES['circuit.mp3'];
-      const { sound: audioSound } = await Audio.Sound.createAsync(
-        soundFile,
-        { 
-          shouldPlay: true,
-          isLooping: true,
-          volume: 1.0,
-        }
-      );
-      
-      setSound(audioSound);
-      await audioSound.playAsync();
-    } catch (error) {
-      console.error('Error playing sound:', error);
-    }
-  }
 
   const handleStop = async () => {
     try {
@@ -52,15 +16,6 @@ export default function AlarmRingScreen() {
       router.back();
     }
   };
-
-  useEffect(() => {
-    playSound();
-    return () => {
-      if (sound) {
-        sound.unloadAsync();
-      }
-    };
-  }, []);
 
   return (
     <View style={styles.container}>
