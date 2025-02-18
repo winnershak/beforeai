@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'rea
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define sounds with their require statements
 const alarmSounds = [
@@ -133,9 +134,31 @@ export default function SoundsScreen() {
                 color="#00BCD4" 
               />
               <TouchableOpacity
-                onPress={() => {
+                onPress={async () => {
+                  const selectedSound = alarmSound.name;
+                  
+                  // Save to both temp state and main alarm state
+                  const savedState = await AsyncStorage.getItem('tempAlarmState');
+                  const state = savedState ? JSON.parse(savedState) : {};
+                  state.sound = selectedSound;
+                  await AsyncStorage.setItem('tempAlarmState', JSON.stringify(state));
+                  
+                  // Save to alarms if editing
+                  const existingAlarms = await AsyncStorage.getItem('alarms');
+                  if (existingAlarms) {
+                    const alarms = JSON.parse(existingAlarms);
+                    const updatedAlarms = alarms.map((alarm: any) => {
+                      if (alarm.id === state.id) {
+                        return { ...alarm, sound: selectedSound };
+                      }
+                      return alarm;
+                    });
+                    await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+                  }
+                  
+                  // Navigate back with params
                   router.back();
-                  router.setParams({ selectedSound: alarmSound.name });
+                  router.setParams({ selectedSound });
                 }}
               >
                 <Text style={styles.selectButton}>Select</Text>

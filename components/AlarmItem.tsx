@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch, Animated, Modal, TextInput } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Swipeable } from 'react-native-gesture-handler';
@@ -77,10 +77,12 @@ export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemP
                   </Text>
                 ))}
               </View>
-              {alarm.label && (
-                <Text style={styles.label}>{alarm.label}</Text>
-              )}
-              <Text style={styles.mission}>Mission: {alarm.mission}</Text>
+              <View style={styles.infoContainer}>
+                {alarm.label && (
+                  <Text style={styles.label}>{alarm.label}</Text>
+                )}
+                <Text style={styles.mission}>• {alarm.mission}</Text>
+              </View>
             </View>
           </TouchableOpacity>
         </Link>
@@ -162,15 +164,19 @@ const styles = StyleSheet.create({
   selectedDay: {
     color: '#00BCD4',
   },
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
   label: {
     color: '#666',
     fontSize: 14,
-    marginTop: 4,
   },
   mission: {
     color: '#666',
     fontSize: 14,
-    marginTop: 4,
   },
   rightControls: {
     flexDirection: 'row',
