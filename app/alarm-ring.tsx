@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Audio } from 'expo-av';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { stopAlarmSound } from './notifications';
 
 // Make sure these paths exactly match your sound files
 const SOUND_FILES = {
@@ -44,14 +45,10 @@ export default function AlarmRingScreen() {
 
   const handleStop = async () => {
     try {
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        setSound(undefined);
-      }
+      await stopAlarmSound();
       router.back();
     } catch (error) {
-      console.error('Error stopping sound:', error);
+      console.error('Error stopping alarm:', error);
       router.back();
     }
   };

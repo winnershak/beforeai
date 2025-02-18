@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Pressable } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, Link, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -25,11 +25,10 @@ export default function NewAlarmScreen() {
   const [selectedMission, setSelectedMission] = useState('Listerine');
   const [volume, setVolume] = useState(0.5);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
-  const [selectedSound, setSelectedSound] = useState('Orkney');
+  const [sound, setSound] = useState('Orkney');
   const [missionIcon, setMissionIcon] = useState('calculator');
   const [missionColor, setMissionColor] = useState('#4CAF50');
-  const [label, setLabel] = useState('');
-  const [isLabelModalVisible, setIsLabelModalVisible] = useState(false);
+  const [label, setLabel] = useState(params.currentLabel as string || '');
 
   const days = [
     { label: 'S', value: 0 },
@@ -62,26 +61,30 @@ export default function NewAlarmScreen() {
         enabled: true,
         days: selectedDays.map(index => days[index].label),
         label: label || '',
-        sound: selectedSound || 'orkney.wav',
+        sound: sound || 'Orkney',
         vibration: vibrationEnabled,
       };
 
-      if (newAlarm.enabled) {
-        await scheduleAlarmNotification(newAlarm);
-      }
-
+      // Get existing alarms
       const existingAlarms = await AsyncStorage.getItem('alarms');
       let alarms = existingAlarms ? JSON.parse(existingAlarms) : [];
       
       if (isEditing) {
+        // Replace existing alarm with updated one
         alarms = alarms.map((alarm: any) => 
           alarm.id === params.alarmId ? newAlarm : alarm
         );
       } else {
+        // Add new alarm only if not editing
         alarms.push(newAlarm);
       }
       
       await AsyncStorage.setItem('alarms', JSON.stringify(alarms));
+      
+      if (newAlarm.enabled) {
+        await scheduleAlarmNotification(newAlarm);
+      }
+
       router.push('/(tabs)');
     } catch (error) {
       console.error('Error saving alarm:', error);
@@ -102,10 +105,10 @@ export default function NewAlarmScreen() {
   }, [params]);
 
   useEffect(() => {
-    if (params.newLabel) {
-      setLabel(params.newLabel as string);
+    if (params.currentLabel) {
+      setLabel(params.currentLabel as string);
     }
-  }, [params.newLabel]);
+  }, [params.currentLabel]);
 
   useEffect(() => {
     const requestPermissions = async () => {
@@ -114,43 +117,108 @@ export default function NewAlarmScreen() {
     requestPermissions();
   }, []);
 
-  const LabelModal = () => (
-    <Modal
-      animationType="slide"
-      transparent={true}
-      visible={isLabelModalVisible}
-      onRequestClose={() => setIsLabelModalVisible(false)}
-    >
-      <View style={styles.modalContainer}>
-        <View style={styles.modalContent}>
-          <Text style={styles.modalTitle}>Add Label</Text>
-          <TextInput
-            style={styles.labelInput}
-            value={label}
-            onChangeText={setLabel}
-            placeholder="Enter label"
-            placeholderTextColor="#666"
-          />
-          <View style={styles.modalButtons}>
-            <TouchableOpacity 
-              onPress={() => setIsLabelModalVisible(false)}
-              style={styles.modalButton}
-            >
-              <Text style={styles.modalButtonText}>Cancel</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              onPress={() => {
-                setIsLabelModalVisible(false);
-              }}
-              style={[styles.modalButton, styles.saveButton]}
-            >
-              <Text style={styles.saveButtonText}>Save</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </View>
-    </Modal>
-  );
+  useEffect(() => {
+    if (params.selectedSound) {
+      setSound(params.selectedSound as string);
+    }
+  }, [params.selectedSound]);
+
+  useEffect(() => {
+    const loadAlarm = async () => {
+      if (isEditing) {
+        const existingAlarms = await AsyncStorage.getItem('alarms');
+        if (existingAlarms) {
+          const alarms = JSON.parse(existingAlarms);
+          const currentAlarm = alarms.find((a: any) => a.id === params.alarmId);
+          if (currentAlarm) {
+            // Set all the states from the saved alarm
+            setLabel(currentAlarm.label || '');
+            setSound(currentAlarm.sound || 'Orkney');
+            setVibrationEnabled(currentAlarm.vibration);
+            // Convert days labels to indices
+            const dayIndices = currentAlarm.days.map((day: string) => 
+              days.findIndex(d => d.label === day)
+            ).filter((index: number) => index !== -1);
+            setSelectedDays(dayIndices);
+            
+            // Set time
+            const [hours, minutes] = currentAlarm.time.split(':');
+            const newDate = new Date();
+            newDate.setHours(parseInt(hours), parseInt(minutes));
+            setDate(newDate);
+          }
+        }
+      }
+    };
+
+    loadAlarm();
+  }, [isEditing, params.alarmId]);
+
+  const saveAlarmState = async (currentState: any) => {
+    await AsyncStorage.setItem('tempAlarmState', JSON.stringify(currentState));
+  };
+
+  const loadAlarmState = async () => {
+    const savedState = await AsyncStorage.getItem('tempAlarmState');
+    if (savedState) {
+      const state = JSON.parse(savedState);
+      setLabel(state.label || '');
+      setSound(state.sound || 'Orkney');
+      setSelectedDays(state.selectedDays || []);
+      setSelectedMission(state.selectedMission || '');
+      setVibrationEnabled(state.vibrationEnabled);
+      if (state.date) {
+        setDate(new Date(state.date));
+      }
+    }
+  };
+
+  const navigateWithState = async (pathname: string) => {
+    const currentState = {
+      label,
+      sound,
+      selectedDays,
+      selectedMission,
+      vibrationEnabled,
+      date: date.toISOString(),
+    };
+    await saveAlarmState(currentState);
+    router.push({ pathname } as any);
+  };
+
+  useEffect(() => {
+    const loadSavedState = async () => {
+      const savedState = await AsyncStorage.getItem('tempAlarmState');
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        if (state.label) setLabel(state.label);
+        if (state.sound) setSound(state.sound);
+        if (state.selectedDays) setSelectedDays(state.selectedDays);
+        if (state.date) setDate(new Date(state.date));
+      }
+    };
+    loadSavedState();
+  }, []);
+
+  // Listen for changes to the label when returning from label screen
+  useEffect(() => {
+    const loadAlarms = async () => {
+      try {
+        const existingAlarms = await AsyncStorage.getItem('alarms');
+        if (existingAlarms) {
+          const alarms = JSON.parse(existingAlarms);
+          const currentAlarm = alarms.find((alarm: any) => alarm.id === params.alarmId);
+          if (currentAlarm) {
+            setLabel(currentAlarm.label || '');
+          }
+        }
+      } catch (error) {
+        console.error('Error loading alarm label:', error);
+      }
+    };
+
+    loadAlarms();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -233,14 +301,16 @@ export default function NewAlarmScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Sound</Text>
-            <Link href="/sounds" asChild>
-              <TouchableOpacity>
-                <Text style={styles.soundName}>{selectedSound} ›</Text>
-              </TouchableOpacity>
-            </Link>
-          </View>
+          <TouchableOpacity 
+            style={styles.sectionButton} 
+            onPress={() => navigateWithState('/sounds')}
+          >
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionTitle}>Sound</Text>
+              <Text style={styles.sectionValue}>{sound}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#666" />
+          </TouchableOpacity>
           <View style={styles.soundControls}>
             <View style={styles.volumeContainer}>
               <Ionicons name="volume-low" size={24} color="#fff" />
@@ -268,23 +338,18 @@ export default function NewAlarmScreen() {
         </View>
 
         <View style={styles.section}>
-          <TouchableOpacity 
-            style={styles.sectionButton}
+          <Pressable
+            style={styles.optionContainer}
             onPress={() => router.push({
               pathname: '/label',
-              params: { currentLabel: label }
+              params: { alarmId: params.alarmId, currentLabel: label }
             })}
           >
-            <View style={styles.sectionContent}>
-              <Text style={styles.sectionTitle}>Label</Text>
-              <Text style={styles.sectionValue}>{label || 'No label'}</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={24} color="#666" />
-          </TouchableOpacity>
+            <Text style={styles.optionLabel}>Label</Text>
+            <Text style={styles.optionValue}>{label || 'Add Label'}</Text>
+          </Pressable>
         </View>
       </ScrollView>
-
-      <LabelModal />
     </View>
   );
 }
@@ -497,5 +562,44 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: '#fff',
     fontSize: 17,
+  },
+  settingItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+  },
+  settingLabel: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  settingValue: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  settingText: {
+    color: '#666',
+    fontSize: 15,
+  },
+  optionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+  },
+  optionLabel: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  optionValue: {
+    color: '#666',
+    fontSize: 15,
   },
 }); 

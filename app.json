@@ -45,7 +45,14 @@
         {
           "icon": "./assets/notification-icon.png",
           "color": "#ffffff",
-          "sounds": ["./assets/sounds/circuit.mp3", "./assets/sounds/orkney.mp3", "./assets/sounds/radar.mp3", "./assets/sounds/reflection.mp3"]
+          "sounds": [
+            "./assets/sound/circuit.mp3",
+            "./assets/sound/orkney.mp3",
+            "./assets/sound/radar.mp3",
+            "./assets/sound/reflection.mp3",
+            "./assets/sound/beacon.mp3",
+            "./assets/sound/chimes.mp3"
+          ]
         }
       ]
     ],

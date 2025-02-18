@@ -7,17 +7,28 @@ import { router } from 'expo-router';
 
 const BACKGROUND_ALARM_TASK = 'BACKGROUND_ALARM_TASK';
 
+// Define available sounds with their require statements
+const SOUND_FILES = {
+  'Orkney': require('../assets/sounds/orkney.mp3'),
+  'Radar': require('../assets/sounds/radar.mp3'),
+  'Beacon': require('../assets/sounds/beacon.mp3'),
+  'Chimes': require('../assets/sounds/chimes.mp3'),
+  'Circuit': require('../assets/sounds/circuit.mp3'),
+  'Reflection': require('../assets/sounds/reflection.mp3')
+};
+
+let alarmSound: Audio.Sound | null = null;
+
+// At the top of the file, add audio mode configuration
+Audio.setAudioModeAsync({
+  playsInSilentModeIOS: true,
+  staysActiveInBackground: true,
+  shouldDuckAndroid: true,
+});
+
 // Register background task
 TaskManager.defineTask(BACKGROUND_ALARM_TASK, async ({ data, error }: any) => {
   if (error) return;
-  
-  // Configure audio for background playback
-  await Audio.setAudioModeAsync({
-    playsInSilentModeIOS: true,
-    staysActiveInBackground: true,
-    shouldDuckAndroid: true,
-    playThroughEarpieceAndroid: false,
-  });
 });
 
 // Register background fetch
@@ -36,62 +47,35 @@ async function registerBackgroundFetch() {
 // Initialize background tasks
 void registerBackgroundFetch();
 
-// Configure notifications to be silent
+// Configure notifications to play sound
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
-    shouldSetBadge: false,
+    shouldPlaySound: true,  // Enable sound
+    shouldSetBadge: true,
     priority: Notifications.AndroidNotificationPriority.MAX,
   }),
 });
 
-// Set up Android channel without sound
-if (Platform.OS === 'android') {
-  void Notifications.setNotificationChannelAsync('alarms', {
-    name: 'Alarms',
-    importance: Notifications.AndroidImportance.MAX,
-    vibrationPattern: [0, 250, 250, 250],
-    lightColor: '#FF231F7C',
-    sound: null,
-    enableVibrate: true,
-  });
-}
-
-// Configure audio session
-Audio.setAudioModeAsync({
-  playsInSilentModeIOS: true,
-  staysActiveInBackground: true,
-  shouldDuckAndroid: true,
-  playThroughEarpieceAndroid: false,
-});
-
-// Handle foreground notifications
+// Handle foreground notifications - play sound immediately
 Notifications.addNotificationReceivedListener(async (notification) => {
   const data = notification.request.content.data as { sound: string; label?: string };
-  try {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      shouldDuckAndroid: true,
-      playThroughEarpieceAndroid: false,
-    });
-
-    router.push({
-      pathname: '/alarm-ring',
-      params: {
-        sound: data.sound,
-        label: data.label,
-      },
-    });
-  } catch (error) {
-    console.error('Error handling notification:', error);
-  }
+  await playAlarmSound(data.sound);
+  
+  router.push({
+    pathname: '/alarm-ring',
+    params: {
+      sound: data.sound,
+      label: data.label,
+    },
+  });
 });
 
-// Handle background notifications
-Notifications.addNotificationResponseReceivedListener(response => {
+// Handle background notifications - play sound when opened
+Notifications.addNotificationResponseReceivedListener(async (response) => {
   const data = response.notification.request.content.data as { sound: string; label?: string };
+  await playAlarmSound(data.sound);
+  
   router.push({
     pathname: '/alarm-ring',
     params: {
@@ -116,20 +100,19 @@ export async function requestNotificationPermissions() {
     });
     finalStatus = status;
   }
-  
-  if (Platform.OS === 'android') {
-    await Notifications.setNotificationChannelAsync('alarms', {
-      name: 'Alarms',
-      importance: Notifications.AndroidImportance.MAX,
-      vibrationPattern: [0, 250, 250, 250],
-      lightColor: '#FF231F7C',
-      sound: null,
-      enableVibrate: true,
-    });
-  }
 
   return finalStatus === 'granted';
 }
+
+// Define available sounds
+const ALARM_SOUNDS = {
+  'Orkney': 'orkney.mp3',
+  'Radar': 'radar.mp3',
+  'Beacon': 'beacon.mp3',
+  'Chimes': 'chimes.mp3',
+  'Circuit': 'circuit.mp3',
+  'Reflection': 'reflection.mp3'
+};
 
 export async function scheduleAlarmNotification(alarm: {
   id: string;
@@ -138,20 +121,37 @@ export async function scheduleAlarmNotification(alarm: {
   label?: string;
   sound: string;
 }) {
-  await cancelAlarmNotification(alarm.id);
-  const [hours, minutes] = alarm.time.split(':').map(Number);
+  console.log('Selected sound:', alarm.sound); // Debug log
+
+  // Get the correct sound filename
+  const soundFile = ALARM_SOUNDS[alarm.sound as keyof typeof ALARM_SOUNDS];
+  console.log('Sound file to be used:', soundFile); // Debug log
 
   const notificationContent: Notifications.NotificationContentInput = {
     title: alarm.label || 'Alarm',
     body: `It's ${alarm.time}!`,
     data: { 
       alarmId: alarm.id,
-      sound: alarm.sound,
+      sound: alarm.sound,  // This will be used to play the sound
       label: alarm.label,
     },
-    sound: false,
+    sound: true,  // Enable sound for iOS notifications
     priority: Notifications.AndroidNotificationPriority.MAX,
   };
+
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync(`alarms-${alarm.id}`, {
+      name: `Alarm-${alarm.id}`,
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+      sound: soundFile,
+      enableVibrate: true,
+    });
+  }
+
+  await cancelAlarmNotification(alarm.id);
+  const [hours, minutes] = alarm.time.split(':').map(Number);
 
   if (alarm.days.length === 0) {
     const now = new Date();
@@ -200,5 +200,58 @@ function calculateNextAlarmDate(hours: number, minutes: number, day: string) {
     type: 'calendar',
     hour: hours,
     minute: minutes,
-  };
+    repeats: true,
+  } as Notifications.CalendarTriggerInput;
+}
+
+// Add function to stop sound
+export async function stopAlarmSound() {
+  try {
+    if (alarmSound) {
+      await alarmSound.stopAsync();
+      await alarmSound.unloadAsync();
+      alarmSound = null;
+    }
+  } catch (error) {
+    console.error('Error stopping sound:', error);
+  }
+}
+
+// Update playAlarmSound to handle background audio
+export async function playAlarmSound(soundName: string) {
+  try {
+    await stopAlarmSound();
+    
+    // Configure audio for background playback
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+
+    const soundFile = SOUND_FILES[soundName as keyof typeof SOUND_FILES];
+    if (!soundFile) {
+      console.error('Sound not found:', soundName);
+      return;
+    }
+
+    const { sound: audioSound } = await Audio.Sound.createAsync(
+      soundFile,
+      { 
+        shouldPlay: true,
+        isLooping: true,
+        volume: 1.0,
+        progressUpdateIntervalMillis: 1000,
+        positionMillis: 0,
+      },
+      null,
+      true  // shouldCorrectPitch for background playback
+    );
+    
+    alarmSound = audioSound;
+    await audioSound.playAsync();
+  } catch (error) {
+    console.error('Error playing alarm sound:', error);
+  }
 } 

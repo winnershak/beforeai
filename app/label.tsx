@@ -1,31 +1,40 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
+import { View, TextInput, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LabelScreen() {
   const params = useLocalSearchParams();
   const [label, setLabel] = useState(params.currentLabel as string || '');
 
-  const handleSave = () => {
-    router.navigate({
-      pathname: '/new-alarm',
-      params: { newLabel: label }
-    });
+  const handleSubmit = async () => {
+    try {
+      // Get existing alarms
+      const existingAlarms = await AsyncStorage.getItem('alarms');
+      if (existingAlarms) {
+        const alarms = JSON.parse(existingAlarms);
+        
+        // Update only the label for the current alarm
+        const updatedAlarms = alarms.map((alarm: any) => 
+          alarm.id === params.alarmId 
+            ? { ...alarm, label: label }
+            : alarm
+        );
+        
+        // Save updated alarms when return is pressed
+        await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+        
+        // Return to previous screen with updated label
+        router.back();
+        router.setParams({ currentLabel: label });
+      }
+    } catch (error) {
+      console.error('Error updating label:', error);
+    }
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="close" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Label</Text>
-        <TouchableOpacity onPress={handleSave}>
-          <Text style={styles.saveText}>Save</Text>
-        </TouchableOpacity>
-      </View>
-
       <TextInput
         style={styles.input}
         value={label}
@@ -33,6 +42,8 @@ export default function LabelScreen() {
         placeholder="Enter label"
         placeholderTextColor="#666"
         autoFocus
+        onSubmitEditing={handleSubmit}
+        returnKeyType="done"
       />
     </View>
   );
@@ -41,29 +52,14 @@ export default function LabelScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
     padding: 20,
-    paddingTop: 60,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  saveText: {
-    color: '#0A84FF',
-    fontSize: 17,
   },
   input: {
+    backgroundColor: '#2C2C2E',
+    borderRadius: 10,
+    padding: 15,
     color: '#fff',
     fontSize: 17,
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
   },
 }); 
