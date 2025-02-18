@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, Link, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { Switch } from 'react-native';
+import { scheduleAlarmNotification, requestNotificationPermissions } from './notifications';
 
 export default function NewAlarmScreen() {
   const params = useLocalSearchParams();
-  const isEditing = params.editMode === 'true';
+  const isEditing = !!params.alarmId;
 
   const [date, setDate] = useState(() => {
     if (params.time) {
@@ -28,15 +29,16 @@ export default function NewAlarmScreen() {
   const [missionIcon, setMissionIcon] = useState('calculator');
   const [missionColor, setMissionColor] = useState('#4CAF50');
   const [label, setLabel] = useState('');
+  const [isLabelModalVisible, setIsLabelModalVisible] = useState(false);
 
   const days = [
-    { id: '0', label: 'S' },
-    { id: '1', label: 'M' },
-    { id: '2', label: 'T' }, // First T for Tuesday
-    { id: '3', label: 'W' },
-    { id: '4', label: 'T' }, // Second T for Thursday
-    { id: '5', label: 'F' },
-    { id: '6', label: 'S' },
+    { label: 'S', value: 0 },
+    { label: 'M', value: 1 },
+    { label: 'T', value: 2 },
+    { label: 'W', value: 3 },
+    { label: 'T', value: 4 },
+    { label: 'F', value: 5 },
+    { label: 'S', value: 6 },
   ];
 
   const calculateRingTime = () => {
@@ -51,7 +53,7 @@ export default function NewAlarmScreen() {
   const saveAlarm = async () => {
     try {
       const newAlarm = {
-        id: isEditing ? params.alarmId : Date.now().toString(),
+        id: isEditing ? String(params.alarmId) : Date.now().toString(),
         time: date.toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit', 
@@ -59,14 +61,14 @@ export default function NewAlarmScreen() {
         }),
         enabled: true,
         days: selectedDays.map(index => days[index].label),
-        mission: selectedMission || '',
-        missionIcon: selectedMission ? missionIcon : '',
-        missionColor: selectedMission ? missionColor : '',
-        sound: selectedSound,
-        volume,
-        vibration: vibrationEnabled,
         label: label || '',
+        sound: selectedSound || 'orkney.wav',
+        vibration: vibrationEnabled,
       };
+
+      if (newAlarm.enabled) {
+        await scheduleAlarmNotification(newAlarm);
+      }
 
       const existingAlarms = await AsyncStorage.getItem('alarms');
       let alarms = existingAlarms ? JSON.parse(existingAlarms) : [];
@@ -80,7 +82,7 @@ export default function NewAlarmScreen() {
       }
       
       await AsyncStorage.setItem('alarms', JSON.stringify(alarms));
-      router.back();
+      router.push('/(tabs)');
     } catch (error) {
       console.error('Error saving alarm:', error);
     }
@@ -99,6 +101,57 @@ export default function NewAlarmScreen() {
     if (params.missionColor) setMissionColor(params.missionColor as string);
   }, [params]);
 
+  useEffect(() => {
+    if (params.newLabel) {
+      setLabel(params.newLabel as string);
+    }
+  }, [params.newLabel]);
+
+  useEffect(() => {
+    const requestPermissions = async () => {
+      await requestNotificationPermissions();
+    };
+    requestPermissions();
+  }, []);
+
+  const LabelModal = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={isLabelModalVisible}
+      onRequestClose={() => setIsLabelModalVisible(false)}
+    >
+      <View style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Add Label</Text>
+          <TextInput
+            style={styles.labelInput}
+            value={label}
+            onChangeText={setLabel}
+            placeholder="Enter label"
+            placeholderTextColor="#666"
+          />
+          <View style={styles.modalButtons}>
+            <TouchableOpacity 
+              onPress={() => setIsLabelModalVisible(false)}
+              style={styles.modalButton}
+            >
+              <Text style={styles.modalButtonText}>Cancel</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              onPress={() => {
+                setIsLabelModalVisible(false);
+              }}
+              style={[styles.modalButton, styles.saveButton]}
+            >
+              <Text style={styles.saveButtonText}>Save</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -106,8 +159,11 @@ export default function NewAlarmScreen() {
           <Ionicons name="close" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          Ring in {calculateRingTime()}
+          {isEditing ? 'Edit Alarm' : 'New Alarm'}
         </Text>
+        <TouchableOpacity onPress={saveAlarm}>
+          <Text style={styles.saveText}>Save</Text>
+        </TouchableOpacity>
       </View>
 
       <View style={styles.timePickerContainer}>
@@ -139,24 +195,24 @@ export default function NewAlarmScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.daysContainer}>
-            {days.map((day) => (
+            {days.map((day, index) => (
               <TouchableOpacity
-                key={day.id}
+                key={day.value}
                 style={[
                   styles.dayButton,
-                  selectedDays.includes(Number(day.id)) && styles.selectedDay,
+                  selectedDays.includes(index) && styles.selectedDay
                 ]}
                 onPress={() => {
-                  if (selectedDays.includes(Number(day.id))) {
-                    setSelectedDays(selectedDays.filter(d => d !== Number(day.id)));
+                  if (selectedDays.includes(index)) {
+                    setSelectedDays(selectedDays.filter(d => d !== index));
                   } else {
-                    setSelectedDays([...selectedDays, Number(day.id)]);
+                    setSelectedDays([...selectedDays, index]);
                   }
                 }}
               >
                 <Text style={[
                   styles.dayText,
-                  selectedDays.includes(Number(day.id)) && styles.selectedDayText
+                  selectedDays.includes(index) && styles.selectedDayText
                 ]}>{day.label}</Text>
               </TouchableOpacity>
             ))}
@@ -164,23 +220,16 @@ export default function NewAlarmScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Mission</Text>
-            <Text style={styles.missionCount}>{selectedMission ? '1/5' : '0/5'}</Text>
-          </View>
-          <View style={styles.missionGrid}>
-            <Link href="/(missions)" asChild>
-              <TouchableOpacity style={styles.missionBox}>
-                <Ionicons name="add" size={24} color="#666" />
-              </TouchableOpacity>
-            </Link>
-            <View style={[styles.missionBox, styles.missionBoxDisabled]}>
-              <Ionicons name="add" size={24} color="#444" />
+          <TouchableOpacity 
+            style={styles.sectionButton}
+            onPress={() => router.push('/(tabs)')}
+          >
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionTitle}>Mission</Text>
+              <Text style={styles.sectionValue}>{selectedMission || 'None'}</Text>
             </View>
-            <View style={[styles.missionBox, styles.missionBoxDisabled]}>
-              <Ionicons name="add" size={24} color="#444" />
-            </View>
-          </View>
+            <Ionicons name="chevron-forward" size={24} color="#666" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
@@ -219,26 +268,23 @@ export default function NewAlarmScreen() {
         </View>
 
         <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Label</Text>
-            <TouchableOpacity 
-              onPress={() => {/* Add label modal or navigation */}}
-              style={styles.labelButton}
-            >
-              <Text style={styles.labelText}>
-                {label || 'No label'} ›
-              </Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity 
+            style={styles.sectionButton}
+            onPress={() => router.push({
+              pathname: '/label',
+              params: { currentLabel: label }
+            })}
+          >
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionTitle}>Label</Text>
+              <Text style={styles.sectionValue}>{label || 'No label'}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#666" />
+          </TouchableOpacity>
         </View>
-
-        <TouchableOpacity 
-          style={styles.saveButton}
-          onPress={saveAlarm}
-        >
-          <Text style={styles.saveButtonText}>Save</Text>
-        </TouchableOpacity>
       </ScrollView>
+
+      <LabelModal />
     </View>
   );
 }
@@ -250,11 +296,10 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    justifyContent: 'center',
+    padding: 20,
     paddingTop: 60,
-    paddingHorizontal: 20,
-    position: 'relative',
   },
   closeButton: {
     position: 'absolute',
@@ -263,6 +308,11 @@ const styles = StyleSheet.create({
   },
   headerTitle: {
     color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  saveText: {
+    color: '#0A84FF',
     fontSize: 17,
   },
   timePickerContainer: {
@@ -292,8 +342,9 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   sectionValue: {
-    color: '#00BCD4',
-    fontSize: 17,
+    color: '#666',
+    fontSize: 15,
+    marginTop: 4,
   },
   daysContainer: {
     flexDirection: 'row',
@@ -390,11 +441,61 @@ const styles = StyleSheet.create({
     gap: 12,
     marginLeft: 16,
   },
-  labelButton: {
-    padding: 8,
+  sectionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
   },
-  labelText: {
+  sectionContent: {
+    flex: 1,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#2C2C2E',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  modalTitle: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
+    marginBottom: 20,
+  },
+  modalValue: {
     color: '#666',
+    fontSize: 15,
+    marginTop: 4,
+  },
+  labelInput: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 10,
+    padding: 15,
+    color: '#fff',
+    fontSize: 17,
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalButton: {
+    flex: 1,
+    padding: 15,
+    borderRadius: 10,
+    marginHorizontal: 5,
+    alignItems: 'center',
+    backgroundColor: '#1C1C1E',
+  },
+  modalButtonText: {
+    color: '#fff',
     fontSize: 17,
   },
 }); 
