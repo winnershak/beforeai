@@ -12,10 +12,14 @@ interface AlarmItemProps {
     days: string[];
     mission: string;
     label?: string;
+    sound: string;
+    volume: number;
+    vibration: boolean;
   };
   onToggle: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
+  onEdit: () => void;
 }
 
 export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemProps) {

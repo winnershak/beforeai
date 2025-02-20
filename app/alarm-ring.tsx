@@ -1,44 +1,61 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { stopAlarmSound } from './notifications';
 
 export default function AlarmRingScreen() {
   const params = useLocalSearchParams();
+  const [completed, setCompleted] = useState(false);
 
   const handleStop = async () => {
-    try {
-      await stopAlarmSound();
-      router.back();
-    } catch (error) {
-      console.error('Error stopping alarm:', error);
-      router.back();
-    }
+    await stopAlarmSound();
+    setCompleted(true);
+    
+    // Show completion message briefly before returning
+    setTimeout(() => {
+      router.push('/(tabs)');
+    }, 2000);
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.time}>
-          {new Date().toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: false,
-          })}
-        </Text>
-        {params.label && (
-          <Text style={styles.label}>{params.label}</Text>
-        )}
-      </View>
-
-      <TouchableOpacity 
-        style={styles.stopButton}
-        onPress={handleStop}
-      >
-        <Ionicons name="stop-circle" size={64} color="#FF3B30" />
-        <Text style={styles.stopText}>Stop</Text>
-      </TouchableOpacity>
+      {!completed ? (
+        <>
+          <Text style={styles.title}>Alarm!</Text>
+          <TouchableOpacity 
+            style={styles.stopButton}
+            onPress={handleStop}
+          >
+            <Ionicons name="stop-circle" size={64} color="#FF3B30" />
+            <Text style={styles.stopText}>Stop Alarm</Text>
+          </TouchableOpacity>
+          
+          {params.hasMission === 'true' && (
+            <TouchableOpacity 
+              style={styles.missionButton}
+              onPress={() => {
+                router.push({
+                  pathname: '/mission/alarm-trigger',
+                  params: {
+                    id: params.id,
+                    mission: params.mission,
+                    sound: params.sound,
+                    soundVolume: params.soundVolume
+                  }
+                });
+              }}
+            >
+              <Text style={styles.missionText}>Complete Mission</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      ) : (
+        <View style={styles.completionContainer}>
+          <Ionicons name="checkmark-circle" size={80} color="#4CAF50" />
+          <Text style={styles.completionText}>Well Done!</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -47,29 +64,38 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 100,
+    justifyContent: 'center',
   },
-  content: {
-    alignItems: 'center',
-  },
-  time: {
-    fontSize: 64,
+  title: {
+    fontSize: 48,
     color: '#fff',
-    fontWeight: 'bold',
-    marginBottom: 16,
-  },
-  label: {
-    fontSize: 24,
-    color: '#666',
+    marginBottom: 40,
   },
   stopButton: {
     alignItems: 'center',
   },
   stopText: {
     color: '#FF3B30',
-    fontSize: 20,
-    marginTop: 8,
+    fontSize: 24,
+    marginTop: 10,
   },
+  missionButton: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    borderRadius: 10,
+    marginTop: 30,
+  },
+  missionText: {
+    color: '#fff',
+    fontSize: 18,
+  },
+  completionContainer: {
+    alignItems: 'center',
+  },
+  completionText: {
+    color: '#4CAF50',
+    fontSize: 32,
+    marginTop: 20,
+  }
 }); 

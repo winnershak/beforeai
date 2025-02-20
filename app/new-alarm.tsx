@@ -6,11 +6,38 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { Switch } from 'react-native';
-import { scheduleAlarmNotification, requestNotificationPermissions } from './notifications';
+import { scheduleAlarmNotification, cancelAlarmNotification } from './notifications';
+
+interface Mission {
+  id: string;
+  name: string;
+  icon: string;
+  type: string;
+  difficulty?: string;
+  times?: string;
+}
+
+interface Alarm {
+  id: string;
+  time: string;
+  enabled: boolean;
+  days: string[];
+  label: string;
+  sound: string;
+  soundVolume: number;
+  vibration: boolean;
+  mission: Mission | null;
+  notificationId: string | null;
+}
 
 export default function NewAlarmScreen() {
   const params = useLocalSearchParams();
-  const isEditing = !!params.alarmId;
+  const isEditing = Boolean(params.alarmId);
+
+  useEffect(() => {
+    console.log('NewAlarmScreen - Params:', params);
+    console.log('NewAlarmScreen - Is Editing:', isEditing);
+  }, []);
 
   const [date, setDate] = useState(() => {
     if (params.time) {
@@ -30,10 +57,13 @@ export default function NewAlarmScreen() {
   const [missionColor, setMissionColor] = useState('#4CAF50');
   const [label, setLabel] = useState<string>('');
   const [soundVolume, setSoundVolume] = useState(1);
-  const [mission, setMission] = useState({
+  const [mission, setMission] = useState<Mission>({
     id: '',
     name: '',
-    icon: ''
+    icon: '',
+    type: '',
+    difficulty: '',
+    times: ''
   });
 
   const days = [
@@ -57,8 +87,27 @@ export default function NewAlarmScreen() {
 
   const saveAlarm = async () => {
     try {
+      console.log('Starting save...', {
+        isEditing,
+        alarmId: params.alarmId,
+      });
+
+      const existingAlarms = await AsyncStorage.getItem('alarms');
+      let currentAlarms = existingAlarms ? JSON.parse(existingAlarms) : [];
+      
+      console.log('Current alarms:', currentAlarms);
+
+      // Use exact ID when editing
+      const id = isEditing ? String(params.alarmId) : `alarm_${Date.now()}`;
+      console.log('Using ID:', id);
+
+      // First, cancel existing notification
+      if (isEditing) {
+        await cancelAlarmNotification(id);
+      }
+
       const newAlarm = {
-        id: isEditing ? String(params.alarmId) : Date.now().toString(),
+        id,
         time: date.toLocaleTimeString('en-US', { 
           hour: '2-digit', 
           minute: '2-digit', 
@@ -70,29 +119,39 @@ export default function NewAlarmScreen() {
         sound: sound || 'Orkney',
         soundVolume: soundVolume,
         vibration: vibrationEnabled,
+        mission: mission.name ? {
+          id: mission.id,
+          name: mission.name,
+          icon: mission.icon,
+          type: mission.type,
+          difficulty: mission.difficulty,
+          times: mission.times
+        } : null
       };
 
-      // Get existing alarms
-      const existingAlarms = await AsyncStorage.getItem('alarms');
-      let alarms = existingAlarms ? JSON.parse(existingAlarms) : [];
-      
       if (isEditing) {
-        // Replace existing alarm with updated one
-        alarms = alarms.map((alarm: any) => 
-          alarm.id === params.alarmId ? newAlarm : alarm
-        );
+        // Replace the existing alarm
+        currentAlarms = currentAlarms.map((alarm: any) => {
+          return alarm.id === id ? newAlarm : alarm;
+        });
+        console.log('Updated existing alarm');
       } else {
-        // Add new alarm only if not editing
-        alarms.push(newAlarm);
+        // Add new alarm
+        currentAlarms.push(newAlarm);
+        console.log('Added new alarm');
       }
-      
-      await AsyncStorage.setItem('alarms', JSON.stringify(alarms));
-      
+
+      console.log('Final alarms array:', currentAlarms);
+
+      // Save to storage
+      await AsyncStorage.setItem('alarms', JSON.stringify(currentAlarms));
+
+      // Schedule notification if enabled
       if (newAlarm.enabled) {
         await scheduleAlarmNotification(newAlarm);
       }
 
-      router.push('/(tabs)');
+      router.replace('/(tabs)');
     } catch (error) {
       console.error('Error saving alarm:', error);
     }
@@ -116,13 +175,6 @@ export default function NewAlarmScreen() {
       setLabel(params.currentLabel as string);
     }
   }, [params.currentLabel]);
-
-  useEffect(() => {
-    const requestPermissions = async () => {
-      await requestNotificationPermissions();
-    };
-    requestPermissions();
-  }, []);
 
   useEffect(() => {
     if (params.selectedSound) {
@@ -163,15 +215,37 @@ export default function NewAlarmScreen() {
   }, [isEditing, params.alarmId]);
 
   useEffect(() => {
-    if (params.selectedMissionId && 
-        params.selectedMissionId !== mission.id) {
-      setMission({
+    if (params.selectedMissionId) {
+      const newMission: Mission = {
         id: params.selectedMissionId as string,
         name: params.selectedMissionName as string,
-        icon: params.selectedMissionIcon as string
-      });
+        icon: params.selectedMissionIcon as string,
+        type: params.missionType as string,
+        difficulty: params.difficulty as string,
+        times: params.times as string
+      };
+      
+      setMission(newMission);
+      // Save to temporary storage
+      AsyncStorage.setItem('tempMission', JSON.stringify(newMission));
     }
-  }, [params.selectedMissionId]);
+  }, [params.selectedMissionId, params.selectedMissionName, params.selectedMissionIcon, 
+      params.missionType, params.difficulty, params.times]);
+
+  // Load saved mission when component mounts
+  useEffect(() => {
+    const loadSavedMission = async () => {
+      try {
+        const savedMission = await AsyncStorage.getItem('tempMission');
+        if (savedMission) {
+          setMission(JSON.parse(savedMission));
+        }
+      } catch (error) {
+        console.error('Error loading saved mission:', error);
+      }
+    };
+    loadSavedMission();
+  }, []);
 
   const saveAlarmState = async (currentState: any) => {
     await AsyncStorage.setItem('tempAlarmState', JSON.stringify(currentState));
@@ -253,51 +327,6 @@ export default function NewAlarmScreen() {
     loadAlarms();
   }, []);
 
-  // Add mission type
-  interface Mission {
-    id: string;
-    name: string;
-    icon: string;
-  }
-
-  const handleSave = async () => {
-    try {
-      // Save label separately
-      await AsyncStorage.setItem('tempLabel', label);
-
-      // Save mission separately
-      await AsyncStorage.setItem('tempMission', JSON.stringify(mission));
-
-      // Save other state
-      const currentState = {
-        selectedDays,
-        sound,
-        time: date.toISOString()
-      };
-      await AsyncStorage.setItem('tempAlarmState', JSON.stringify(currentState));
-
-      router.push({
-        pathname: '/(tabs)',
-        params: {
-          time: date.toLocaleTimeString('en-US', { 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            hour12: false 
-          }),
-          days: JSON.stringify(selectedDays.map(index => days[index].label)),
-          label: label,
-          mission: mission.name || '',
-          sound: sound || 'default',
-          volume: soundVolume.toString(),
-          vibration: vibrationEnabled.toString(),
-          created: 'true'
-        }
-      });
-    } catch (error) {
-      console.error('Error saving alarm:', error);
-    }
-  };
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -307,7 +336,7 @@ export default function NewAlarmScreen() {
         <Text style={styles.headerTitle}>
           {isEditing ? 'Edit Alarm' : 'New Alarm'}
         </Text>
-        <TouchableOpacity onPress={handleSave}>
+        <TouchableOpacity onPress={saveAlarm}>
           <Text style={styles.saveText}>Save</Text>
         </TouchableOpacity>
       </View>
@@ -381,6 +410,19 @@ export default function NewAlarmScreen() {
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity>
+          
+          {mission.name && (
+            <TouchableOpacity 
+              style={styles.clearMissionButton}
+              onPress={() => {
+                setMission({ id: '', name: '', icon: '', type: '', difficulty: '', times: '' });
+                AsyncStorage.removeItem('tempMission');
+              }}
+            >
+              <Ionicons name="close-circle" size={20} color="#FF3B30" />
+              <Text style={styles.clearMissionText}>Clear Mission</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -695,5 +737,17 @@ const styles = StyleSheet.create({
   missionIcon: {
     fontSize: 20,
     marginRight: 8,
+  },
+  clearMissionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+    padding: 8,
+  },
+  clearMissionText: {
+    color: '#FF3B30',
+    fontSize: 15,
+    marginLeft: 8,
   },
 }); 

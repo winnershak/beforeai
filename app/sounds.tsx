@@ -10,32 +10,32 @@ const alarmSounds = [
   { 
     id: '1', 
     name: 'Orkney',
-    soundFile: require('../assets/sounds/orkney.mp3')
+    soundFile: require('../assets/sounds/orkney.caf')
   },
   { 
     id: '2', 
     name: 'Radar',
-    soundFile: require('../assets/sounds/radar.mp3')
+    soundFile: require('../assets/sounds/radar.caf')
   },
   { 
     id: '3', 
     name: 'Beacon',
-    soundFile: require('../assets/sounds/beacon.mp3')
+    soundFile: require('../assets/sounds/beacon.caf')
   },
   { 
     id: '4', 
     name: 'Chimes',
-    soundFile: require('../assets/sounds/chimes.mp3')
+    soundFile: require('../assets/sounds/chimes.caf')
   },
   { 
     id: '5', 
     name: 'Circuit',
-    soundFile: require('../assets/sounds/circuit.mp3')
+    soundFile: require('../assets/sounds/circuit.caf')
   },
   { 
     id: '6', 
     name: 'Reflection',
-    soundFile: require('../assets/sounds/reflection.mp3')
+    soundFile: require('../assets/sounds/reflection.caf')
   },
 ];
 

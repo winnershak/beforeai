@@ -9,6 +9,32 @@ const missions = [
 ];
 
 export default function MissionSelectScreen() {
+  const handleMissionSelect = (mission: any) => {
+    if (mission.id === 'math') {
+      // Navigate to math config with mission info
+      router.push({
+        pathname: '/mission/math',
+        params: {
+          missionId: mission.id,
+          missionName: mission.name,
+          missionIcon: mission.icon,
+          missionType: 'math'
+        }
+      });
+    } else {
+      // Handle other missions
+      router.push({
+        pathname: '/new-alarm',
+        params: {
+          selectedMissionId: mission.id,
+          selectedMissionName: mission.name,
+          selectedMissionIcon: mission.icon,
+          missionType: mission.id
+        }
+      });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Choose Mission</Text>
@@ -16,14 +42,7 @@ export default function MissionSelectScreen() {
         <TouchableOpacity
           key={mission.id}
           style={styles.missionButton}
-          onPress={() => {
-            if (mission.id === 'math') {
-              router.push('/mission/math');
-            } else {
-              router.back();
-              router.setParams({ mission: mission.name });
-            }
-          }}
+          onPress={() => handleMissionSelect(mission)}
         >
           <Text style={styles.missionIcon}>{mission.icon}</Text>
           <Text style={styles.missionName}>{mission.name}</Text>

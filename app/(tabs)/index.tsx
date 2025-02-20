@@ -14,10 +14,15 @@ interface Alarm {
   enabled: boolean;
   days: string[];
   label: string;
-  mission: string;
+  mission: {
+    id: string;
+    name: string;
+    icon: string;
+  } | null;
   sound: string;
   volume: number;
   vibration: boolean;
+  soundVolume: number;
 }
 
 // Add this function to calculate time difference
@@ -39,6 +44,29 @@ const calculateTimeUntilAlarm = (alarmTime: string) => {
   return `${hrsUntil}hrs ${minsUntil}min`;
 };
 
+interface AlarmItemProps {
+  alarm: {
+    id: string;
+    time: string;
+    enabled: boolean;
+    days: string[];
+    label: string;
+    mission: {
+      id: string;
+      name: string;
+      icon: string;
+    } | null;
+    sound: string;
+    volume: number;
+    vibration: boolean;
+    soundVolume: number;
+  };
+  onToggle: () => void;
+  onDelete: () => void;
+  onDuplicate: () => void;
+  onEdit: () => void;
+}
+
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const router = useRouter();
@@ -49,50 +77,6 @@ export default function TabOneScreen() {
   useEffect(() => {
     loadAlarms();
   }, []);
-
-  // Single effect for creating alarms
-  useEffect(() => {
-    const createAlarm = async () => {
-      if (!params.time || !params.created || isCreatingAlarm) return;
-
-      try {
-        setIsCreatingAlarm(true);
-
-        const newAlarm: Alarm = {
-          id: Date.now().toString(),
-          time: params.time as string,
-          enabled: true,
-          days: params.days ? JSON.parse(params.days as string) : [],
-          label: params.label as string || '',
-          mission: params.mission as string || '',
-          sound: params.sound as string || 'default',
-          volume: params.volume ? Number(params.volume) : 1,
-          vibration: params.vibration === 'true',
-        };
-
-        const updatedAlarms = [...alarms, newAlarm];
-        await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
-        setAlarms(updatedAlarms);
-        
-        if (newAlarm.enabled) {
-          scheduleAlarmNotification({
-            id: newAlarm.id,
-            time: newAlarm.time,
-            days: newAlarm.days,
-            label: newAlarm.mission,
-            sound: newAlarm.sound,
-            soundVolume: newAlarm.volume
-          });
-        }
-
-        router.setParams({});  // Clear params after successful save
-      } finally {
-        setIsCreatingAlarm(false);
-      }
-    };
-
-    createAlarm();
-  }, [params.created]); // Only trigger on created flag
 
   const loadAlarms = async () => {
     try {
@@ -110,18 +94,10 @@ export default function TabOneScreen() {
       if (alarm.id === id) {
         const updatedAlarm = { 
           ...alarm, 
-          enabled: !alarm.enabled,
-          soundVolume: alarm.volume
+          enabled: !alarm.enabled 
         };
         if (updatedAlarm.enabled) {
-          scheduleAlarmNotification({
-            id: updatedAlarm.id,
-            time: updatedAlarm.time,
-            days: updatedAlarm.days,
-            label: updatedAlarm.mission,
-            sound: updatedAlarm.sound,
-            soundVolume: updatedAlarm.soundVolume
-          });
+          scheduleAlarmNotification(updatedAlarm);
         } else {
           cancelAlarmNotification(id);
         }
@@ -135,6 +111,7 @@ export default function TabOneScreen() {
   };
 
   const deleteAlarm = async (id: string) => {
+    await cancelAlarmNotification(id);
     const updatedAlarms = alarms.filter(alarm => alarm.id !== id);
     setAlarms(updatedAlarms);
     await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
@@ -143,11 +120,15 @@ export default function TabOneScreen() {
   const duplicateAlarm = async (alarm: Alarm) => {
     const newAlarm = {
       ...alarm,
-      id: Date.now().toString(),
+      id: `alarm_${Date.now()}`,
+      enabled: true
     };
     const updatedAlarms = [...alarms, newAlarm];
     setAlarms(updatedAlarms);
     await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+    if (newAlarm.enabled) {
+      await scheduleAlarmNotification(newAlarm);
+    }
   };
 
   return (
@@ -174,11 +155,27 @@ export default function TabOneScreen() {
           <AlarmItem
             alarm={{
               ...item,
-              mission: item.mission || ''
+              mission: item.mission ? item.mission.name : ''
             }}
             onToggle={() => toggleAlarm(item.id)}
             onDelete={() => deleteAlarm(item.id)}
             onDuplicate={() => duplicateAlarm(item)}
+            onEdit={() => {
+              router.push({
+                pathname: '/new-alarm',
+                params: {
+                  alarmId: item.id,
+                  time: item.time,
+                  days: JSON.stringify(item.days),
+                  label: item.label,
+                  mission: item.mission ? JSON.stringify(item.mission) : null,
+                  sound: item.sound,
+                  volume: item.volume?.toString(),
+                  vibration: item.vibration?.toString(),
+                  isEditing: 'true'
+                }
+              });
+            }}
           />
         )}
         keyExtractor={(item) => item.id}
@@ -224,9 +221,41 @@ const styles = StyleSheet.create({
   alarmList: {
     flex: 1,
   },
+  alarmListContent: {
+    paddingBottom: 140,
+  },
+  alarmItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  alarmInfo: {
+    flex: 1,
+  },
+  timeText: {
+    fontSize: 48,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  labelText: {
+    fontSize: 16,
+    color: '#999',
+    marginTop: 4,
+  },
+  daysText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 4,
+  },
+  alarmActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   fab: {
     position: 'absolute',
-    bottom: 80, // Increased to be above tabs
+    bottom: 80,
     right: 20,
     width: 56,
     height: 56,
@@ -244,8 +273,5 @@ const styles = StyleSheet.create({
   fabText: {
     fontSize: 30,
     color: '#fff',
-  },
-  alarmListContent: {
-    paddingBottom: 140, // Increased to account for FAB and tabs
   },
 });
