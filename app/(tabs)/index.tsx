@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
-import { Link, router } from 'expo-router';
+import { Link, router, useLocalSearchParams } from 'expo-router';
 import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
 import { scheduleAlarmNotification, cancelAlarmNotification } from '../notifications';
 
 // Define the Alarm type
@@ -14,6 +13,7 @@ interface Alarm {
   time: string;
   enabled: boolean;
   days: string[];
+  label: string;
   mission: string;
   sound: string;
   volume: number;
@@ -42,17 +42,57 @@ const calculateTimeUntilAlarm = (alarmTime: string) => {
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const [isCreatingAlarm, setIsCreatingAlarm] = useState(false);
 
+  // Keep the loadAlarms effect
   useEffect(() => {
     loadAlarms();
   }, []);
 
-  // Replace the useEffect with:
-  useFocusEffect(
-    React.useCallback(() => {
-      loadAlarms();
-    }, [])
-  );
+  // Single effect for creating alarms
+  useEffect(() => {
+    const createAlarm = async () => {
+      if (!params.time || !params.created || isCreatingAlarm) return;
+
+      try {
+        setIsCreatingAlarm(true);
+
+        const newAlarm: Alarm = {
+          id: Date.now().toString(),
+          time: params.time as string,
+          enabled: true,
+          days: params.days ? JSON.parse(params.days as string) : [],
+          label: params.label as string || '',
+          mission: params.mission as string || '',
+          sound: params.sound as string || 'default',
+          volume: params.volume ? Number(params.volume) : 1,
+          vibration: params.vibration === 'true',
+        };
+
+        const updatedAlarms = [...alarms, newAlarm];
+        await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+        setAlarms(updatedAlarms);
+        
+        if (newAlarm.enabled) {
+          scheduleAlarmNotification({
+            id: newAlarm.id,
+            time: newAlarm.time,
+            days: newAlarm.days,
+            label: newAlarm.mission,
+            sound: newAlarm.sound,
+            soundVolume: newAlarm.volume
+          });
+        }
+
+        router.setParams({});  // Clear params after successful save
+      } finally {
+        setIsCreatingAlarm(false);
+      }
+    };
+
+    createAlarm();
+  }, [params.created]); // Only trigger on created flag
 
   const loadAlarms = async () => {
     try {
@@ -71,7 +111,7 @@ export default function TabOneScreen() {
         const updatedAlarm = { 
           ...alarm, 
           enabled: !alarm.enabled,
-          soundVolume: alarm.volume // Map volume to soundVolume
+          soundVolume: alarm.volume
         };
         if (updatedAlarm.enabled) {
           scheduleAlarmNotification({
@@ -132,7 +172,10 @@ export default function TabOneScreen() {
         data={alarms}
         renderItem={({ item }) => (
           <AlarmItem
-            alarm={item}
+            alarm={{
+              ...item,
+              mission: item.mission || ''
+            }}
             onToggle={() => toggleAlarm(item.id)}
             onDelete={() => deleteAlarm(item.id)}
             onDuplicate={() => duplicateAlarm(item)}

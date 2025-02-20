@@ -22,14 +22,19 @@ export default function NewAlarmScreen() {
     return new Date();
   });
   const [selectedDays, setSelectedDays] = useState<number[]>([]);
-  const [selectedMission, setSelectedMission] = useState('Listerine');
+  const [selectedMission, setSelectedMission] = useState('gmmmmmm');
   const [volume, setVolume] = useState(0.5);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
   const [sound, setSound] = useState('Orkney');
   const [missionIcon, setMissionIcon] = useState('calculator');
   const [missionColor, setMissionColor] = useState('#4CAF50');
-  const [label, setLabel] = useState(params.currentLabel as string || '');
+  const [label, setLabel] = useState<string>('');
   const [soundVolume, setSoundVolume] = useState(1);
+  const [mission, setMission] = useState({
+    id: '',
+    name: '',
+    icon: ''
+  });
 
   const days = [
     { label: 'S', value: 0 },
@@ -157,6 +162,17 @@ export default function NewAlarmScreen() {
     loadAlarm();
   }, [isEditing, params.alarmId]);
 
+  useEffect(() => {
+    if (params.selectedMissionId && 
+        params.selectedMissionId !== mission.id) {
+      setMission({
+        id: params.selectedMissionId as string,
+        name: params.selectedMissionName as string,
+        icon: params.selectedMissionIcon as string
+      });
+    }
+  }, [params.selectedMissionId]);
+
   const saveAlarmState = async (currentState: any) => {
     await AsyncStorage.setItem('tempAlarmState', JSON.stringify(currentState));
   };
@@ -191,13 +207,27 @@ export default function NewAlarmScreen() {
 
   useEffect(() => {
     const loadSavedState = async () => {
-      const savedState = await AsyncStorage.getItem('tempAlarmState');
-      if (savedState) {
-        const state = JSON.parse(savedState);
-        if (state.label) setLabel(state.label);
-        if (state.sound) setSound(state.sound);
-        if (state.selectedDays) setSelectedDays(state.selectedDays);
-        if (state.date) setDate(new Date(state.date));
+      try {
+        // Load label first
+        const savedLabel = await AsyncStorage.getItem('tempLabel');
+        if (savedLabel) {
+          setLabel(savedLabel);
+        }
+
+        // Load mission separately
+        const savedMission = await AsyncStorage.getItem('tempMission');
+        if (savedMission) {
+          setMission(JSON.parse(savedMission));
+        }
+
+        // Load other state
+        const savedState = await AsyncStorage.getItem('tempAlarmState');
+        if (savedState) {
+          const state = JSON.parse(savedState);
+          if (state.selectedDays) setSelectedDays(state.selectedDays);
+        }
+      } catch (error) {
+        console.error('Error loading saved state:', error);
       }
     };
     loadSavedState();
@@ -223,6 +253,51 @@ export default function NewAlarmScreen() {
     loadAlarms();
   }, []);
 
+  // Add mission type
+  interface Mission {
+    id: string;
+    name: string;
+    icon: string;
+  }
+
+  const handleSave = async () => {
+    try {
+      // Save label separately
+      await AsyncStorage.setItem('tempLabel', label);
+
+      // Save mission separately
+      await AsyncStorage.setItem('tempMission', JSON.stringify(mission));
+
+      // Save other state
+      const currentState = {
+        selectedDays,
+        sound,
+        time: date.toISOString()
+      };
+      await AsyncStorage.setItem('tempAlarmState', JSON.stringify(currentState));
+
+      router.push({
+        pathname: '/(tabs)',
+        params: {
+          time: date.toLocaleTimeString('en-US', { 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            hour12: false 
+          }),
+          days: JSON.stringify(selectedDays.map(index => days[index].label)),
+          label: label,
+          mission: mission.name || '',
+          sound: sound || 'default',
+          volume: soundVolume.toString(),
+          vibration: vibrationEnabled.toString(),
+          created: 'true'
+        }
+      });
+    } catch (error) {
+      console.error('Error saving alarm:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -232,7 +307,7 @@ export default function NewAlarmScreen() {
         <Text style={styles.headerTitle}>
           {isEditing ? 'Edit Alarm' : 'New Alarm'}
         </Text>
-        <TouchableOpacity onPress={saveAlarm}>
+        <TouchableOpacity onPress={handleSave}>
           <Text style={styles.saveText}>Save</Text>
         </TouchableOpacity>
       </View>
@@ -293,11 +368,16 @@ export default function NewAlarmScreen() {
         <View style={styles.section}>
           <TouchableOpacity 
             style={styles.sectionButton}
-            onPress={() => router.push('/(tabs)')}
+            onPress={() => router.push('/missionselector')}
           >
             <View style={styles.sectionContent}>
               <Text style={styles.sectionTitle}>Mission</Text>
-              <Text style={styles.sectionValue}>{selectedMission || 'None'}</Text>
+              <View style={styles.missionDisplay}>
+                {mission.icon && <Text style={styles.missionIcon}>{mission.icon}</Text>}
+                <Text style={styles.sectionValue}>
+                  {mission.name || 'None'}
+                </Text>
+              </View>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity>
@@ -519,6 +599,9 @@ const styles = StyleSheet.create({
   },
   sectionContent: {
     flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   modalContainer: {
     flex: 1,
@@ -604,5 +687,13 @@ const styles = StyleSheet.create({
   optionValue: {
     color: '#666',
     fontSize: 15,
+  },
+  missionDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  missionIcon: {
+    fontSize: 20,
+    marginRight: 8,
   },
 }); 

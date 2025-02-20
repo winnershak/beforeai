@@ -10,18 +10,18 @@
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		13B07FC11A68108700A75B9A /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB71A68108700A75B9A /* main.m */; };
-		16400A5A8F1045F6989360C7 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD0D0C2922EC4B46989187C6 /* noop-file.swift */; };
-		171001BD63E64C5F900A7546 /* circuit.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 93D70D7B4EC349459330A9B6 /* circuit.mp3 */; };
+		1FDE2D1197964EC9A690C352 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = 73C2BE105B624E86BF7917F8 /* noop-file.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		3F30E85EC36A4A90A1826FDA /* reflection.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 296D1E4F65F34732B98A4FCB /* reflection.mp3 */; };
-		4C31BE7CC3098A844EB257CD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = D3133CA64E610BECF3E79EC6 /* PrivacyInfo.xcprivacy */; };
-		6499F74ACAF34B20B3CB649A /* beacon.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 8855BC9B71FC4E6DA2865190 /* beacon.mp3 */; };
-		9645A6212FFC4B8399CC8BEB /* chimes.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 1A64707867C44798B8240E2E /* chimes.mp3 */; };
+		4177737FA78E4756B057FD0B /* orkney.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = D8C87E9D0EB94596AB8E37F0 /* orkney.mp3 */; };
+		420D756A39AA48579ED11058 /* circuit.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 3B04F6F10BBE4DA6B265B187 /* circuit.mp3 */; };
+		6317D39812054D048B6B1525 /* beacon.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = B2375C28993643F4A4D84728 /* beacon.mp3 */; };
+		6DF53EDF39244683BA250DD8 /* radar.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = EDECCEEEFB0547CEA34AFEBF /* radar.mp3 */; };
 		96905EF65AED1B983A6B3ABC /* libPods-alarmyclone.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-alarmyclone.a */; };
-		9E09A1085BC045CB8DD90EF2 /* orkney.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 686ED1149D2743BAA80E266B /* orkney.mp3 */; };
+		970F9B92F9F12118FEB5EAAC /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 80AA487587067416AB29F1ED /* PrivacyInfo.xcprivacy */; };
+		A99842D71CF443D3A8BF21C4 /* chimes.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 6BE642A7540C49A3A4F32007 /* chimes.mp3 */; };
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		E2CA45CCA6F34FE89FA4C5A2 /* radar.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 50D84E9AE5D84B49B6DC56B4 /* radar.mp3 */; };
+		F93312FD383A4AA09B7913F2 /* reflection.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C09AD8796C514A92ACB999E4 /* reflection.mp3 */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,21 +31,21 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = alarmyclone/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = alarmyclone/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = alarmyclone/main.m; sourceTree = "<group>"; };
-		1A64707867C44798B8240E2E /* chimes.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = chimes.mp3; path = alarmyclone/chimes.mp3; sourceTree = "<group>"; };
-		296D1E4F65F34732B98A4FCB /* reflection.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = reflection.mp3; path = alarmyclone/reflection.mp3; sourceTree = "<group>"; };
-		50D84E9AE5D84B49B6DC56B4 /* radar.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = radar.mp3; path = alarmyclone/radar.mp3; sourceTree = "<group>"; };
+		3B04F6F10BBE4DA6B265B187 /* circuit.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = circuit.mp3; path = alarmyclone/circuit.mp3; sourceTree = "<group>"; };
 		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-alarmyclone.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-alarmyclone.a"; sourceTree = BUILT_PRODUCTS_DIR; };
-		686ED1149D2743BAA80E266B /* orkney.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = orkney.mp3; path = alarmyclone/orkney.mp3; sourceTree = "<group>"; };
+		6BE642A7540C49A3A4F32007 /* chimes.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = chimes.mp3; path = alarmyclone/chimes.mp3; sourceTree = "<group>"; };
 		6C2E3173556A471DD304B334 /* Pods-alarmyclone.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-alarmyclone.debug.xcconfig"; path = "Target Support Files/Pods-alarmyclone/Pods-alarmyclone.debug.xcconfig"; sourceTree = "<group>"; };
+		73C2BE105B624E86BF7917F8 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "alarmyclone/noop-file.swift"; sourceTree = "<group>"; };
+		74B88FDB935B408BA2712034 /* alarmyclone-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "alarmyclone-Bridging-Header.h"; path = "alarmyclone/alarmyclone-Bridging-Header.h"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-alarmyclone.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-alarmyclone.release.xcconfig"; path = "Target Support Files/Pods-alarmyclone/Pods-alarmyclone.release.xcconfig"; sourceTree = "<group>"; };
-		8855BC9B71FC4E6DA2865190 /* beacon.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = beacon.mp3; path = alarmyclone/beacon.mp3; sourceTree = "<group>"; };
-		93D70D7B4EC349459330A9B6 /* circuit.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = circuit.mp3; path = alarmyclone/circuit.mp3; sourceTree = "<group>"; };
-		9684E80333964DE4BA2C201D /* alarmyclone-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "alarmyclone-Bridging-Header.h"; path = "alarmyclone/alarmyclone-Bridging-Header.h"; sourceTree = "<group>"; };
+		80AA487587067416AB29F1ED /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = alarmyclone/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = alarmyclone/SplashScreen.storyboard; sourceTree = "<group>"; };
+		B2375C28993643F4A4D84728 /* beacon.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = beacon.mp3; path = alarmyclone/beacon.mp3; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
-		BD0D0C2922EC4B46989187C6 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "alarmyclone/noop-file.swift"; sourceTree = "<group>"; };
-		D3133CA64E610BECF3E79EC6 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = alarmyclone/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C09AD8796C514A92ACB999E4 /* reflection.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = reflection.mp3; path = alarmyclone/reflection.mp3; sourceTree = "<group>"; };
+		D8C87E9D0EB94596AB8E37F0 /* orkney.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = orkney.mp3; path = alarmyclone/orkney.mp3; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		EDECCEEEFB0547CEA34AFEBF /* radar.mp3 */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = radar.mp3; path = alarmyclone/radar.mp3; sourceTree = "<group>"; };
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-alarmyclone/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -71,15 +71,15 @@
 				13B07FB61A68108700A75B9A /* Info.plist */,
 				13B07FB71A68108700A75B9A /* main.m */,
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
-				BD0D0C2922EC4B46989187C6 /* noop-file.swift */,
-				9684E80333964DE4BA2C201D /* alarmyclone-Bridging-Header.h */,
-				686ED1149D2743BAA80E266B /* orkney.mp3 */,
-				50D84E9AE5D84B49B6DC56B4 /* radar.mp3 */,
-				8855BC9B71FC4E6DA2865190 /* beacon.mp3 */,
-				1A64707867C44798B8240E2E /* chimes.mp3 */,
-				93D70D7B4EC349459330A9B6 /* circuit.mp3 */,
-				296D1E4F65F34732B98A4FCB /* reflection.mp3 */,
-				D3133CA64E610BECF3E79EC6 /* PrivacyInfo.xcprivacy */,
+				73C2BE105B624E86BF7917F8 /* noop-file.swift */,
+				74B88FDB935B408BA2712034 /* alarmyclone-Bridging-Header.h */,
+				D8C87E9D0EB94596AB8E37F0 /* orkney.mp3 */,
+				EDECCEEEFB0547CEA34AFEBF /* radar.mp3 */,
+				B2375C28993643F4A4D84728 /* beacon.mp3 */,
+				6BE642A7540C49A3A4F32007 /* chimes.mp3 */,
+				3B04F6F10BBE4DA6B265B187 /* circuit.mp3 */,
+				C09AD8796C514A92ACB999E4 /* reflection.mp3 */,
+				80AA487587067416AB29F1ED /* PrivacyInfo.xcprivacy */,
 			);
 			name = alarmyclone;
 			sourceTree = "<group>";
@@ -165,13 +165,13 @@
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "alarmyclone" */;
 			buildPhases = (
 				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
-				FF6FCDC62F9A47D59078E19B /* [Expo] Configure project */,
+				40478776E7E50123D23F8B0A /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				6B7A64033339679020217A7B /* [CP] Embed Pods Frameworks */,
+				5E208C2C35819C250C1A0E47 /* [CP] Embed Pods Frameworks */,
 			);
 			buildRules = (
 			);
@@ -191,9 +191,7 @@
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = 8L789T788W;
 						LastSwiftMigration = 1250;
-						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -223,13 +221,13 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				9E09A1085BC045CB8DD90EF2 /* orkney.mp3 in Resources */,
-				E2CA45CCA6F34FE89FA4C5A2 /* radar.mp3 in Resources */,
-				6499F74ACAF34B20B3CB649A /* beacon.mp3 in Resources */,
-				9645A6212FFC4B8399CC8BEB /* chimes.mp3 in Resources */,
-				171001BD63E64C5F900A7546 /* circuit.mp3 in Resources */,
-				3F30E85EC36A4A90A1826FDA /* reflection.mp3 in Resources */,
-				4C31BE7CC3098A844EB257CD /* PrivacyInfo.xcprivacy in Resources */,
+				4177737FA78E4756B057FD0B /* orkney.mp3 in Resources */,
+				6DF53EDF39244683BA250DD8 /* radar.mp3 in Resources */,
+				6317D39812054D048B6B1525 /* beacon.mp3 in Resources */,
+				A99842D71CF443D3A8BF21C4 /* chimes.mp3 in Resources */,
+				420D756A39AA48579ED11058 /* circuit.mp3 in Resources */,
+				F93312FD383A4AA09B7913F2 /* reflection.mp3 in Resources */,
+				970F9B92F9F12118FEB5EAAC /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -273,7 +271,26 @@
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
-		6B7A64033339679020217A7B /* [CP] Embed Pods Frameworks */ = {
+		40478776E7E50123D23F8B0A /* [Expo] Configure project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "[Expo] Configure project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-alarmyclone/expo-configure-project.sh\"\n";
+		};
+		5E208C2C35819C250C1A0E47 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -337,25 +354,6 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-alarmyclone/Pods-alarmyclone-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		FF6FCDC62F9A47D59078E19B /* [Expo] Configure project */ = {
-			isa = PBXShellScriptBuildPhase;
-			alwaysOutOfDate = 1;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "[Expo] Configure project";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-alarmyclone/expo-configure-project.sh\"\n";
-		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -366,7 +364,7 @@
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
-				16400A5A8F1045F6989360C7 /* noop-file.swift in Sources */,
+				1FDE2D1197964EC9A690C352 /* noop-file.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -380,10 +378,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = alarmyclone/alarmyclone.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8L789T788W;
 				ENABLE_BITCODE = NO;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -416,10 +411,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = alarmyclone/alarmyclone.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 8L789T788W;
 				INFOPLIST_FILE = alarmyclone/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
