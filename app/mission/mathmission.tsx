@@ -102,7 +102,19 @@ export default function MathMission() {
         // Clear the active alarm
         await AsyncStorage.removeItem('activeAlarm');
         setTimeout(() => {
-          router.push('/');
+          router.push({
+            pathname: '/new-alarm',
+            params: {
+              selectedMissionId: params.missionId,
+              selectedMissionName: params.missionName,
+              selectedMissionIcon: params.missionIcon,
+              missionType: 'math',
+              editMode: params.isEditing,
+              alarmId: params.alarmId,
+              difficulty: params.difficulty,
+              times: params.times
+            }
+          });
         }, 2000);
       }
     } else {

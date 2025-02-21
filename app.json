@@ -15,7 +15,7 @@
       "**/*"
     ],
     "ios": {
-      "bundleIdentifier": "com.winnershak.alarmyclone",
+      "bundleIdentifier": "com.yourusername.alarmyclone",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
@@ -23,24 +23,13 @@
         ]
       }
     },
+    "notification": {
+      "ios": {
+        "soundFile": "assets/sounds/orkney.caf"
+      }
+    },
     "plugins": [
-      [
-        "expo-notifications",
-        {
-          "sounds": [
-            "./assets/sounds/orkney.mp3",
-            "./assets/sounds/radar.mp3",
-            "./assets/sounds/beacon.mp3",
-            "./assets/sounds/chimes.mp3",
-            "./assets/sounds/circuit.mp3",
-            "./assets/sounds/reflection.mp3"
-          ]
-        }
-      ],
-      "expo-font"
-    ],
-    "android": {
-      "package": "com.winnershak.alarmyclone"
-    }
+      "react-native-vision-camera"
+    ]
   }
 }

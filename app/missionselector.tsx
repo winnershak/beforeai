@@ -1,5 +1,6 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 
 const missions = [
   { id: 'math', name: 'Math', icon: '🔢' },
@@ -9,30 +10,48 @@ const missions = [
 ];
 
 export default function MissionSelectScreen() {
-  const handleMissionSelect = (mission: any) => {
+  const params = useLocalSearchParams();
+
+  const handleMissionSelect = (mission: {id: string, name: string, icon: string}) => {
     if (mission.id === 'math') {
-      // Navigate to math config with mission info
       router.push({
         pathname: '/mission/math',
-        params: {
-          missionId: mission.id,
-          missionName: mission.name,
-          missionIcon: mission.icon,
-          missionType: 'math'
-        }
+        params: { ...params }
+      });
+    } else if (mission.id === 'typing') {
+      router.push({
+        pathname: '/mission/typing',
+        params: { ...params }
+      });
+    } else if (mission.id === 'qrcode') {
+      router.push({
+        pathname: '/mission/qrcode',
+        params: { ...params }
       });
     } else {
-      // Handle other missions
       router.push({
         pathname: '/new-alarm',
         params: {
+          ...params,
           selectedMissionId: mission.id,
           selectedMissionName: mission.name,
-          selectedMissionIcon: mission.icon,
-          missionType: mission.id
+          selectedMissionIcon: mission.icon
         }
       });
     }
+  };
+
+  useEffect(() => {
+    if (params.selectedMissionId) {
+      // How is the mission being set here?
+      // Are we properly constructing the mission object?
+    }
+  }, [params.selectedMissionId]);
+
+  const saveAlarm = async () => {
+    // How is the mission being included in newAlarm?
+    // Is the mission structure correct when updating?
+    // Are we properly preserving the mission when editing?
   };
 
   return (
