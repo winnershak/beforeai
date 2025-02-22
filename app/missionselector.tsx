@@ -28,6 +28,11 @@ export default function MissionSelectScreen() {
         pathname: '/mission/qrcode',
         params: { ...params }
       });
+    } else if (mission.id === 'photo') {
+      router.push({
+        pathname: '/mission/photo',
+        params: { ...params }
+      });
     } else {
       router.push({
         pathname: '/new-alarm',
