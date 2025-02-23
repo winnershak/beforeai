@@ -5,6 +5,8 @@ import { Audio } from 'expo-av';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import { Asset } from 'expo-asset';
 
 // Define interruption mode constants
 const INTERRUPTION_MODE_IOS_DO_NOT_MIX = 1;
@@ -26,14 +28,15 @@ interface Alarm {
 // Sound management
 let alarmSound: Awaited<ReturnType<typeof Audio.Sound.createAsync>>['sound'] | null = null;
 
-const SOUND_FILES = {
+// Define sound assets statically
+const soundAssets = {
   'Orkney': require('../assets/sounds/orkney.caf'),
   'Radar': require('../assets/sounds/radar.caf'),
   'Beacon': require('../assets/sounds/beacon.caf'),
   'Chimes': require('../assets/sounds/chimes.caf'),
   'Circuit': require('../assets/sounds/circuit.caf'),
-  'Reflection': require('../assets/sounds/reflection.caf')
-} as const;
+  'Reflection': require('../assets/sounds/reflection.caf'),
+};
 
 // Configure audio mode
 const configureAudioMode = async () => {
@@ -75,7 +78,7 @@ void registerBackgroundFetch();
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: true,
+    shouldPlaySound: false,
     shouldSetBadge: false,
   }),
 });
@@ -94,7 +97,7 @@ export async function stopAlarmSound(): Promise<void> {
 }
 
 export async function playAlarmSound(
-  soundName: keyof typeof SOUND_FILES,
+  soundName: keyof typeof soundAssets,
   volume: number = 1
 ): Promise<void> {
   if (alarmSound !== null) return;
@@ -103,7 +106,7 @@ export async function playAlarmSound(
     await stopAlarmSound();
     await configureAudioMode();
     
-    const soundFile = SOUND_FILES[soundName];
+    const soundFile = soundAssets[soundName];
     const { sound: audioSound } = await Audio.Sound.createAsync(
       soundFile,
       { 
@@ -162,6 +165,22 @@ export async function requestNotificationPermissions() {
   }
 }
 
+async function getSoundPath(soundName: string) {
+  try {
+    const asset = Asset.fromModule(soundAssets[soundName as keyof typeof soundAssets]);
+    await asset.downloadAsync();
+    console.log('Sound asset details:', {
+      name: soundName,
+      uri: asset.uri,
+      localUri: asset.localUri
+    });
+    return asset.localUri;
+  } catch (error) {
+    console.error('Error getting sound path:', error);
+    return null;
+  }
+}
+
 // Schedule notification with more logging
 export async function scheduleAlarmNotification(alarm: Alarm) {
   try {
@@ -177,12 +196,14 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
       timeUntilAlarm = (scheduledTime.getTime() - now.getTime()) / 1000;
     }
 
-    // Create the notification with explicit sound path
+    const soundPath = await getSoundPath(alarm.sound);
+    console.log('Using sound path for notification:', soundPath);
+
     const identifier = await Notifications.scheduleNotificationAsync({
       content: {
         title: alarm.label || 'Alarm',
         body: 'Time to wake up!',
-        sound: `${alarm.sound}.caf`,
+        sound: `${alarm.sound.toLowerCase()}.caf`,
         data: { 
           alarmId: alarm.id,
           sound: alarm.sound
@@ -197,7 +218,7 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
 
     console.log('Scheduled notification:', {
       time: scheduledTime.toLocaleTimeString(),
-      sound: `${alarm.sound}.caf`,
+      sound: `${alarm.sound.toLowerCase()}.caf`,
       id: identifier
     });
     
