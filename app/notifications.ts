@@ -75,9 +75,8 @@ void registerBackgroundFetch();
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false, // We'll handle sound separately
+    shouldPlaySound: true,
     shouldSetBadge: false,
-    priority: Notifications.AndroidNotificationPriority.MAX,
   }),
 });
 
@@ -130,24 +129,7 @@ export async function playAlarmSound(
 // Modify the notification response listener
 Notifications.addNotificationResponseReceivedListener(async (response) => {
   const alarmData = response.notification.request.content.data.alarm;
-  
-  // Save active alarm data for the alarm screen
-  await AsyncStorage.setItem('activeAlarm', JSON.stringify(alarmData));
-  
-  // Start playing sound
-  await playAlarmSound(alarmData.sound, alarmData.soundVolume);
-  
-  // Navigate to alarm ring screen
-  router.push({
-    pathname: '/alarm-ring',
-    params: {
-      id: alarmData.id,
-      sound: alarmData.sound,
-      soundVolume: alarmData.soundVolume,
-      hasMission: alarmData.mission ? 'true' : 'false',
-      mission: alarmData.mission
-    }
-  });
+  router.push('/alarm-ring');
 });
 
 // Request permissions at app startup
@@ -186,34 +168,25 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
     const [hours, minutes] = alarm.time.split(':');
     const now = new Date();
     const scheduledTime = new Date();
-    scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0); // Set seconds and ms to 0
+    scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
 
-    // Calculate time until alarm
     let timeUntilAlarm = (scheduledTime.getTime() - now.getTime()) / 1000;
 
-    // If time has passed today, schedule for tomorrow
     if (timeUntilAlarm <= 0) {
       scheduledTime.setDate(scheduledTime.getDate() + 1);
       timeUntilAlarm = (scheduledTime.getTime() - now.getTime()) / 1000;
     }
 
-    console.log('Scheduling notification:', {
-      currentTime: now.toLocaleTimeString(),
-      alarmTime: scheduledTime.toLocaleTimeString(),
-      timeUntilAlarm: `${Math.floor(timeUntilAlarm / 60)} minutes and ${Math.floor(timeUntilAlarm % 60)} seconds`,
-      isRepeating: alarm.days.length > 0
-    });
-
-    // Cancel any existing notifications for this alarm
-    await Notifications.cancelScheduledNotificationAsync(alarm.id);
-
+    // Create the notification with explicit sound path
     const identifier = await Notifications.scheduleNotificationAsync({
-      identifier: alarm.id,
       content: {
         title: alarm.label || 'Alarm',
         body: 'Time to wake up!',
-        data: { alarm },
-        sound: true,
+        sound: `${alarm.sound}.caf`,
+        data: { 
+          alarmId: alarm.id,
+          sound: alarm.sound
+        }
       },
       trigger: {
         type: 'timeInterval',
@@ -222,16 +195,13 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
       } as Notifications.TimeIntervalTriggerInput
     });
 
-    // Verify the scheduled notification
-    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
-    console.log('Verification - All scheduled notifications:', 
-      scheduled.map(n => ({
-        id: n.identifier,
-        trigger: n.trigger,
-        scheduled: 'Notification scheduled'
-      }))
-    );
-
+    console.log('Scheduled notification:', {
+      time: scheduledTime.toLocaleTimeString(),
+      sound: `${alarm.sound}.caf`,
+      id: identifier
+    });
+    
+    return identifier;
   } catch (error) {
     console.error('Error scheduling notification:', error);
   }

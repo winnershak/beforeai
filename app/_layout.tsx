@@ -3,13 +3,16 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
 import { requestNotificationPermissions } from './notifications';
+import { registerBackgroundTask } from './background-task';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -20,6 +23,8 @@ export default function RootLayout() {
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
+  const timerRef = useRef<NodeJS.Timeout>();
+
   useEffect(() => {
     if (loaded) {
       SplashScreen.hideAsync();
@@ -29,7 +34,9 @@ export default function RootLayout() {
   useAlarmManager(); // This will check for active alarms on app launch
 
   useEffect(() => {
+    // Only handle permissions and background task registration
     requestNotificationPermissions();
+    registerBackgroundTask();
   }, []);
 
   if (!loaded) {

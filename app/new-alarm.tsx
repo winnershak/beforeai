@@ -170,6 +170,9 @@ export default function NewAlarmScreen() {
 
       await AsyncStorage.setItem('alarms', JSON.stringify(currentAlarms));
       
+      // Schedule notification for the alarm
+      await scheduleAlarmNotification(newAlarm);
+      
       // Clean up temp storage
       await AsyncStorage.removeItem('tempMission');
       await AsyncStorage.removeItem('tempAlarmState');

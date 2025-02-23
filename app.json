@@ -34,7 +34,17 @@
     },
     "plugins": [
       [
-        "expo-notifications"
+        "expo-notifications",
+        {
+          "sounds": [
+            "./assets/sounds/orkney.caf",
+            "./assets/sounds/radar.caf",
+            "./assets/sounds/beacon.caf",
+            "./assets/sounds/chimes.caf",
+            "./assets/sounds/circuit.caf",
+            "./assets/sounds/reflection.caf"
+          ]
+        }
       ]
     ],
     "android": {
