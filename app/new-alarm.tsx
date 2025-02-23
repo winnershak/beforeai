@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { Switch } from 'react-native';
 import { scheduleAlarmNotification, cancelAlarmNotification } from './notifications';
+import { useFocusEffect } from '@react-navigation/native';
 
 interface Mission {
   id: string;
@@ -29,13 +30,21 @@ interface Alarm {
 
 export default function NewAlarmScreen() {
   const params = useLocalSearchParams();
-  const [isEditing, setIsEditing] = useState(Boolean(params.editMode === 'true'));
-  const [currentAlarmId, setCurrentAlarmId] = useState(params.alarmId);
+  const [isEditing, setIsEditing] = useState(params.editMode === 'true');
+  const [currentAlarmId, setCurrentAlarmId] = useState(params.alarmId as string);
 
   useEffect(() => {
-    console.log('NewAlarmScreen - Params:', params);
-    console.log('NewAlarmScreen - Is Editing:', isEditing);
-  }, []);
+    console.log('NewAlarmScreen - Setup:', { 
+      params,
+      isEditing: params.editMode === 'true',
+      alarmId: params.alarmId
+    });
+    
+    if (params.editMode === 'true' && params.alarmId) {
+      setIsEditing(true);
+      setCurrentAlarmId(params.alarmId as string);
+    }
+  }, [params]);
 
   const [date, setDate] = useState(() => {
     if (params.time) {
@@ -56,6 +65,7 @@ export default function NewAlarmScreen() {
   const [label, setLabel] = useState<string>('');
   const [soundVolume, setSoundVolume] = useState(1);
   const [mission, setMission] = useState<Mission | null>(null);
+  const [missionType, setMissionType] = useState<string>('');
 
   const days = [
     { label: 'S', value: 0 },
@@ -134,35 +144,36 @@ export default function NewAlarmScreen() {
       let currentAlarms = existingAlarms ? JSON.parse(existingAlarms) : [];
 
       const newAlarm = {
-        id: isEditing ? currentAlarmId : Date.now().toString(),
+        id: (isEditing ? currentAlarmId : Date.now().toString()) as string,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         enabled: true,
-        days: selectedDays,
+        days: selectedDays.map(day => day.toString()),
         label: label || '',
-        mission: mission,  // Save complete mission object
+        mission: mission,
         sound: sound,
-        volume: soundVolume,
-        vibration: vibrationEnabled
+        soundVolume: soundVolume,
+        vibration: vibrationEnabled,
+        notificationId: null
       };
 
-      if (isEditing) {
+      if (isEditing && currentAlarmId) {
+        // Update existing alarm
         console.log('Updating existing alarm:', currentAlarmId);
         currentAlarms = currentAlarms.map((alarm: Alarm) => 
           alarm.id === currentAlarmId ? { ...alarm, ...newAlarm } : alarm
         );
       } else {
+        // Create new alarm
         console.log('Creating new alarm');
         currentAlarms.push(newAlarm);
       }
 
-      console.log('Saving alarms:', currentAlarms);
       await AsyncStorage.setItem('alarms', JSON.stringify(currentAlarms));
       
       // Clean up temp storage
       await AsyncStorage.removeItem('tempMission');
       await AsyncStorage.removeItem('tempAlarmState');
       
-      router.setParams({});
       router.push('/(tabs)');
     } catch (error) {
       console.error('Error saving alarm:', error);
@@ -209,7 +220,7 @@ export default function NewAlarmScreen() {
             setLabel(currentAlarm.label);
             setMission(currentAlarm.mission);
             setSound(currentAlarm.sound);
-            setSoundVolume(currentAlarm.volume);
+            setSoundVolume(currentAlarm.soundVolume);
             setVibrationEnabled(currentAlarm.vibration);
           }
         }
@@ -320,6 +331,38 @@ export default function NewAlarmScreen() {
     loadAlarms();
   }, []);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadMissionType = async () => {
+        try {
+          const savedType = await AsyncStorage.getItem('selectedMissionType');
+          console.log('New Alarm - Loading mission type:', savedType);
+          
+          if (savedType) {
+            setMissionType(savedType);
+            console.log('New Alarm - Set mission type to:', savedType);
+          }
+        } catch (error) {
+          console.error('Error loading mission type:', error);
+        }
+      };
+
+      loadMissionType();
+    }, [])
+  );
+
+  // Navigate to mission selector with edit state
+  const navigateToMissionSelector = async () => {
+    await saveState();
+    router.push({
+      pathname: '/missionselector',
+      params: {
+        editMode: isEditing.toString(),
+        alarmId: currentAlarmId
+      }
+    });
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -329,9 +372,6 @@ export default function NewAlarmScreen() {
         <Text style={styles.headerTitle}>
           {isEditing ? 'Edit Alarm' : 'New Alarm'}
         </Text>
-        <TouchableOpacity onPress={saveAlarm}>
-          <Text style={styles.saveText}>Save</Text>
-        </TouchableOpacity>
       </View>
 
       <View style={styles.timePickerContainer}>
@@ -343,10 +383,12 @@ export default function NewAlarmScreen() {
             if (selectedDate) setDate(selectedDate);
           }}
           style={styles.picker}
+          textColor="white"
         />
       </View>
 
       <ScrollView style={styles.content}>
+        {/* Days of week section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Daily</Text>
@@ -387,19 +429,17 @@ export default function NewAlarmScreen() {
           </View>
         </View>
 
+        {/* Mission section */}
         <View style={styles.section}>
           <TouchableOpacity 
             style={styles.sectionButton}
-            onPress={() => router.push('/missionselector')}
+            onPress={navigateToMissionSelector}
           >
             <View style={styles.sectionContent}>
               <Text style={styles.sectionTitle}>Mission</Text>
-              <View style={styles.missionDisplay}>
-                {mission?.icon && <Text style={styles.missionIcon}>{mission.icon}</Text>}
-                <Text style={styles.sectionValue}>
-                  {mission?.name || 'None'}
-                </Text>
-              </View>
+              <Text style={[styles.sectionValue, { color: 'white' }]}>
+                {missionType ? `📱 ${missionType}` : 'None'}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity>
@@ -468,6 +508,13 @@ export default function NewAlarmScreen() {
           </Pressable>
         </View>
       </ScrollView>
+
+      <TouchableOpacity 
+        style={styles.saveButton} 
+        onPress={saveAlarm}
+      >
+        <Text style={styles.saveButtonText}>Save</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -493,10 +540,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: '600',
-  },
-  saveText: {
-    color: '#0A84FF',
-    fontSize: 17,
   },
   timePickerContainer: {
     alignItems: 'center',

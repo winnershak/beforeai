@@ -1,4 +1,4 @@
-package com.winnershak.alarmyclone
+package com.yourusername.alarmyclone
 import expo.modules.splashscreen.SplashScreenManager
 
 import android.os.Build

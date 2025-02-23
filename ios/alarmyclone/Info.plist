@@ -51,12 +51,14 @@
       <true/>
     </dict>
     <key>NSCameraUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your camera</string>
+    <string>This app uses the camera for QR code scanning.</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
+    <string>This app uses the microphone for...</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This app uses the photo library for...</string>
     <key>UIBackgroundModes</key>
     <array>
-      <string>audio</string>
+      <string>remote-notification</string>
       <string>fetch</string>
     </array>
     <key>UILaunchStoryboardName</key>

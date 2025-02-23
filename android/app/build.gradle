@@ -86,9 +86,9 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace 'com.winnershak.alarmyclone'
+    namespace 'com.yourusername.alarmyclone'
     defaultConfig {
-        applicationId 'com.winnershak.alarmyclone'
+        applicationId 'com.yourusername.alarmyclone'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

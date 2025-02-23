@@ -19,8 +19,12 @@
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
-          "audio"
-        ]
+          "remote-notification"
+        ],
+        "NSCameraUsageDescription": "This app uses the camera for QR code scanning.",
+        "NSMicrophoneUsageDescription": "This app uses the microphone for...",
+        "NSPhotoLibraryUsageDescription": "This app uses the photo library for...",
+        "UIViewControllerBasedStatusBarAppearance": false
       }
     },
     "notification": {
@@ -29,7 +33,12 @@
       }
     },
     "plugins": [
-      "react-native-vision-camera"
-    ]
+      [
+        "expo-notifications"
+      ]
+    ],
+    "android": {
+      "package": "com.yourusername.alarmyclone"
+    }
   }
 }

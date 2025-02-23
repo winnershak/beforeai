@@ -10,11 +10,41 @@ export default function PhotoMission() {
   const [photos, setPhotos] = useState<string[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<string | null>(null);
   const [previewVisible, setPreviewVisible] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   // Load saved photos when component mounts
   useEffect(() => {
-    loadPhotos();
-  }, []);
+    const loadSavedState = async () => {
+      try {
+        // First load all photos
+        const savedPhotos = await AsyncStorage.getItem('savedPhotos');
+        let photosList: string[] = [];
+        
+        if (savedPhotos) {
+          photosList = JSON.parse(savedPhotos) as string[];
+          setPhotos(photosList);
+        }
+
+        // Then load selected photo
+        const selectedPhoto = await AsyncStorage.getItem('selectedAlarmPhoto');
+        if (selectedPhoto) {
+          console.log('Loading selected photo:', selectedPhoto);
+          setSelectedPhoto(selectedPhoto);
+          
+          // Find index in loaded photos array
+          const index = photosList.findIndex(p => p === selectedPhoto);
+          console.log('Found index:', index);
+          if (index !== -1) {
+            setSelectedIndex(index);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved state:', error);
+      }
+    };
+
+    loadSavedState();
+  }, []); // Only run on mount
 
   // Add useEffect to handle returned photo
   useEffect(() => {
@@ -31,21 +61,6 @@ export default function PhotoMission() {
         mode: 'add'
       }
     });
-  };
-
-  const loadPhotos = async () => {
-    try {
-      const savedPhotos = await AsyncStorage.getItem('savedPhotos');
-      if (savedPhotos) {
-        const parsedPhotos = JSON.parse(savedPhotos);
-        // Remove duplicates and invalid paths
-        const uniquePhotos = [...new Set(parsedPhotos)].filter(Boolean) as string[];
-        setPhotos(uniquePhotos);
-      }
-    } catch (error) {
-      console.error('Error loading photos:', error);
-      setPhotos([]); // Fallback to empty array on error
-    }
   };
 
   const saveNewPhoto = async (newPhotoPath: string) => {
@@ -83,8 +98,19 @@ export default function PhotoMission() {
     }
   };
 
-  const handlePhotoPress = (photo: string) => {
-    setSelectedPhoto(selectedPhoto === photo ? null : photo);
+  // Handle photo selection
+  const handlePhotoSelect = async (photo: string, index: number) => {
+    try {
+      console.log('Selecting photo:', photo, 'at index:', index);
+      setSelectedPhoto(photo);
+      setSelectedIndex(index);
+      
+      // Save selection to AsyncStorage
+      await AsyncStorage.setItem('selectedAlarmPhoto', photo);
+      console.log('Saved selection to AsyncStorage');
+    } catch (error) {
+      console.error('Error saving photo selection:', error);
+    }
   };
 
   const handlePreview = () => {
@@ -99,20 +125,65 @@ export default function PhotoMission() {
     }
   };
 
-  const handleDone = () => {
-    if (!selectedPhoto) return;
-    
-    router.push({
-      pathname: '/new-alarm',
-      params: {
-        ...params,
-        selectedMissionId: 'photo',
-        selectedMissionName: 'Photo',
-        selectedMissionIcon: '📸',
-        photos: JSON.stringify([selectedPhoto])
+  const handleDone = async () => {
+    console.log('Done button pressed');
+    try {
+      if (selectedPhoto) {
+        // Save selected photo
+        await AsyncStorage.setItem('selectedAlarmPhoto', selectedPhoto);
+        // Save mission type
+        await AsyncStorage.setItem('selectedMissionType', 'Photo');
+        
+        console.log('Mission data saved:', {
+          type: 'Photo',
+          photo: selectedPhoto
+        });
       }
-    });
+      
+      router.push('/new-alarm');
+    } catch (error) {
+      console.error('Error saving mission data:', error);
+    }
   };
+
+  // Add useEffect to load saved photo on mount
+  useEffect(() => {
+    const loadSavedPhoto = async () => {
+      try {
+        const savedPhoto = await AsyncStorage.getItem('selectedAlarmPhoto');
+        if (savedPhoto) {
+          console.log('Loading saved photo:', savedPhoto);
+          setSelectedPhoto(savedPhoto);
+          const index = photos.findIndex(p => p === savedPhoto);
+          if (index !== -1) {
+            setSelectedIndex(index);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved photo:', error);
+      }
+    };
+
+    loadSavedPhoto();
+  }, [photos]);
+
+  // Render photo grid item
+  const renderPhotoItem = ({ item, index }: { item: string; index: number }) => (
+    <TouchableOpacity
+      style={[
+        styles.photoItem,
+        selectedIndex === index && styles.selectedPhoto
+      ]}
+      onPress={() => handlePhotoSelect(item, index)}
+    >
+      <Image source={{ uri: item }} style={styles.photo} />
+      {selectedIndex === index && (
+        <View style={styles.selectedOverlay}>
+          <Text style={styles.checkmarkText}>✓</Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
@@ -127,7 +198,7 @@ export default function PhotoMission() {
               styles.photoContainer,
               selectedPhoto === photo && styles.selectedPhoto
             ]}
-            onPress={() => handlePhotoPress(photo)}
+            onPress={() => handlePhotoSelect(photo, index)}
           >
             <Image source={{ uri: `file://${photo}` }} style={styles.photo} />
             <TouchableOpacity 
@@ -140,7 +211,7 @@ export default function PhotoMission() {
               <Text style={styles.deleteButtonText}>×</Text>
             </TouchableOpacity>
             {selectedPhoto === photo && (
-              <View style={styles.checkmark}>
+              <View style={styles.checkmarkContainer}>
                 <Text style={styles.checkmarkText}>✓</Text>
               </View>
             )}
@@ -250,7 +321,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#007AFF',
   },
-  checkmark: {
+  checkmarkContainer: {
     position: 'absolute',
     right: 8,
     bottom: 8,
@@ -338,5 +409,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 24,
     fontWeight: '600',
+  },
+  photoItem: {
+    width: '48%',
+    aspectRatio: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  selectedOverlay: {
+    position: 'absolute',
+    right: 8,
+    bottom: 8,
+    width: 24,
+    height: 24,
+    backgroundColor: '#007AFF',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 }); 

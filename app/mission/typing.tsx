@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const phrases = [
   "JUST DO IT",
@@ -38,18 +39,26 @@ export default function TypingScreen() {
     });
   };
 
-  const handleDone = () => {
-    router.push({
-      pathname: '/new-alarm',
-      params: {
-        ...params,
-        selectedMissionId: 'typing',
-        selectedMissionName: 'Typing',
-        selectedMissionIcon: '⌨️',
+  const handleDone = async () => {
+    console.log('Done button pressed');
+    try {
+      // Save mission type
+      await AsyncStorage.setItem('selectedMissionType', 'Typing');
+      // Save selected phrase
+      await AsyncStorage.setItem('selectedPhrase', selectedPhrase);
+      // Save number of times
+      await AsyncStorage.setItem('selectedTimes', selectedTimes.toString());
+      
+      console.log('Mission data saved:', {
+        type: 'Typing',
         phrase: selectedPhrase,
-        times: selectedTimes.toString()
-      }
-    });
+        times: selectedTimes
+      });
+      
+      router.push('/new-alarm');
+    } catch (error) {
+      console.error('Error saving mission data:', error);
+    }
   };
 
   return (

@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+// math main page
+
+
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function MathConfigScreen() {
   const router = useRouter();
@@ -26,19 +30,61 @@ export default function MathConfigScreen() {
     }
   };
 
-  const handleSave = () => {
-    router.push({
-      pathname: '/new-alarm',
-      params: {
-        selectedMissionId: params.missionId as string,
-        selectedMissionName: params.missionName as string,
-        selectedMissionIcon: params.missionIcon as string,
-        missionType: 'math',
-        difficulty: difficulty.toString(),
-        times: times.toString()
-      }
-    });
+  const handleSave = async () => {
+    console.log('Math Mission - handleSave called');
+    try {
+      // Save mission type and math settings
+      console.log('Saving math settings:', {
+        difficulty: difficulty,
+        times: times
+      });
+      
+      await AsyncStorage.setItem('selectedMissionType', 'Math');
+      await AsyncStorage.setItem('mathDifficulty', difficulty.toString());
+      await AsyncStorage.setItem('mathTimes', times.toString());
+      
+      // Verify saves immediately
+      const savedType = await AsyncStorage.getItem('selectedMissionType');
+      const savedDifficulty = await AsyncStorage.getItem('mathDifficulty');
+      const savedTimes = await AsyncStorage.getItem('mathTimes');
+      
+      console.log('Math settings saved:', {
+        type: savedType,
+        difficulty: savedDifficulty,
+        times: savedTimes
+      });
+      
+      router.push('/new-alarm');
+    } catch (error) {
+      console.error('Error in handleSave:', error);
+    }
   };
+
+  // Add useEffect to load saved settings
+  useEffect(() => {
+    const loadSavedSettings = async () => {
+      try {
+        const savedDifficulty = await AsyncStorage.getItem('mathDifficulty');
+        const savedTimes = await AsyncStorage.getItem('mathTimes');
+        
+        console.log('Loading saved math settings:', {
+          difficulty: savedDifficulty,
+          times: savedTimes
+        });
+        
+        if (savedDifficulty) {
+          setDifficulty(parseInt(savedDifficulty));
+        }
+        if (savedTimes) {
+          setTimes(parseInt(savedTimes));
+        }
+      } catch (error) {
+        console.error('Error loading saved settings:', error);
+      }
+    };
+
+    loadSavedSettings();
+  }, []);
 
   const handlePreview = () => {
     router.push({

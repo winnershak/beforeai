@@ -9,6 +9,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
+import { requestNotificationPermissions } from './notifications';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -27,6 +28,10 @@ export default function RootLayout() {
 
   useAlarmManager(); // This will check for active alarms on app launch
 
+  useEffect(() => {
+    requestNotificationPermissions();
+  }, []);
+
   if (!loaded) {
     return null;
   }
@@ -34,23 +39,23 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack screenOptions={{
-          headerStyle: {
-            backgroundColor: '#000',
-          },
-          headerTintColor: '#fff',
-          headerBackTitle: '',
-          headerTitle: '',
-          headerShadowVisible: false,
-          contentStyle: {
-            backgroundColor: '#000',
-          },
-        }}>
-          <Stack.Screen 
-            name="(tabs)" 
-            options={{ 
-              headerShown: false 
-            }} 
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerStyle: {
+              backgroundColor: '#1C1C1E',  // Dark background
+            },
+            headerTintColor: '#fff',       // White text and icons
+            headerTitleStyle: {
+              color: '#fff',               // White title text
+            },
+          }}
+        >
+          <Stack.Screen
+            name="(tabs)"
+            options={{
+              headerShown: false,
+            }}
           />
           <Stack.Screen 
             name="new-alarm" 
@@ -79,7 +84,6 @@ export default function RootLayout() {
           <Stack.Screen name="mission/photo-scanner" options={{ headerShown: false }} />
           <Stack.Screen name="mission/photo-preview" options={{ headerShown: false }} />
         </Stack>
-        <StatusBar style="auto" />
       </ThemeProvider>
     </GestureHandlerRootView>
   );

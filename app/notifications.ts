@@ -75,9 +75,9 @@ void registerBackgroundFetch();
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false, // Disable system sound
+    shouldPlaySound: false, // We'll handle sound separately
     shouldSetBadge: false,
-    priority: Notifications.AndroidNotificationPriority.HIGH,
+    priority: Notifications.AndroidNotificationPriority.MAX,
   }),
 });
 
@@ -131,56 +131,107 @@ export async function playAlarmSound(
 Notifications.addNotificationResponseReceivedListener(async (response) => {
   const alarmData = response.notification.request.content.data.alarm;
   
+  // Save active alarm data for the alarm screen
   await AsyncStorage.setItem('activeAlarm', JSON.stringify(alarmData));
   
-  // Start playing sound before navigation
+  // Start playing sound
   await playAlarmSound(alarmData.sound, alarmData.soundVolume);
   
-  if (alarmData.mission) {
-    router.push({
-      pathname: '/alarm-ring', // Changed to use alarm-ring for all cases
-      params: {
-        id: alarmData.id,
-        sound: alarmData.sound,
-        soundVolume: alarmData.soundVolume,
-        hasMission: 'true',
-        mission: alarmData.mission
-      }
-    });
-  } else {
-    router.push({
-      pathname: '/alarm-ring',
-      params: {
-        id: alarmData.id,
-        sound: alarmData.sound,
-        soundVolume: alarmData.soundVolume,
-        hasMission: 'false'
-      }
-    });
-  }
+  // Navigate to alarm ring screen
+  router.push({
+    pathname: '/alarm-ring',
+    params: {
+      id: alarmData.id,
+      sound: alarmData.sound,
+      soundVolume: alarmData.soundVolume,
+      hasMission: alarmData.mission ? 'true' : 'false',
+      mission: alarmData.mission
+    }
+  });
 });
 
-// Schedule notification
+// Request permissions at app startup
+export async function requestNotificationPermissions() {
+  try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+    console.log('Existing permission status:', existingStatus);
+
+    let finalStatus = existingStatus;
+    if (existingStatus !== 'granted') {
+      const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
+      finalStatus = status;
+      console.log('New permission status:', status);
+    }
+
+    if (finalStatus !== 'granted') {
+      console.error('Permission not granted for notifications');
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.error('Error requesting permissions:', error);
+    return false;
+  }
+}
+
+// Schedule notification with more logging
 export async function scheduleAlarmNotification(alarm: Alarm) {
   try {
     const [hours, minutes] = alarm.time.split(':');
-    
-    await Notifications.scheduleNotificationAsync({
+    const now = new Date();
+    const scheduledTime = new Date();
+    scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0); // Set seconds and ms to 0
+
+    // Calculate time until alarm
+    let timeUntilAlarm = (scheduledTime.getTime() - now.getTime()) / 1000;
+
+    // If time has passed today, schedule for tomorrow
+    if (timeUntilAlarm <= 0) {
+      scheduledTime.setDate(scheduledTime.getDate() + 1);
+      timeUntilAlarm = (scheduledTime.getTime() - now.getTime()) / 1000;
+    }
+
+    console.log('Scheduling notification:', {
+      currentTime: now.toLocaleTimeString(),
+      alarmTime: scheduledTime.toLocaleTimeString(),
+      timeUntilAlarm: `${Math.floor(timeUntilAlarm / 60)} minutes and ${Math.floor(timeUntilAlarm % 60)} seconds`,
+      isRepeating: alarm.days.length > 0
+    });
+
+    // Cancel any existing notifications for this alarm
+    await Notifications.cancelScheduledNotificationAsync(alarm.id);
+
+    const identifier = await Notifications.scheduleNotificationAsync({
       identifier: alarm.id,
       content: {
         title: alarm.label || 'Alarm',
         body: 'Time to wake up!',
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
         data: { alarm },
+        sound: true,
       },
       trigger: {
-        type: 'daily',  // Use daily trigger type
-        hour: parseInt(hours),
-        minute: parseInt(minutes),
-        repeats: true,
-      } as Notifications.DailyTriggerInput
+        type: 'timeInterval',
+        seconds: Math.floor(timeUntilAlarm),
+        repeats: false,
+      } as Notifications.TimeIntervalTriggerInput
     });
+
+    // Verify the scheduled notification
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    console.log('Verification - All scheduled notifications:', 
+      scheduled.map(n => ({
+        id: n.identifier,
+        trigger: n.trigger,
+        scheduled: 'Notification scheduled'
+      }))
+    );
+
   } catch (error) {
     console.error('Error scheduling notification:', error);
   }

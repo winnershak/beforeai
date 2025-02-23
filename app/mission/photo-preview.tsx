@@ -6,7 +6,6 @@ import { Camera, useCameraDevice } from 'react-native-vision-camera';
 import { useLocalSearchParams, router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ImgToBase64 from 'react-native-image-base64';
-import RNFS from 'react-native-fs';
 
 export default function PhotoPreview() {
   const params = useLocalSearchParams();
@@ -62,19 +61,11 @@ export default function PhotoPreview() {
     try {
       if (!targetPhoto) return true;
 
-      // Get file stats to compare sizes
-      const targetStats = await RNFS.stat(targetPhoto);
-      const newStats = await RNFS.stat(newPhotoPath);
+      // For now, return true 30% of the time to test
+      return Math.random() > 0.7;
 
-      // Compare file sizes (with 10% tolerance)
-      const sizeDiff = Math.abs(targetStats.size - newStats.size);
-      const tolerance = targetStats.size * 0.1; // 10% tolerance
-
-      console.log('Size difference:', sizeDiff);
-      console.log('Tolerance:', tolerance);
-
-      return sizeDiff <= tolerance;
-
+      // TODO: Implement better comparison when native modules are properly set up
+      
     } catch (error) {
       console.error('Error comparing photos:', error);
       return false;

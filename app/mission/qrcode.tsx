@@ -131,6 +131,44 @@ export default function QRCode() {
     </TouchableOpacity>
   );
 
+  const handleDone = async () => {
+    console.log('Done button pressed');
+    try {
+      if (selectedCode) {
+        // Save QR code
+        console.log('Saving QR code:', selectedCode);
+        await AsyncStorage.setItem('selectedAlarmQR', selectedCode);
+        
+        // Save mission type
+        console.log('Saving mission type: QR/Barcode');
+        await AsyncStorage.setItem('selectedMissionType', 'QR/Barcode');
+      }
+      
+      console.log('Attempting navigation...');
+      router.push('/new-alarm');
+      console.log('Navigation completed');
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  };
+
+  // Add useEffect to load saved QR code on mount
+  useEffect(() => {
+    const loadSavedQR = async () => {
+      try {
+        const savedQR = await AsyncStorage.getItem('selectedAlarmQR');
+        if (savedQR) {
+          console.log('Loading saved QR:', savedQR);
+          setSelectedCode(savedQR);
+        }
+      } catch (error) {
+        console.error('Error loading saved QR:', error);
+      }
+    };
+
+    loadSavedQR();
+  }, []);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -176,7 +214,7 @@ export default function QRCode() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.doneButton}
-          onPress={() => router.back()}
+          onPress={handleDone}
         >
           <Text style={styles.doneButtonText}>Done</Text>
         </TouchableOpacity>

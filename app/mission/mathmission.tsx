@@ -15,8 +15,8 @@ export default function MathMission() {
   const timerAnimation = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<Animated.CompositeAnimation | null>(null);
   
-  const difficulty = params.difficulty as string;
-  const times = parseInt(params.times as string);
+  const [difficulty, setDifficulty] = useState('easy');
+  const [times, setTimes] = useState(3);
   const TIMER_DURATION = 20000;
 
   useEffect(() => {
@@ -122,6 +122,62 @@ export default function MathMission() {
     }
   };
 
+  // Add useEffect to load saved math settings
+  useEffect(() => {
+    const loadSavedSettings = async () => {
+      try {
+        const savedDifficulty = await AsyncStorage.getItem('mathDifficulty');
+        const savedTimes = await AsyncStorage.getItem('mathTimes');
+        
+        console.log('Loading saved math settings:', {
+          difficulty: savedDifficulty,
+          times: savedTimes
+        });
+        
+        if (savedDifficulty) {
+          setDifficulty(savedDifficulty);
+        }
+        if (savedTimes) {
+          setTimes(parseInt(savedTimes));
+        }
+      } catch (error) {
+        console.error('Error loading saved settings:', error);
+      }
+    };
+
+    loadSavedSettings();
+  }, []);
+
+  const handleDone = async () => {
+    console.log('Math Mission - handleDone called');
+    try {
+      // Save mission type and math settings
+      console.log('Saving math settings:', {
+        difficulty: difficulty,
+        times: times
+      });
+      
+      await AsyncStorage.setItem('selectedMissionType', 'Math');
+      await AsyncStorage.setItem('mathDifficulty', difficulty);
+      await AsyncStorage.setItem('mathTimes', times.toString());
+      
+      // Verify saves immediately
+      const savedType = await AsyncStorage.getItem('selectedMissionType');
+      const savedDifficulty = await AsyncStorage.getItem('mathDifficulty');
+      const savedTimes = await AsyncStorage.getItem('mathTimes');
+      
+      console.log('Math settings saved:', {
+        type: savedType,
+        difficulty: savedDifficulty,
+        times: savedTimes
+      });
+      
+      router.push('/new-alarm');
+    } catch (error) {
+      console.error('Error in handleDone:', error);
+    }
+  };
+
   return (
     <View style={styles.container}>
       {showCompletion ? (
@@ -197,6 +253,12 @@ export default function MathMission() {
               </View>
             ))}
           </View>
+          <TouchableOpacity 
+            style={styles.doneButton}
+            onPress={handleDone}
+          >
+            <Text style={styles.doneText}>Done</Text>
+          </TouchableOpacity>
         </>
       )}
     </View>
@@ -297,5 +359,16 @@ const styles = StyleSheet.create({
   timerLine: {
     height: '100%',
     backgroundColor: '#ff3b30',
+  },
+  doneButton: {
+    backgroundColor: '#ff3b30',
+    padding: 20,
+    alignItems: 'center',
+    borderRadius: 10,
+  },
+  doneText: {
+    color: '#fff',
+    fontSize: 24,
+    fontWeight: 'bold',
   },
 }); 
