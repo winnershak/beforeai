@@ -8,6 +8,7 @@ import Slider from '@react-native-community/slider';
 import { Switch } from 'react-native';
 import { scheduleAlarmNotification, cancelAlarmNotification } from './notifications';
 import { useFocusEffect } from '@react-navigation/native';
+import { Audio } from 'expo-av';
 
 interface Mission {
   id: string;
@@ -35,10 +36,20 @@ interface Alarm {
 
 export default function NewAlarmScreen() {
   const params = useLocalSearchParams();
+  console.log('NewAlarm: Initial params:', params);
+
+  // Keep edit state and ID persistent throughout component lifecycle
+  const [isEditing, setIsEditing] = useState(() => {
+    const editMode = params.editMode === 'true';
+    console.log('NewAlarm: Setting initial edit mode:', editMode);
+    return editMode;
+  });
   
-  // Initialize edit state from params or saved state
-  const [isEditing, setIsEditing] = useState(params.editMode === 'true');
-  const [currentAlarmId, setCurrentAlarmId] = useState<string | null>(params.alarmId as string || null);
+  const [currentAlarmId, setCurrentAlarmId] = useState(() => {
+    const id = params.alarmId as string;
+    console.log('NewAlarm: Setting initial alarmId:', id);
+    return id;
+  });
 
   const [date, setDate] = useState(() => {
     if (params.time) {
@@ -86,8 +97,8 @@ export default function NewAlarmScreen() {
   // Save state before navigation
   const saveState = async () => {
     const state = {
-      isEditing,
       alarmId: currentAlarmId,
+      editMode: isEditing,  // Add edit mode to saved state
       selectedDays,
       mission: missionType
     };
@@ -100,7 +111,8 @@ export default function NewAlarmScreen() {
       const savedState = await AsyncStorage.getItem('tempAlarmState');
       if (savedState) {
         const state = JSON.parse(savedState);
-        if (state.isEditing) {
+        if (state.editMode) {
+          console.log('NewAlarm: Restoring edit mode:', state.editMode);
           setIsEditing(true);
           setCurrentAlarmId(state.alarmId);
         }
@@ -109,23 +121,36 @@ export default function NewAlarmScreen() {
     loadSavedState();
   }, []);
 
-  // Navigate to mission selector with edit state
+  // Navigate to mission selector while preserving edit state
   const navigateToMissionSelector = async () => {
     await saveState();
     router.push({
       pathname: '/missionselector',
       params: {
         editMode: isEditing.toString(),
-        alarmId: currentAlarmId
+        alarmId: currentAlarmId,
+        returnTo: 'new-alarm'
       }
     });
   };
 
+  // Update the edit state when params change
+  useEffect(() => {
+    console.log('NewAlarm: Params received:', params);
+    if (params.editMode === 'true') {
+      console.log('NewAlarm: Edit mode:', true);
+    }
+  }, [params]);
+
   const handleSave = async () => {
     try {
+      console.log('NewAlarm: Starting save process');
+      console.log('NewAlarm: isEditing:', isEditing, 'currentAlarmId:', currentAlarmId);
+      console.log('NewAlarm: missionType:', missionType);
+      
       const alarmsJson = await AsyncStorage.getItem('alarms');
       let alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
-      
+
       // Cancel existing notification if editing
       if (isEditing && currentAlarmId) {
         const existingAlarm = alarms.find((alarm: Alarm) => alarm.id === currentAlarmId);
@@ -134,50 +159,66 @@ export default function NewAlarmScreen() {
         }
       }
 
+      // Create mission object if missionType exists
+      const missionObject = missionType ? {
+        id: `mission_${Date.now()}`,
+        name: missionType,
+        icon: 'calculator'
+      } : null;
+
+      // Schedule notification first
       const notificationId = await scheduleAlarmNotification({
-        id: (isEditing ? currentAlarmId : `alarm_${Date.now()}`) || `alarm_${Date.now()}`,
+        id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         days: selectedDays.map(String),
-        mission: missionType || null,
+        mission: missionObject,
         sound: sound,
-        soundVolume: soundVolume
+        soundVolume: soundVolume,
       });
 
-      const newAlarm = {
+      console.log('NewAlarm: Notification scheduled with ID:', notificationId);
+
+      const newAlarm: Alarm = {
         id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         enabled: true,
-        days: selectedDays,
+        days: selectedDays.map(String),
         label: label || '',
-        mission: missionType || null,
+        mission: missionObject,
         sound: sound,
         soundVolume: soundVolume,
         vibration: vibrationEnabled,
-        notificationId,
-        // Add snooze settings
+        notificationId: notificationId || null,  // Store the notification ID
         snooze: {
           enabled: snoozeEnabled,
           maxSnoozes,
           interval: snoozeInterval
         }
-      };
+      } as Alarm;
 
       if (isEditing && currentAlarmId) {
-        console.log('Updating existing alarm:', currentAlarmId);
+        console.log('NewAlarm: Updating existing alarm:', currentAlarmId);
         alarms = alarms.map((alarm: Alarm) => 
           alarm.id === currentAlarmId ? newAlarm : alarm
         );
+        if (!alarms.some((alarm: Alarm) => alarm.id === currentAlarmId)) {
+          console.log('NewAlarm: Alarm not found, adding as new');
+          alarms.push(newAlarm);
+        }
       } else {
-        console.log('Creating new alarm with ID:', newAlarm.id);
+        console.log('NewAlarm: Creating new alarm');
         alarms.push(newAlarm);
       }
 
+      console.log('NewAlarm: Final alarms array:', alarms);
       await AsyncStorage.setItem('alarms', JSON.stringify(alarms));
-      console.log('Alarm saved with snooze settings:', newAlarm);
+      
+      // Clear temp state after successful save
+      await AsyncStorage.removeItem('tempAlarmState');
       
       router.push('/');
     } catch (error) {
-      console.error('Error saving alarm:', error);
+      console.error('NewAlarm: Error saving alarm:', error);
     }
   };
 
@@ -200,7 +241,7 @@ export default function NewAlarmScreen() {
 
   useEffect(() => {
     const loadAlarm = async () => {
-      if (isEditing && params.alarmId) {
+      if (params.alarmId) {
         console.log('Loading existing alarm:', params.alarmId);
         const existingAlarms = await AsyncStorage.getItem('alarms');
         if (existingAlarms) {
@@ -221,7 +262,7 @@ export default function NewAlarmScreen() {
     };
 
     loadAlarm();
-  }, [isEditing, params.alarmId]);
+  }, [params.alarmId]);
 
   useEffect(() => {
     console.log('Mission params:', {
@@ -230,18 +271,16 @@ export default function NewAlarmScreen() {
       selectedMissionIcon: params.selectedMissionIcon
     });
 
-    if (params.selectedMissionId) {
+    if (params.selectedMissionId && params.editMode === 'true') {  // Check if we're editing
       const newMission: Mission = {
         id: params.selectedMissionId as string,
         name: params.selectedMissionName as string,
         icon: params.selectedMissionIcon as string
       };
-      console.log('Setting new mission:', newMission);
+      console.log('Setting new mission for edit:', newMission);
       setMission(newMission);
-      // Store mission temporarily
-      AsyncStorage.setItem('tempMission', JSON.stringify(newMission));
     }
-  }, [params.selectedMissionId]);
+  }, [params.selectedMissionId, params.editMode]);  // Add editMode to dependencies
 
   const saveAlarmState = async (currentState: any) => {
     await AsyncStorage.setItem('tempAlarmState', JSON.stringify(currentState));
@@ -404,7 +443,7 @@ export default function NewAlarmScreen() {
           <Ionicons name="close" size={24} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
-          {isEditing ? 'Edit Alarm' : 'New Alarm'}
+          {params.editMode === 'true' ? 'Edit Alarm' : 'New Alarm'}
         </Text>
       </View>
 

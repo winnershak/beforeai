@@ -76,6 +76,7 @@ void registerBackgroundFetch();
 
 // Add this at the top level
 let notificationHandled = false;
+let isAlarmActive = false;
 
 // Update the notification listener
 Notifications.addNotificationReceivedListener((notification) => {
@@ -97,14 +98,23 @@ Notifications.addNotificationResponseReceivedListener((response) => {
 
 // Update notification handler for foreground behavior
 Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-    // Present notification even when app is in foreground
-    presentAlert: true,
-    presentSound: true,
-  }),
+  handleNotification: async (notification) => {
+    const data = notification.request.content.data;
+    
+    // If app is in foreground, trigger alarm screen directly
+    if (!isAlarmActive) {
+      isAlarmActive = true;
+      handleAlarmTrigger(data);
+    }
+
+    return {
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      presentAlert: true,
+      presentSound: true,
+    };
+  },
 });
 
 // Sound control functions
@@ -267,29 +277,88 @@ function calculateNextAlarmDate(hours: number, minutes: number, day: string) {
   } as Notifications.CalendarTriggerInput;
 }
 
+// New function to handle alarm triggering
+export async function handleAlarmTrigger(alarmData: any) {
+  console.log('Triggering alarm with data:', alarmData);
+  
+  // Route to appropriate screen based on mission presence
+  if (alarmData.hasMission) {
+    router.push({
+      pathname: '/alarm-ring',
+      params: {
+        alarmId: alarmData.alarmId,
+        sound: alarmData.sound,
+        mission: alarmData.mission,
+        soundVolume: alarmData.soundVolume,
+        hasMission: 'true'
+      }
+    });
+  } else {
+    router.push({
+      pathname: '/alarm-ring',
+      params: {
+        alarmId: alarmData.alarmId,
+        sound: alarmData.sound,
+        soundVolume: alarmData.soundVolume,
+        hasMission: 'false'
+      }
+    });
+  }
+}
+
+// Update existing handleNotification
 export function handleNotification(notification: Notifications.Notification) {
   const data = notification.request.content.data;
   console.log('Handling notification with data:', data);
 
-  // Add a small delay to ensure layout is mounted
-  setTimeout(() => {
-    if (data.hasMission) {
-      console.log('Mission alarm detected, routing to mission-alarm');
-      router.push({
-        pathname: '/mission-alarm',
-        params: {
-          alarmId: data.alarmId,
-          sound: data.sound,
-          mission: data.mission,
-          soundVolume: data.soundVolume
-        }
-      });
-    } else {
-      console.log('Regular alarm detected, routing to alarm-ring');
+  if (!isAlarmActive) {
+    isAlarmActive = true;
+    handleAlarmTrigger(data);
+  }
+}
+
+// Add function to reset alarm state
+export function resetAlarmState() {
+  isAlarmActive = false;
+}
+
+// Add function to check current alarms
+export async function checkCurrentAlarms() {
+  try {
+    if (!router.canGoBack()) {
+      return;
+    }
+
+    const alarmsJson = await AsyncStorage.getItem('alarms');
+    if (!alarmsJson) return;
+
+    const alarms = JSON.parse(alarmsJson);
+    const now = new Date();
+    const currentTime = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`;
+    const currentSeconds = now.getSeconds();
+
+    // Find alarm that matches current time
+    const currentAlarm = alarms.find((alarm: Alarm) => {
+      return alarm.time === currentTime && currentSeconds < 3; // Only trigger in first 3 seconds of the minute
+    });
+    
+    if (currentAlarm) {
+      console.log('Found matching alarm:', currentAlarm);
       router.push({
         pathname: '/alarm-ring',
-        params: data
+        params: {
+          alarmId: currentAlarm.id,
+          sound: currentAlarm.sound,
+          soundVolume: currentAlarm.soundVolume,
+          mission: currentAlarm.mission,
+          hasMission: Boolean(currentAlarm.mission).toString()
+        }
       });
     }
-  }, 100);
+  } catch (error) {
+    console.error('Error checking alarm time:', error);
+  }
 }
+
+// Check more frequently
+setInterval(checkCurrentAlarms, 1000); // Check every second instead of every minute

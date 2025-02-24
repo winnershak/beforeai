@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { router, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Audio } from 'expo-av';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { resetAlarmState } from './notifications';
 
-interface AlarmRingProps {
-  id?: string;
-  label?: string;
-  mission?: {
-    id: string;
-    name: string;
-    icon: string;
-  } | null;
-}
+// Move these outside the component to be truly global
+let isAlarmPageOpen = false;
+let activeSound: Audio.Sound | null = null;
+let isCleaningUp = false;  // Add this to prevent unwanted cleanup
 
 // Define sounds mapping
 const alarmSounds = {
@@ -24,33 +20,35 @@ const alarmSounds = {
   'Reflection': require('../assets/sounds/reflection.caf'),
 };
 
-// Keep track of active sound globally
-let activeSound: Audio.Sound | null = null;
-let isAlarmActive = false;
-let notificationHandled = false;
-
 export default function AlarmRingScreen() {
   const params = useLocalSearchParams();
-  const router = useRouter();
-  const pathname = usePathname();
-  const selectedSound = (params.sound as string) || 'Orkney';
-  const alarmId = params.alarmId as string;
-  const missionType = params.mission as string; // Get mission directly from notification data
+  const [selectedSound, setSelectedSound] = useState(params.sound as string || 'Orkney');
+  const [hasMission, setHasMission] = useState(params.hasMission === 'true');
 
   useEffect(() => {
-    console.log('AlarmRingScreen mounted with params:', params);
-    console.log('Mission type:', missionType);
-  }, []);
+    const setupAlarm = async () => {
+      // Prevent setup if cleaning up
+      if (isCleaningUp) {
+        console.log('Cleanup in progress, skipping setup');
+        return;
+      }
 
-  useEffect(() => {
-    async function setupAudio() {
+      // Check if router is ready
+      if (!router.canGoBack()) {
+        console.log('Router not ready, waiting...');
+        return;
+      }
+
+      // Check if alarm is already playing
+      if (isAlarmPageOpen && activeSound) {
+        console.log('Alarm already active and playing');
+        return;
+      }
+
+      isAlarmPageOpen = true;
+      console.log('Setting up new alarm with sound:', selectedSound);
+
       try {
-        // If sound is already playing, don't start a new one
-        if (activeSound) {
-          console.log('Sound already playing, keeping existing sound');
-          return;
-        }
-
         await Audio.setAudioModeAsync({
           allowsRecordingIOS: false,
           staysActiveInBackground: true,
@@ -61,7 +59,6 @@ export default function AlarmRingScreen() {
           playThroughEarpieceAndroid: false,
         });
 
-        console.log('Starting sound:', selectedSound);
         const { sound } = await Audio.Sound.createAsync(
           alarmSounds[selectedSound as keyof typeof alarmSounds],
           {
@@ -72,30 +69,87 @@ export default function AlarmRingScreen() {
         );
         
         activeSound = sound;
+        console.log('Starting alarm sound playback');
         await sound.playAsync();
       } catch (error) {
-        console.error('Error setting up audio:', error);
+        console.error('Error setting up alarm sound:', error);
       }
-    }
-
-    setupAudio();
-
-    return () => {
-      // Don't cleanup sound on unmount
-      // Let it be handled by stop button
     };
-  }, [selectedSound]);
+
+    setupAlarm();
+
+    // Only cleanup when component is actually unmounting
+    return () => {
+      if (!isCleaningUp) {
+        console.log('Component unmounting, cleaning up alarm');
+        isCleaningUp = true;
+        if (activeSound) {
+          activeSound.stopAsync().then(() => {
+            activeSound?.unloadAsync();
+            activeSound = null;
+            isAlarmPageOpen = false;
+            isCleaningUp = false;
+          });
+        }
+      }
+    };
+  }, []);
 
   const handleStopAlarm = async () => {
+    console.log('Stop button pressed, cleaning up alarm');
+    isCleaningUp = true;
     if (activeSound) {
-      console.log('Stopping alarm sound');
       await activeSound.stopAsync();
       await activeSound.unloadAsync();
       activeSound = null;
     }
-    isAlarmActive = false;
-    notificationHandled = false;
+    isAlarmPageOpen = false;
+    isCleaningUp = false;
     router.back();
+  };
+
+  const handleStartMission = async () => {
+    if (activeSound) {
+      await activeSound.stopAsync();
+      await activeSound.unloadAsync();
+      activeSound = null;
+    }
+    isAlarmPageOpen = false;
+    router.back();
+  };
+
+  const startAlarmSound = async (sound: string, volume: number) => {
+    try {
+      if (activeSound) {
+        console.log('Sound already playing, keeping existing sound');
+        return;
+      }
+
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: true,
+        interruptionModeIOS: 1,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        interruptionModeAndroid: 1,
+        playThroughEarpieceAndroid: false,
+      });
+
+      console.log('Starting sound:', sound);
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        alarmSounds[sound as keyof typeof alarmSounds],
+        {
+          shouldPlay: true,
+          isLooping: true,
+          volume: volume,
+        }
+      );
+      
+      activeSound = newSound;
+      await newSound.playAsync();
+    } catch (error) {
+      console.error('Error starting alarm sound:', error);
+    }
   };
 
   return (
@@ -104,23 +158,13 @@ export default function AlarmRingScreen() {
         {new Date().toLocaleTimeString()}
       </Text>
 
-      {missionType ? (
+      {hasMission ? (
         <TouchableOpacity 
           style={[styles.button, styles.missionButton]}
-          onPress={() => {
-            console.log('Starting mission:', missionType);
-            if (activeSound) {
-              activeSound.stopAsync();
-              activeSound.unloadAsync();
-            }
-            router.push({
-              pathname: `/mission/${missionType.toLowerCase()}`,
-              params: { returnTo: pathname }
-            });
-          }}
+          onPress={handleStartMission}
         >
           <Text style={styles.buttonText}>
-            Start {missionType} Mission
+            Start Mission
           </Text>
         </TouchableOpacity>
       ) : (
@@ -149,7 +193,6 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   button: {
-    backgroundColor: '#FF3B30',
     padding: 20,
     borderRadius: 12,
     width: '100%',

@@ -80,12 +80,20 @@ export default function TabOneScreen() {
 
   const loadAlarms = async () => {
     try {
+      console.log('Home: Starting to load alarms');
       const savedAlarms = await AsyncStorage.getItem('alarms');
+      console.log('Home: Raw alarms from storage:', savedAlarms);
+      
       if (savedAlarms) {
-        setAlarms(JSON.parse(savedAlarms));
+        const parsedAlarms = JSON.parse(savedAlarms);
+        console.log('Home: Setting alarms:', parsedAlarms);
+        setAlarms(parsedAlarms);
+      } else {
+        console.log('Home: No alarms found in storage');
+        setAlarms([]);
       }
     } catch (error) {
-      console.error('Error loading alarms:', error);
+      console.error('Home: Error loading alarms:', error);
     }
   };
 
@@ -151,35 +159,46 @@ export default function TabOneScreen() {
 
       <FlatList
         data={alarms}
-        renderItem={({ item }) => (
-          <AlarmItem
-            key={item.id}
-            alarm={{
-              ...item,
-              mission: item.mission ? (typeof item.mission === 'object' ? item.mission.name : item.mission) : null
-            }}
-            onToggle={() => toggleAlarm(item.id)}
-            onDelete={() => deleteAlarm(item.id)}
-            onDuplicate={() => duplicateAlarm(item)}
-            onEdit={() => {
-              router.push({
-                pathname: '/new-alarm',
-                params: {
-                  alarmId: item.id,
-                  time: item.time,
-                  days: JSON.stringify(item.days),
-                  label: item.label,
-                  mission: item.mission ? JSON.stringify(item.mission) : null,
-                  sound: item.sound,
-                  volume: item.volume?.toString(),
-                  vibration: item.vibration?.toString(),
-                  isEditing: 'true'
-                }
-              });
-            }}
-          />
-        )}
-        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => {
+          console.log('Rendering alarm:', item); // Debug log
+          return (
+            <AlarmItem
+              key={`alarm-${item.id}`}
+              alarm={{
+                id: item.id,
+                time: item.time,
+                enabled: item.enabled,
+                days: item.days,
+                label: item.label || '',
+                mission: item.mission?.name || null,  // Access name from mission object
+                sound: item.sound,
+                volume: item.soundVolume,
+                vibration: item.vibration
+              }}
+              onToggle={() => toggleAlarm(item.id)}
+              onDelete={() => deleteAlarm(item.id)}
+              onDuplicate={() => duplicateAlarm(item)}
+              onEdit={() => {
+                console.log('Editing alarm with mission:', item.mission); // Debug log
+                router.push({
+                  pathname: '/new-alarm',
+                  params: {
+                    alarmId: item.id,
+                    editMode: 'true',
+                    time: item.time,
+                    days: JSON.stringify(item.days),
+                    label: item.label,
+                    mission: JSON.stringify(item.mission),
+                    sound: item.sound,
+                    volume: item.soundVolume.toString(),
+                    vibration: item.vibration.toString()
+                  }
+                });
+              }}
+            />
+          );
+        }}
+        keyExtractor={item => item.id}
         style={styles.alarmList}
         contentContainerStyle={styles.alarmListContent}
       />
