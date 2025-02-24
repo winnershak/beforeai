@@ -77,6 +77,8 @@ void registerBackgroundFetch();
 // Add this at the top level
 let notificationHandled = false;
 let isAlarmActive = false;
+let isHandlingNotification = false;
+let lastNotificationId: string | null = null;
 
 // Update the notification listener
 Notifications.addNotificationReceivedListener((notification) => {
@@ -308,13 +310,11 @@ export async function handleAlarmTrigger(alarmData: any) {
 
 // Update existing handleNotification
 export function handleNotification(notification: Notifications.Notification) {
-  const data = notification.request.content.data;
-  console.log('Handling notification with data:', data);
-
-  if (!isAlarmActive) {
-    isAlarmActive = true;
-    handleAlarmTrigger(data);
-  }
+  // Log but don't do anything with the notification
+  console.log('Notification received:', notification.request.identifier);
+  
+  // Remove all alarm checking and navigation
+  return;
 }
 
 // Add function to reset alarm state
@@ -342,19 +342,14 @@ export async function checkCurrentAlarms() {
       return alarm.time === currentTime && currentSeconds < 3; // Only trigger in first 3 seconds of the minute
     });
     
-    if (currentAlarm) {
-      console.log('Found matching alarm:', currentAlarm);
-      router.push({
-        pathname: '/alarm-ring',
-        params: {
-          alarmId: currentAlarm.id,
-          sound: currentAlarm.sound,
-          soundVolume: currentAlarm.soundVolume,
-          mission: currentAlarm.mission,
-          hasMission: Boolean(currentAlarm.mission).toString()
-        }
-      });
-    }
+    // Remove or comment out the alarm checking code that includes:
+    // if (currentAlarm) {
+    //   console.log('Found matching alarm:', currentAlarm);
+    //   router.push({
+    //     pathname: '/alarm-ring',
+    //     ...
+    //   });
+    // }
   } catch (error) {
     console.error('Error checking alarm time:', error);
   }

@@ -40,12 +40,6 @@ export default function RootLayout() {
   useEffect(() => {
     async function checkAlarmTime() {
       try {
-        // If alarm is already active, don't create new one
-        if (isAlarmActive) {
-          console.log('Alarm already active, skipping check');
-          return;
-        }
-
         const alarmsJson = await AsyncStorage.getItem('alarms');
         if (!alarmsJson) return;
         
@@ -60,12 +54,12 @@ export default function RootLayout() {
           alarm.enabled && alarm.time === currentTime
         );
 
-        if (activeAlarm && !isAlarmActive) {
+        if (activeAlarm) {
           console.log('Active alarm found, opening alarm screen');
-          isAlarmActive = true;
           router.push({
             pathname: '/alarm-ring',
             params: {
+              alarmId: activeAlarm.id,
               sound: activeAlarm.sound,
               soundVolume: activeAlarm.soundVolume,
               hasMission: activeAlarm.mission ? 'true' : 'false'
