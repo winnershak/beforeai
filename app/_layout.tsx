@@ -8,14 +8,18 @@ import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { registerBackgroundTask } from './background-task';
+import { requestNotificationPermissions } from './notifications';
+import { AppState, AppStateStatus } from 'react-native';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
-import { requestNotificationPermissions } from './notifications';
-import { registerBackgroundTask } from './background-task';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
+
+// Global flag to track if alarm is active
+let isAlarmActive = false;
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -34,9 +38,62 @@ export default function RootLayout() {
   useAlarmManager(); // This will check for active alarms on app launch
 
   useEffect(() => {
-    // Only handle permissions and background task registration
+    async function checkAlarmTime() {
+      try {
+        // If alarm is already active, don't create new one
+        if (isAlarmActive) {
+          console.log('Alarm already active, skipping check');
+          return;
+        }
+
+        const alarmsJson = await AsyncStorage.getItem('alarms');
+        if (!alarmsJson) return;
+        
+        const alarms = JSON.parse(alarmsJson);
+        const currentTime = new Date().toLocaleTimeString('en-US', { 
+          hour12: false,
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+        
+        const activeAlarm = alarms.find((alarm: any) => 
+          alarm.enabled && alarm.time === currentTime
+        );
+
+        if (activeAlarm && !isAlarmActive) {
+          console.log('Active alarm found, opening alarm screen');
+          isAlarmActive = true;
+          router.push({
+            pathname: '/alarm-ring',
+            params: {
+              sound: activeAlarm.sound,
+              soundVolume: activeAlarm.soundVolume,
+              hasMission: activeAlarm.mission ? 'true' : 'false'
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Error checking alarm time:', error);
+      }
+    }
+
+    // Check when app opens
+    checkAlarmTime();
+
+    // Check when app comes to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        checkAlarmTime();
+      }
+    });
+
+    // Initial setup
     requestNotificationPermissions();
     registerBackgroundTask();
+
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   if (!loaded) {

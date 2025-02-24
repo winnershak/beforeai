@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Switch, Animated, Modal, TextInput } from 'react-native';
 import { Link } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ interface AlarmItemProps {
     time: string;
     enabled: boolean;
     days: string[];
-    mission: string;
+    mission: string | null;
     label?: string;
     sound: string;
     volume: number;
@@ -24,6 +24,14 @@ interface AlarmItemProps {
 
 export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemProps) {
   const [showOptions, setShowOptions] = useState(false);
+
+  useEffect(() => {
+    console.log('Alarm data in AlarmItem:', alarm);
+  }, [alarm]);
+
+  useEffect(() => {
+    console.log('Mission in render:', alarm.mission);
+  }, [alarm.mission]);
 
   const renderRightActions = (progress: any, dragX: any) => {
     const trans = dragX.interpolate({
@@ -85,7 +93,11 @@ export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemP
                 {alarm.label && (
                   <Text style={styles.label}>{alarm.label}</Text>
                 )}
-                <Text style={styles.mission}>• {alarm.mission}</Text>
+                <Text style={styles.mission}>
+                  {alarm.mission && alarm.mission !== 'None' && alarm.mission !== '' 
+                    ? `${getMissionEmoji(alarm.mission)} ${alarm.mission}`
+                    : ''}
+                </Text>
               </View>
             </View>
           </TouchableOpacity>
@@ -135,6 +147,21 @@ export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemP
     </Swipeable>
   );
 }
+
+const getMissionEmoji = (missionType: string) => {
+  switch (missionType) {
+    case 'Math':
+      return '🔢';
+    case 'Typing':
+      return '⌨️';
+    case 'QR/Barcode':
+      return '📱';
+    case 'Photo':
+      return '📸';
+    default:
+      return '';
+  }
+};
 
 const styles = StyleSheet.create({
   container: {

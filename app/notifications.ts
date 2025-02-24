@@ -74,12 +74,36 @@ async function registerBackgroundFetch() {
 }
 void registerBackgroundFetch();
 
-// Configure notification handler
+// Add this at the top level
+let notificationHandled = false;
+
+// Update the notification listener
+Notifications.addNotificationReceivedListener((notification) => {
+  if (notificationHandled) {
+    console.log('Notification already handled, skipping');
+    return;
+  }
+  
+  notificationHandled = true;
+  console.log('Handling notification:', notification);
+  handleNotification(notification);
+});
+
+// Reset when notification is responded to
+Notifications.addNotificationResponseReceivedListener((response) => {
+  console.log('Notification response received:', response);
+  notificationHandled = false;
+});
+
+// Update notification handler for foreground behavior
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: false,
+    // Present notification even when app is in foreground
+    presentAlert: true,
+    presentSound: true,
   }),
 });
 
@@ -128,12 +152,6 @@ export async function playAlarmSound(
     console.error('Error playing sound:', error);
   }
 }
-
-// Modify the notification response listener
-Notifications.addNotificationResponseReceivedListener(async (response) => {
-  const alarmData = response.notification.request.content.data.alarm;
-  router.push('/alarm-ring');
-});
 
 // Request permissions at app startup
 export async function requestNotificationPermissions() {
@@ -199,15 +217,18 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
     const soundPath = await getSoundPath(alarm.sound);
     console.log('Using sound path for notification:', soundPath);
 
-    const identifier = await Notifications.scheduleNotificationAsync({
+    const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: alarm.label || 'Alarm',
         body: 'Time to wake up!',
         sound: `${alarm.sound.toLowerCase()}.caf`,
-        data: { 
+        data: {
           alarmId: alarm.id,
-          sound: alarm.sound
-        }
+          sound: alarm.sound,
+          soundVolume: alarm.soundVolume,
+          mission: alarm.mission,
+          hasMission: Boolean(alarm.mission)
+        },
       },
       trigger: {
         type: 'timeInterval',
@@ -219,10 +240,10 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
     console.log('Scheduled notification:', {
       time: scheduledTime.toLocaleTimeString(),
       sound: `${alarm.sound.toLowerCase()}.caf`,
-      id: identifier
+      id: notificationId
     });
     
-    return identifier;
+    return notificationId;
   } catch (error) {
     console.error('Error scheduling notification:', error);
   }
@@ -244,4 +265,31 @@ function calculateNextAlarmDate(hours: number, minutes: number, day: string) {
     minute: minutes,
     repeats: true,
   } as Notifications.CalendarTriggerInput;
+}
+
+export function handleNotification(notification: Notifications.Notification) {
+  const data = notification.request.content.data;
+  console.log('Handling notification with data:', data);
+
+  // Add a small delay to ensure layout is mounted
+  setTimeout(() => {
+    if (data.hasMission) {
+      console.log('Mission alarm detected, routing to mission-alarm');
+      router.push({
+        pathname: '/mission-alarm',
+        params: {
+          alarmId: data.alarmId,
+          sound: data.sound,
+          mission: data.mission,
+          soundVolume: data.soundVolume
+        }
+      });
+    } else {
+      console.log('Regular alarm detected, routing to alarm-ring');
+      router.push({
+        pathname: '/alarm-ring',
+        params: data
+      });
+    }
+  }, 100);
 }

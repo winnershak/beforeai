@@ -26,25 +26,19 @@ interface Alarm {
   vibration: boolean;
   mission: Mission | null;
   notificationId: string | null;
+  snooze: {
+    enabled: boolean;
+    maxSnoozes: number;
+    interval: number;
+  };
 }
 
 export default function NewAlarmScreen() {
   const params = useLocalSearchParams();
+  
+  // Initialize edit state from params or saved state
   const [isEditing, setIsEditing] = useState(params.editMode === 'true');
-  const [currentAlarmId, setCurrentAlarmId] = useState(params.alarmId as string);
-
-  useEffect(() => {
-    console.log('NewAlarmScreen - Setup:', { 
-      params,
-      isEditing: params.editMode === 'true',
-      alarmId: params.alarmId
-    });
-    
-    if (params.editMode === 'true' && params.alarmId) {
-      setIsEditing(true);
-      setCurrentAlarmId(params.alarmId as string);
-    }
-  }, [params]);
+  const [currentAlarmId, setCurrentAlarmId] = useState<string | null>(params.alarmId as string || null);
 
   const [date, setDate] = useState(() => {
     if (params.time) {
@@ -65,7 +59,10 @@ export default function NewAlarmScreen() {
   const [label, setLabel] = useState<string>('');
   const [soundVolume, setSoundVolume] = useState(1);
   const [mission, setMission] = useState<Mission | null>(null);
-  const [missionType, setMissionType] = useState<string>('');
+  const [missionType, setMissionType] = useState<string | null>(null);
+  const [snoozeEnabled, setSnoozeEnabled] = useState(true);
+  const [maxSnoozes, setMaxSnoozes] = useState(3);
+  const [snoozeInterval, setSnoozeInterval] = useState(5); // in minutes
 
   const days = [
     { label: 'S', value: 0 },
@@ -86,108 +83,101 @@ export default function NewAlarmScreen() {
     return `Ring in ${hours}hrs ${minutes}min`;
   };
 
-  // Load saved state when component mounts
+  // Save state before navigation
+  const saveState = async () => {
+    const state = {
+      isEditing,
+      alarmId: currentAlarmId,
+      selectedDays,
+      mission: missionType
+    };
+    await AsyncStorage.setItem('tempAlarmState', JSON.stringify(state));
+  };
+
+  // Load state after navigation
   useEffect(() => {
     const loadSavedState = async () => {
-      try {
-        // Load mission separately
-        const savedMission = await AsyncStorage.getItem('tempMission');
-        if (savedMission) {
-          setMission(JSON.parse(savedMission));
+      const savedState = await AsyncStorage.getItem('tempAlarmState');
+      if (savedState) {
+        const state = JSON.parse(savedState);
+        if (state.isEditing) {
+          setIsEditing(true);
+          setCurrentAlarmId(state.alarmId);
         }
-
-        // Load other state
-        const savedState = await AsyncStorage.getItem('tempAlarmState');
-        if (savedState) {
-          const state = JSON.parse(savedState);
-          if (state.selectedDays) setSelectedDays(state.selectedDays);
-          if (state.isEditing) setIsEditing(state.isEditing);
-          if (state.alarmId) setCurrentAlarmId(state.alarmId);
-        }
-      } catch (error) {
-        console.error('Error loading saved state:', error);
       }
     };
     loadSavedState();
   }, []);
 
-  // Save state before navigation
-  const saveState = async () => {
-    const state = {
-      selectedDays,
-      isEditing,
-      alarmId: currentAlarmId,
-      mission
-    };
-    await AsyncStorage.setItem('tempAlarmState', JSON.stringify(state));
+  // Navigate to mission selector with edit state
+  const navigateToMissionSelector = async () => {
+    await saveState();
+    router.push({
+      pathname: '/missionselector',
+      params: {
+        editMode: isEditing.toString(),
+        alarmId: currentAlarmId
+      }
+    });
   };
 
-  // Update mission and save state
-  useEffect(() => {
-    if (params.selectedMissionId) {
-      const newMission: Mission = {
-        id: params.selectedMissionId as string,
-        name: params.selectedMissionName as string,
-        icon: params.selectedMissionIcon as string
-      };
-      setMission(newMission);
-      AsyncStorage.setItem('tempMission', JSON.stringify(newMission));
-      saveState();
-    }
-  }, [params.selectedMissionId]);
-
-  const saveAlarm = async () => {
+  const handleSave = async () => {
     try {
-      console.log('Saving alarm with:', { isEditing, currentAlarmId, mission });
+      const alarmsJson = await AsyncStorage.getItem('alarms');
+      let alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
       
-      const existingAlarms = await AsyncStorage.getItem('alarms');
-      let currentAlarms = existingAlarms ? JSON.parse(existingAlarms) : [];
+      // Cancel existing notification if editing
+      if (isEditing && currentAlarmId) {
+        const existingAlarm = alarms.find((alarm: Alarm) => alarm.id === currentAlarmId);
+        if (existingAlarm?.notificationId) {
+          await cancelAlarmNotification(existingAlarm.notificationId);
+        }
+      }
+
+      const notificationId = await scheduleAlarmNotification({
+        id: (isEditing ? currentAlarmId : `alarm_${Date.now()}`) || `alarm_${Date.now()}`,
+        time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
+        days: selectedDays.map(String),
+        mission: missionType || null,
+        sound: sound,
+        soundVolume: soundVolume
+      });
 
       const newAlarm = {
-        id: (isEditing ? currentAlarmId : Date.now().toString()) as string,
+        id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         enabled: true,
-        days: selectedDays.map(day => day.toString()),
+        days: selectedDays,
         label: label || '',
-        mission: mission,
+        mission: missionType || null,
         sound: sound,
         soundVolume: soundVolume,
         vibration: vibrationEnabled,
-        notificationId: null
+        notificationId,
+        // Add snooze settings
+        snooze: {
+          enabled: snoozeEnabled,
+          maxSnoozes,
+          interval: snoozeInterval
+        }
       };
 
       if (isEditing && currentAlarmId) {
-        // Update existing alarm
         console.log('Updating existing alarm:', currentAlarmId);
-        currentAlarms = currentAlarms.map((alarm: Alarm) => 
-          alarm.id === currentAlarmId ? { ...alarm, ...newAlarm } : alarm
+        alarms = alarms.map((alarm: Alarm) => 
+          alarm.id === currentAlarmId ? newAlarm : alarm
         );
       } else {
-        // Create new alarm
-        console.log('Creating new alarm');
-        currentAlarms.push(newAlarm);
+        console.log('Creating new alarm with ID:', newAlarm.id);
+        alarms.push(newAlarm);
       }
 
-      await AsyncStorage.setItem('alarms', JSON.stringify(currentAlarms));
+      await AsyncStorage.setItem('alarms', JSON.stringify(alarms));
+      console.log('Alarm saved with snooze settings:', newAlarm);
       
-      // Schedule notification for the alarm
-      await scheduleAlarmNotification(newAlarm);
-      
-      // Clean up temp storage
-      await AsyncStorage.removeItem('tempMission');
-      await AsyncStorage.removeItem('tempAlarmState');
-      
-      router.push('/(tabs)');
+      router.push('/');
     } catch (error) {
       console.error('Error saving alarm:', error);
-    }
-  };
-
-  const toggleDaily = () => {
-    if (selectedDays.length === 7) {
-      setSelectedDays([]);
-    } else {
-      setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
     }
   };
 
@@ -354,17 +344,58 @@ export default function NewAlarmScreen() {
     }, [])
   );
 
-  // Navigate to mission selector with edit state
-  const navigateToMissionSelector = async () => {
-    await saveState();
-    router.push({
-      pathname: '/missionselector',
-      params: {
-        editMode: isEditing.toString(),
-        alarmId: currentAlarmId
-      }
-    });
+  const getMissionEmoji = (missionType: string) => {
+    switch (missionType) {
+      case 'Math':
+        return '🔢';
+      case 'Typing':
+        return '⌨️';
+      case 'QR/Barcode':
+        return '📱';
+      case 'Photo':
+        return '📸';
+      default:
+        return '';
+    }
   };
+
+  // Add this effect to load snooze settings
+  useEffect(() => {
+    const loadSnoozeSettings = async () => {
+      try {
+        const settings = await AsyncStorage.getItem('snoozeSettings');
+        if (settings) {
+          const { enabled, max, interval } = JSON.parse(settings);
+          setSnoozeEnabled(enabled);
+          setMaxSnoozes(max);
+          setSnoozeInterval(interval);
+        }
+      } catch (error) {
+        console.error('Error loading snooze settings:', error);
+      }
+    };
+    loadSnoozeSettings();
+  }, []);
+
+  // Add useFocusEffect to reload settings when returning from snooze screen
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadSnoozeSettings = async () => {
+        try {
+          const settings = await AsyncStorage.getItem('snoozeSettings');
+          if (settings) {
+            const { enabled, max, interval } = JSON.parse(settings);
+            setSnoozeEnabled(enabled);
+            setMaxSnoozes(max);
+            setSnoozeInterval(interval);
+          }
+        } catch (error) {
+          console.error('Error loading snooze settings:', error);
+        }
+      };
+      loadSnoozeSettings();
+    }, [])
+  );
 
   return (
     <View style={styles.container}>
@@ -396,7 +427,13 @@ export default function NewAlarmScreen() {
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Daily</Text>
             <TouchableOpacity 
-              onPress={toggleDaily}
+              onPress={() => {
+                if (selectedDays.length === 7) {
+                  setSelectedDays([]);
+                } else {
+                  setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+                }
+              }}
               style={styles.dailyContainer}
             >
               <Ionicons 
@@ -441,18 +478,18 @@ export default function NewAlarmScreen() {
             <View style={styles.sectionContent}>
               <Text style={styles.sectionTitle}>Mission</Text>
               <Text style={[styles.sectionValue, { color: 'white' }]}>
-                {missionType ? `📱 ${missionType}` : 'None'}
+                {missionType ? `${getMissionEmoji(missionType)} ${missionType}` : 'None'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity>
           
-          {mission?.name && (
+          {missionType && (
             <TouchableOpacity 
               style={styles.clearMissionButton}
               onPress={() => {
-                setMission(null);
-                AsyncStorage.removeItem('tempMission');
+                setMissionType(null);
+                AsyncStorage.removeItem('selectedMissionType');
               }}
             >
               <Ionicons name="close-circle" size={20} color="#FF3B30" />
@@ -510,11 +547,23 @@ export default function NewAlarmScreen() {
             <Text style={styles.optionValue}>{label || 'Add Label'}</Text>
           </Pressable>
         </View>
+
+        <View style={styles.section}>
+          <Pressable
+            style={styles.optionContainer}
+            onPress={() => router.push('/snooze')}
+          >
+            <Text style={styles.optionLabel}>Snooze</Text>
+            <Text style={[styles.optionValue, { color: '#666' }]}>
+              {snoozeEnabled ? `${snoozeInterval} min, ${maxSnoozes} times` : 'Off'}
+            </Text>
+          </Pressable>
+        </View>
       </ScrollView>
 
       <TouchableOpacity 
         style={styles.saveButton} 
-        onPress={saveAlarm}
+        onPress={handleSave}
       >
         <Text style={styles.saveButtonText}>Save</Text>
       </TouchableOpacity>
@@ -788,5 +837,42 @@ const styles = StyleSheet.create({
     color: '#FF3B30',
     fontSize: 15,
     marginLeft: 8,
+  },
+  intervalContainer: {
+    marginTop: 20,
+  },
+  intervalList: {
+    maxHeight: 200,
+  },
+  intervalOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: '#2C2C2E',
+    marginVertical: 1,
+    borderRadius: 8,
+  },
+  selectedInterval: {
+    backgroundColor: '#3A3A3C',
+  },
+  radioButton: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#00BCD4',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  radioSelected: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#00BCD4',
+  },
+  intervalText: {
+    color: '#fff',
+    fontSize: 17,
   },
 }); 

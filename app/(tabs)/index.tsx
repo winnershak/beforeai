@@ -153,9 +153,10 @@ export default function TabOneScreen() {
         data={alarms}
         renderItem={({ item }) => (
           <AlarmItem
+            key={item.id}
             alarm={{
               ...item,
-              mission: item.mission ? item.mission.name : ''
+              mission: item.mission ? (typeof item.mission === 'object' ? item.mission.name : item.mission) : null
             }}
             onToggle={() => toggleAlarm(item.id)}
             onDelete={() => deleteAlarm(item.id)}
@@ -273,5 +274,14 @@ const styles = StyleSheet.create({
   fabText: {
     fontSize: 30,
     color: '#fff',
+  },
+  labelMissionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  missionText: {
+    color: '#666',
+    fontSize: 15,
   },
 });

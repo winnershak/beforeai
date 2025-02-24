@@ -29,23 +29,22 @@ let activeSound: Audio.Sound | null = null;
 let isAlarmActive = false;
 let notificationHandled = false;
 
-export default function AlarmRingScreen() {
+export default function MissionAlarmScreen() {
   const params = useLocalSearchParams();
   const router = useRouter();
   const pathname = usePathname();
   const selectedSound = (params.sound as string) || 'Orkney';
   const alarmId = params.alarmId as string;
-  const missionType = params.mission as string; // Get mission directly from notification data
+  const missionType = params.mission as string;
 
   useEffect(() => {
-    console.log('AlarmRingScreen mounted with params:', params);
+    console.log('MissionAlarmScreen mounted with params:', params);
     console.log('Mission type:', missionType);
   }, []);
 
   useEffect(() => {
     async function setupAudio() {
       try {
-        // If sound is already playing, don't start a new one
         if (activeSound) {
           console.log('Sound already playing, keeping existing sound');
           return;
@@ -86,51 +85,30 @@ export default function AlarmRingScreen() {
     };
   }, [selectedSound]);
 
-  const handleStopAlarm = async () => {
-    if (activeSound) {
-      console.log('Stopping alarm sound');
-      await activeSound.stopAsync();
-      await activeSound.unloadAsync();
-      activeSound = null;
-    }
-    isAlarmActive = false;
-    notificationHandled = false;
-    router.back();
-  };
-
   return (
     <View style={styles.container}>
       <Text style={styles.time}>
         {new Date().toLocaleTimeString()}
       </Text>
 
-      {missionType ? (
-        <TouchableOpacity 
-          style={[styles.button, styles.missionButton]}
-          onPress={() => {
-            console.log('Starting mission:', missionType);
-            if (activeSound) {
-              activeSound.stopAsync();
-              activeSound.unloadAsync();
-            }
-            router.push({
-              pathname: `/mission/${missionType.toLowerCase()}`,
-              params: { returnTo: pathname }
-            });
-          }}
-        >
-          <Text style={styles.buttonText}>
-            Start {missionType} Mission
-          </Text>
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity 
-          style={[styles.button, styles.stopButton]}
-          onPress={handleStopAlarm}
-        >
-          <Text style={styles.buttonText}>Stop Alarm</Text>
-        </TouchableOpacity>
-      )}
+      <TouchableOpacity 
+        style={[styles.button, styles.missionButton]}
+        onPress={() => {
+          console.log('Starting mission:', missionType);
+          if (activeSound) {
+            activeSound.stopAsync();
+            activeSound.unloadAsync();
+          }
+          router.push({
+            pathname: `/mission/${missionType.toLowerCase()}`,
+            params: { returnTo: pathname }
+          });
+        }}
+      >
+        <Text style={styles.buttonText}>
+          Start {missionType} Mission
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
