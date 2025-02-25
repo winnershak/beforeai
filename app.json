@@ -45,7 +45,8 @@
             "./assets/sounds/reflection.caf"
           ]
         }
-      ]
+      ],
+      "react-native-vision-camera"
     ],
     "android": {
       "package": "com.yourusername.alarmyclone"

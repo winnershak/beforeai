@@ -51,6 +51,7 @@
     "react-native-fs": "^2.20.0",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-image-base64": "^0.1.4",
+    "react-native-image-colors": "^2.4.0",
     "react-native-permissions": "^5.2.5",
     "react-native-push-notification": "^8.1.1",
     "react-native-qrcode-scanner": "^1.5.5",

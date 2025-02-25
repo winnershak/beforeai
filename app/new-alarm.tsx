@@ -74,6 +74,7 @@ export default function NewAlarmScreen() {
   const [snoozeEnabled, setSnoozeEnabled] = useState(true);
   const [maxSnoozes, setMaxSnoozes] = useState(3);
   const [snoozeInterval, setSnoozeInterval] = useState(5); // in minutes
+  const [missionSettings, setMissionSettings] = useState<any>(null);
 
   const days = [
     { label: 'S', value: 0 },
@@ -159,19 +160,113 @@ export default function NewAlarmScreen() {
         }
       }
 
+      // Handle mission settings based on mission type
+      let missionSettings = null;
+      
+      if (missionType === 'Math') {
+        missionSettings = {
+          type: 'Math',
+          difficulty: 'medium'
+        };
+      } else if (missionType === 'Typing') {
+        missionSettings = {
+          type: 'Typing',
+          phrase: 'The quick brown fox jumps over the lazy dog',
+          timeLimit: 30,
+          caseSensitive: false
+        };
+      } else if (missionType === 'Photo') {
+        // For Photo missions, get the stored photo path from AsyncStorage
+        try {
+          let photoPath = null;
+          
+          // Get saved photo URI
+          const photoData = await AsyncStorage.getItem('photoMissionData');
+          console.log("NewAlarm - photoMissionData from storage:", photoData);
+          
+          if (photoData) {
+            try {
+              const parsedData = JSON.parse(photoData);
+              photoPath = parsedData.photo;
+              console.log('NewAlarm - Found photo in photoMissionData:', photoPath);
+            } catch (error) {
+              console.error('NewAlarm - Error parsing photoMissionData:', error);
+            }
+          }
+          
+          // Create photo mission settings
+          missionSettings = {
+            type: 'Photo',
+            photo: photoPath
+          };
+          
+          console.log('NewAlarm - Final Photo mission settings:', missionSettings);
+          
+          // Save this photo URI to a separate key that final-photo can use
+          if (photoPath) {
+            await AsyncStorage.setItem('currentPhotoMission', photoPath);
+            console.log('NewAlarm - Saved photo to currentPhotoMission:', photoPath);
+          }
+        } catch (error) {
+          console.error('NewAlarm - Error setting up photo mission:', error);
+          missionSettings = {
+            type: 'Photo',
+            photo: null
+          };
+        }
+      } else if (missionType === 'QR') {
+        missionSettings = {
+          type: 'QR'
+        };
+      }
+
       // Create mission object if missionType exists
-      const missionObject = missionType ? {
-        id: `mission_${Date.now()}`,
-        name: missionType,
-        icon: 'calculator'
-      } : null;
+      let missionObj = null;
+      if (missionType) {
+        // Create a unique ID for the mission
+        const missionId = `mission_${Date.now()}`;
+        
+        // Set icon based on mission type
+        let missionIcon = 'calculator'; // Default
+        if (missionType === 'Math') missionIcon = 'calculator';
+        else if (missionType === 'Typing') missionIcon = 'keyboard';
+        else if (missionType === 'Photo') missionIcon = 'camera';
+        else if (missionType === 'QR/Barcode') missionIcon = 'qrcode';
+        
+        // Special handling for QR/Barcode mission
+        if (missionType === 'QR/Barcode') {
+          // Get the QR code directly from AsyncStorage
+          const qrCode = await AsyncStorage.getItem('selectedAlarmQR');
+          console.log('NewAlarm: Retrieved QR code:', qrCode);
+          
+          // Create mission object with QR code in settings
+          missionObj = {
+            id: missionId,
+            name: missionType,
+            icon: missionIcon,
+            settings: { targetCode: qrCode }
+          };
+          
+          console.log('NewAlarm: Created mission with QR settings:', missionObj);
+        } else {
+          // For other mission types
+          missionObj = {
+            id: missionId,
+            name: missionType,
+            icon: missionIcon,
+            settings: missionSettings
+          };
+        }
+      }
+
+      console.log('NewAlarm: Final mission object:', missionObj);
 
       // Schedule notification first
       const notificationId = await scheduleAlarmNotification({
         id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         days: selectedDays.map(String),
-        mission: missionObject,
+        mission: missionObj,
         sound: sound,
         soundVolume: soundVolume,
       });
@@ -184,11 +279,11 @@ export default function NewAlarmScreen() {
         enabled: true,
         days: selectedDays.map(String),
         label: label || '',
-        mission: missionObject,
+        mission: missionObj,
         sound: sound,
         soundVolume: soundVolume,
         vibration: vibrationEnabled,
-        notificationId: notificationId || null,  // Store the notification ID
+        notificationId: notificationId || null,
         snooze: {
           enabled: snoozeEnabled,
           maxSnoozes,
@@ -435,6 +530,179 @@ export default function NewAlarmScreen() {
       loadSnoozeSettings();
     }, [])
   );
+
+  useEffect(() => {
+    const checkMissionData = async () => {
+      const missionType = await AsyncStorage.getItem('selectedMissionType');
+      const missionSettings = await AsyncStorage.getItem('selectedMissionSettings');
+      
+      console.log('DEBUG - Selected mission type:', missionType);
+      console.log('DEBUG - Selected mission settings:', missionSettings);
+      
+      if (missionType === 'Typing' && missionSettings) {
+        const settings = JSON.parse(missionSettings);
+        console.log('DEBUG - Typing phrase:', settings.phrase);
+        setMissionType('Typing');
+      }
+    };
+    
+    checkMissionData();
+  }, []);
+
+  // Make saveMission an async function to retrieve photo data
+  const saveMission = async () => {
+    console.log('DEBUG - Selected mission type:', selectedMission);
+    
+    // Prepare mission settings based on type
+    let missionSettings = {};
+    
+    if (selectedMission === 'Math') {
+      missionSettings = {
+        type: 'Math',
+        difficulty: 'medium'
+      };
+    } else if (selectedMission === 'Typing') {
+      missionSettings = {
+        type: 'Typing',
+        phrase: 'The quick brown fox jumps over the lazy dog',
+        timeLimit: 30,
+        caseSensitive: false
+      };
+    } else if (selectedMission === 'Photo') {
+      // For Photo missions, get the stored photo path from AsyncStorage
+      try {
+        // Try to retrieve photo data from multiple possible storage keys
+        let photoPath = null;
+        
+        // First try selectedAlarmPhoto
+        const selectedPhoto = await AsyncStorage.getItem('selectedAlarmPhoto');
+        if (selectedPhoto) {
+          photoPath = selectedPhoto;
+          console.log('Found photo path in selectedAlarmPhoto:', photoPath);
+        }
+        
+        // Then try photoMissionData if selectedAlarmPhoto was empty
+        if (!photoPath) {
+          const photoData = await AsyncStorage.getItem('photoMissionData');
+          if (photoData) {
+            const parsedData = JSON.parse(photoData);
+            photoPath = parsedData.photo;
+            console.log('Found photo path in photoMissionData:', photoPath);
+          }
+        }
+        
+        // Create proper Photo mission settings
+        missionSettings = {
+          type: 'Photo', // Explicit Photo type
+          photo: photoPath // Use the retrieved photo path
+        };
+        
+        console.log('DEBUG - Photo mission settings:', missionSettings);
+      } catch (error) {
+        console.error('Error retrieving photo data:', error);
+        // Fallback for errors
+        missionSettings = {
+          type: 'Photo',
+          photo: null
+        };
+      }
+    } else if (selectedMission === 'QR') {
+      missionSettings = {
+        type: 'QR'
+      };
+    }
+    
+    console.log('DEBUG - Mission data:', missionSettings);
+    
+    // Create the final mission object
+    const missionObj = {
+      id: `mission_${Date.now()}`,
+      name: selectedMission,
+      icon: selectedMission.toLowerCase(), // Or use a function to get the icon
+      settings: missionSettings
+    };
+    
+    console.log('DEBUG - Final mission object:', missionObj);
+    
+    // Save the mission
+    setMission(missionObj);
+  };
+
+  // When a photo is taken/selected
+  const handlePhotoSelected = (photoUri: string) => {
+    // Save the photo data to AsyncStorage for later use
+    const photoData = {
+      photo: photoUri,
+      type: 'Photo'
+    };
+    
+    AsyncStorage.setItem('photoMissionData', JSON.stringify(photoData))
+      .then(() => {
+        console.log('Photo mission data saved:', photoData);
+      })
+      .catch(error => {
+        console.error('Error saving photo mission data:', error);
+      });
+  };
+
+  useEffect(() => {
+    const loadMissionSettings = async () => {
+      try {
+        const missionType = await AsyncStorage.getItem('selectedMissionType');
+        console.log('New Alarm - Loading mission type:', missionType);
+        
+        if (missionType) {
+          setMissionType(missionType);
+          console.log('New Alarm - Set mission type to:', missionType);
+          
+          // Load mission settings based on type
+          if (missionType === 'Math') {
+            const mathSettingsJson = await AsyncStorage.getItem('selectedMissionSettings');
+            if (mathSettingsJson) {
+              const mathSettings = JSON.parse(mathSettingsJson);
+              setMissionSettings(mathSettings);
+              console.log('New Alarm - Loaded math settings:', mathSettings);
+            }
+          } else if (missionType === 'Photo') {
+            const photoUri = await AsyncStorage.getItem('selectedAlarmPhoto');
+            if (photoUri) {
+              setMissionSettings({ photo: photoUri });
+              console.log('New Alarm - Loaded photo settings:', { photo: photoUri });
+            }
+          } else if (missionType === 'QR/Barcode') {
+            // First try to get from selectedMissionSettings
+            const qrSettingsJson = await AsyncStorage.getItem('selectedMissionSettings');
+            if (qrSettingsJson) {
+              const qrSettings = JSON.parse(qrSettingsJson);
+              setMissionSettings(qrSettings);
+              console.log('New Alarm - Loaded QR settings from selectedMissionSettings:', qrSettings);
+            } else {
+              // Fallback to selectedAlarmQR
+              const qrCode = await AsyncStorage.getItem('selectedAlarmQR');
+              if (qrCode) {
+                const qrSettings = { targetCode: qrCode };
+                setMissionSettings(qrSettings);
+                console.log('New Alarm - Loaded QR settings from selectedAlarmQR:', qrSettings);
+              } else {
+                console.log('New Alarm - No QR settings found');
+              }
+            }
+          } else if (missionType === 'Typing') {
+            const typingSettingsJson = await AsyncStorage.getItem('selectedMissionSettings');
+            if (typingSettingsJson) {
+              const typingSettings = JSON.parse(typingSettingsJson);
+              setMissionSettings(typingSettings);
+              console.log('New Alarm - Loaded typing settings:', typingSettings);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error loading mission settings:', error);
+      }
+    };
+    
+    loadMissionSettings();
+  }, []);
 
   return (
     <View style={styles.container}>

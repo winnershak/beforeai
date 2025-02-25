@@ -142,6 +142,13 @@ export default function QRCode() {
         // Save mission type
         console.log('Saving mission type: QR/Barcode');
         await AsyncStorage.setItem('selectedMissionType', 'QR/Barcode');
+        
+        // Save mission settings - THIS IS THE IMPORTANT PART
+        const missionSettings = {
+          targetCode: selectedCode
+        };
+        console.log('Saving mission settings:', missionSettings);
+        await AsyncStorage.setItem('selectedMissionSettings', JSON.stringify(missionSettings));
       }
       
       console.log('Attempting navigation...');

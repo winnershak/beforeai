@@ -134,6 +134,18 @@ export default function PhotoMission() {
         // Save mission type
         await AsyncStorage.setItem('selectedMissionType', 'Photo');
         
+        // IMPORTANT NEW CODE: Also save in the format that new-alarm expects
+        const photoData = {
+          type: 'Photo',
+          photo: selectedPhoto
+        };
+        
+        // Save to photoMissionData which new-alarm checks
+        await AsyncStorage.setItem('photoMissionData', JSON.stringify(photoData));
+        
+        // Save as currentPhotoMission for final-photo to use as backup
+        await AsyncStorage.setItem('currentPhotoMission', selectedPhoto);
+        
         console.log('Mission data saved:', {
           type: 'Photo',
           photo: selectedPhoto

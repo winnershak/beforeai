@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system';
 import { Asset } from 'expo-asset';
+import Constants from 'expo-constants';
 
 // Define interruption mode constants
 const INTERRUPTION_MODE_IOS_DO_NOT_MIX = 1;
@@ -98,25 +99,13 @@ Notifications.addNotificationResponseReceivedListener((response) => {
   notificationHandled = false;
 });
 
-// Update notification handler for foreground behavior
+// Configure notifications
 Notifications.setNotificationHandler({
-  handleNotification: async (notification) => {
-    const data = notification.request.content.data;
-    
-    // If app is in foreground, trigger alarm screen directly
-    if (!isAlarmActive) {
-      isAlarmActive = true;
-      handleAlarmTrigger(data);
-    }
-
-    return {
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      presentAlert: true,
-      presentSound: true,
-    };
-  },
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
 });
 
 // Sound control functions
@@ -165,148 +154,250 @@ export async function playAlarmSound(
   }
 }
 
-// Request permissions at app startup
-export async function requestNotificationPermissions() {
-  try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    console.log('Existing permission status:', existingStatus);
+// Request notification permissions
+export const requestNotificationPermissions = async () => {
+  if (Platform.OS === 'android') {
+    await Notifications.setNotificationChannelAsync('alarms', {
+      name: 'Alarms',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#FF231F7C',
+      sound: 'default',
+    });
+  }
 
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync({
-        ios: {
-          allowAlert: true,
-          allowBadge: true,
-          allowSound: true,
-        },
-      });
-      finalStatus = status;
-      console.log('New permission status:', status);
-    }
-
-    if (finalStatus !== 'granted') {
-      console.error('Permission not granted for notifications');
-      return false;
-    }
-    return true;
-  } catch (error) {
-    console.error('Error requesting permissions:', error);
+  const { status: existingStatus } = await Notifications.getPermissionsAsync();
+  let finalStatus = existingStatus;
+  
+  if (existingStatus !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+  
+  if (finalStatus !== 'granted') {
+    console.log('Failed to get permission for notifications!');
     return false;
   }
-}
+  
+  return true;
+};
 
-async function getSoundPath(soundName: string) {
+// Schedule an alarm notification
+export const scheduleAlarmNotification = async (alarm: any) => {
   try {
-    const asset = Asset.fromModule(soundAssets[soundName as keyof typeof soundAssets]);
-    await asset.downloadAsync();
-    console.log('Sound asset details:', {
-      name: soundName,
-      uri: asset.uri,
-      localUri: asset.localUri
-    });
-    return asset.localUri;
-  } catch (error) {
-    console.error('Error getting sound path:', error);
-    return null;
-  }
-}
-
-// Schedule notification with more logging
-export async function scheduleAlarmNotification(alarm: Alarm) {
-  try {
-    const [hours, minutes] = alarm.time.split(':');
-    const now = new Date();
-    const scheduledTime = new Date();
-    scheduledTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-
-    let timeUntilAlarm = (scheduledTime.getTime() - now.getTime()) / 1000;
-
-    if (timeUntilAlarm <= 0) {
-      scheduledTime.setDate(scheduledTime.getDate() + 1);
-      timeUntilAlarm = (scheduledTime.getTime() - now.getTime()) / 1000;
+    console.log('Scheduling alarm notification:', alarm);
+    
+    // Cancel any existing notification for this alarm
+    if (alarm.notificationId) {
+      await Notifications.cancelScheduledNotificationAsync(alarm.notificationId);
     }
 
-    const soundPath = await getSoundPath(alarm.sound);
-    console.log('Using sound path for notification:', soundPath);
-
+    // Get sound name from alarm settings
+    const soundName = alarm.sound || 'default';
+    console.log('Using sound for notification:', soundName);
+    
+    // Parse hour and minute from time string
+    let hour = 0;
+    let minute = 0;
+    
+    if (alarm.time && typeof alarm.time === 'string') {
+      const timeParts = alarm.time.split(':');
+      if (timeParts.length === 2) {
+        hour = parseInt(timeParts[0], 10);
+        minute = parseInt(timeParts[1], 10);
+      }
+    } else if (alarm.hour !== undefined && alarm.minute !== undefined) {
+      hour = parseInt(alarm.hour, 10);
+      minute = parseInt(alarm.minute, 10);
+    }
+    
+    // Validate hour and minute
+    if (isNaN(hour) || hour < 0 || hour > 23 || isNaN(minute) || minute < 0 || minute > 59) {
+      console.error('Invalid time values:', { hour, minute, originalTime: alarm.time });
+      return null;
+    }
+    
+    // Calculate trigger time
+    const now = new Date();
+    let triggerDate = new Date();
+    triggerDate.setHours(hour);
+    triggerDate.setMinutes(minute);
+    triggerDate.setSeconds(0);
+    
+    // If alarm time is in the past, schedule for tomorrow
+    if (triggerDate <= now) {
+      triggerDate.setDate(triggerDate.getDate() + 1);
+    }
+    
+    // Calculate seconds until alarm
+    const secondsUntilAlarm = Math.floor((triggerDate.getTime() - now.getTime()) / 1000);
+    console.log(`Alarm will trigger in ${secondsUntilAlarm} seconds (${triggerDate.toLocaleString()})`);
+    
+    // Format the sound name for iOS (lowercase with .caf extension)
+    const formattedSoundName = `${soundName.toLowerCase()}.caf`;
+    console.log('Formatted sound name:', formattedSoundName);
+    
+    // Schedule using timeInterval trigger for more reliable alarms
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: alarm.label || 'Alarm',
-        body: 'Time to wake up!',
-        sound: `${alarm.sound.toLowerCase()}.caf`,
-        data: {
+        title: alarm.label || 'Wake Up!',
+        body: alarm.label ? 'Time to wake up!' : 'Your alarm is ringing',
+        data: { 
           alarmId: alarm.id,
-          sound: alarm.sound,
-          soundVolume: alarm.soundVolume,
-          mission: alarm.mission,
-          hasMission: Boolean(alarm.mission)
+          hasMission: alarm.mission ? true : false,
+          sound: soundName,
+          soundVolume: alarm.soundVolume || 1,
+          mission: alarm.mission
         },
+        sound: formattedSoundName, // Use the formatted sound name
       },
       trigger: {
         type: 'timeInterval',
-        seconds: Math.floor(timeUntilAlarm),
-        repeats: false,
+        seconds: secondsUntilAlarm,
+        repeats: false
       } as Notifications.TimeIntervalTriggerInput
     });
-
-    console.log('Scheduled notification:', {
-      time: scheduledTime.toLocaleTimeString(),
-      sound: `${alarm.sound.toLowerCase()}.caf`,
-      id: notificationId
-    });
+    
+    console.log('Notification scheduled with ID:', notificationId);
+    
+    // Save notification ID with alarm
+    const updatedAlarm = { ...alarm, notificationId };
+    
+    // Update alarms in storage
+    const alarmsJson = await AsyncStorage.getItem('alarms');
+    const alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
+    const updatedAlarms = alarms.map((a: any) => 
+      a.id === alarm.id ? updatedAlarm : a
+    );
+    
+    await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
     
     return notificationId;
   } catch (error) {
     console.error('Error scheduling notification:', error);
+    return null;
   }
-}
+};
 
-// Cancel notification
-export async function cancelAlarmNotification(id: string) {
+// Handle alarm notification when received
+export const handleAlarmNotification = async (notification: Notifications.Notification) => {
   try {
-    await Notifications.cancelScheduledNotificationAsync(id);
+    const data = notification.request.content.data;
+    const alarmId = data.alarmId;
+    const hasMission = data.hasMission;
+    const sound = data.sound;
+    const soundVolume = data.soundVolume;
+    
+    // Schedule continuous notifications
+    scheduleContinuousNotifications(
+      alarmId as string, 
+      hasMission as string, 
+      sound as string, 
+      soundVolume as string
+    );
+    
+    return {
+      alarmId,
+      hasMission,
+      sound,
+      soundVolume
+    };
   } catch (error) {
-    console.error('Error canceling notification:', error);
+    console.error('Error handling notification:', error);
+    return null;
   }
-}
+};
 
-function calculateNextAlarmDate(hours: number, minutes: number, day: string) {
-  return {
-    type: 'calendar',
-    hour: hours,
-    minute: minutes,
-    repeats: true,
-  } as Notifications.CalendarTriggerInput;
-}
-
-// New function to handle alarm triggering
-export async function handleAlarmTrigger(alarmData: any) {
-  console.log('Triggering alarm with data:', alarmData);
+// Set up notification listeners
+export function setupNotificationListeners() {
+  // Handle notification received
+  const receivedSubscription = Notifications.addNotificationReceivedListener((notification) => {
+    console.log('Notification received:', notification);
+    
+    // Get the data from the notification
+    const data = notification.request.content.data;
+    console.log('Notification data:', data);
+    
+    // Play the sound manually if needed
+    if (data.sound && typeof data.sound === 'string' && data.sound in soundAssets) {
+      const soundName = data.sound as keyof typeof soundAssets;
+      const volume = typeof data.soundVolume === 'number' ? data.soundVolume : 1;
+      
+      console.log('Playing sound manually:', soundName, 'at volume', volume);
+      playAlarmSound(soundName, volume);
+    }
+  });
   
-  // Route to appropriate screen based on mission presence
-  if (alarmData.hasMission) {
-    router.push({
-      pathname: '/alarm-ring',
-      params: {
-        alarmId: alarmData.alarmId,
-        sound: alarmData.sound,
-        mission: alarmData.mission,
-        soundVolume: alarmData.soundVolume,
-        hasMission: 'true'
+  // Handle notification response (user tapped notification)
+  const responseSubscription = Notifications.addNotificationResponseReceivedListener((response) => {
+    console.log('Notification response received:', response);
+    
+    // Get the data from the notification
+    const data = response.notification.request.content.data;
+    
+    // Add a small delay to ensure layout is mounted
+    setTimeout(() => {
+      if (data.hasMission) {
+        console.log('Mission alarm detected, routing to mission-alarm');
+        router.push({
+          pathname: '/mission-alarm',
+          params: {
+            alarmId: data.alarmId,
+            sound: data.sound,
+            mission: data.mission,
+            soundVolume: data.soundVolume
+          }
+        });
+      } else {
+        console.log('Regular alarm detected, routing to alarm-ring');
+        router.push({
+          pathname: '/alarm-ring',
+          params: data
+        });
       }
-    });
-  } else {
-    router.push({
-      pathname: '/alarm-ring',
-      params: {
-        alarmId: alarmData.alarmId,
-        sound: alarmData.sound,
-        soundVolume: alarmData.soundVolume,
-        hasMission: 'false'
-      }
-    });
-  }
+    }, 100);
+  });
+  
+  return {
+    remove: () => {
+      receivedSubscription.remove();
+      responseSubscription.remove();
+    }
+  };
 }
+
+// Schedule continuous notifications with the same sound
+export const scheduleContinuousNotifications = async (
+  alarmId: string, 
+  hasMission: string, 
+  sound: string, 
+  soundVolume: string
+) => {
+  try {
+    // Schedule a single notification with a short delay
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Wake Up!',
+        body: 'Your alarm is still ringing. Tap to open.',
+        data: { 
+          alarmId,
+          hasMission,
+          sound,
+          soundVolume,
+          continuous: true
+        },
+        sound: sound, // Use the same custom sound
+      },
+      trigger: {
+        type: 'timeInterval',
+        seconds: 1, // Short delay
+        repeats: false
+      } as Notifications.TimeIntervalTriggerInput
+    });
+  } catch (error) {
+    console.error('Error scheduling continuous notification:', error);
+  }
+};
 
 // Update existing handleNotification
 export function handleNotification(notification: Notifications.Notification) {
@@ -325,7 +416,9 @@ export function resetAlarmState() {
 // Add function to check current alarms
 export async function checkCurrentAlarms() {
   try {
-    if (!router.canGoBack()) {
+    // Check if app is ready for navigation
+    const isAppReady = await AsyncStorage.getItem('isAppReady');
+    if (isAppReady !== 'true') {
       return;
     }
 
@@ -338,22 +431,47 @@ export async function checkCurrentAlarms() {
     const currentSeconds = now.getSeconds();
 
     // Find alarm that matches current time
-    const currentAlarm = alarms.find((alarm: Alarm) => {
+    const currentAlarm = alarms.find((alarm: any) => {
       return alarm.time === currentTime && currentSeconds < 3; // Only trigger in first 3 seconds of the minute
     });
     
-    // Remove or comment out the alarm checking code that includes:
-    // if (currentAlarm) {
-    //   console.log('Found matching alarm:', currentAlarm);
-    //   router.push({
-    //     pathname: '/alarm-ring',
-    //     ...
-    //   });
-    // }
+    // Only navigate if we found a matching alarm
+    if (currentAlarm) {
+      console.log('Found matching alarm:', currentAlarm);
+      
+      // Store the alarm info for later navigation
+      await AsyncStorage.setItem('pendingAlarm', JSON.stringify({
+        alarmId: currentAlarm.id,
+        hasMission: currentAlarm.mission ? 'true' : 'false',
+        sound: currentAlarm.sound,
+        soundVolume: currentAlarm.soundVolume
+      }));
+      
+      // Set a flag that the app should navigate to the alarm screen
+      await AsyncStorage.setItem('shouldNavigateToAlarm', 'true');
+    }
   } catch (error) {
     console.error('Error checking alarm time:', error);
   }
 }
 
-// Check more frequently
-setInterval(checkCurrentAlarms, 1000); // Check every second instead of every minute
+// Check less frequently to avoid excessive updates
+const checkInterval = 10000; // Check every 10 seconds instead of every second
+setInterval(checkCurrentAlarms, checkInterval);
+
+// Cancel an alarm notification
+export const cancelAlarmNotification = async (notificationId: string) => {
+  try {
+    await Notifications.cancelScheduledNotificationAsync(notificationId);
+    return true;
+  } catch (error) {
+    console.error('Error canceling notification:', error);
+    return false;
+  }
+};
+
+// Add this to your app's entry point (App.tsx or similar)
+export const initializeNotifications = async () => {
+  await requestNotificationPermissions();
+  setupNotificationListeners();
+};

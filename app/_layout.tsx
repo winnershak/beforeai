@@ -90,6 +90,36 @@ export default function RootLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    // Set app as ready after first render
+    AsyncStorage.setItem('isAppReady', 'true');
+    
+    // Check for pending alarm navigation
+    const checkPendingAlarm = async () => {
+      const shouldNavigate = await AsyncStorage.getItem('shouldNavigateToAlarm');
+      
+      if (shouldNavigate === 'true') {
+        const pendingAlarmJson = await AsyncStorage.getItem('pendingAlarm');
+        
+        if (pendingAlarmJson) {
+          const pendingAlarm = JSON.parse(pendingAlarmJson);
+          
+          // Clear the pending navigation
+          await AsyncStorage.removeItem('shouldNavigateToAlarm');
+          await AsyncStorage.removeItem('pendingAlarm');
+          
+          // Navigate to alarm screen
+          router.push({
+            pathname: '/alarm-ring',
+            params: pendingAlarm
+          });
+        }
+      }
+    };
+    
+    checkPendingAlarm();
+  }, []);
+
   if (!loaded) {
     return null;
   }

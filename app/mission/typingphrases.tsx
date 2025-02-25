@@ -3,12 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput } from 
 import { useRouter, useLocalSearchParams } from 'expo-router';
 
 const phrases = [
-  "JUST DO IT",
-  "The future belongs to those who believe in the beauty of their dreams.",
-  "Success is not final, failure is not fatal.",
-  "Life is what happens while you're busy making other plans.",
-  "Every moment is a fresh beginning.",
-  // Add more phrases...
+  "JUST DO IT", // Add more phrases...
 ];
 
 export default function TypingPhrasesScreen() {
