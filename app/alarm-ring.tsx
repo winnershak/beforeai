@@ -648,9 +648,7 @@ export default function AlarmRingScreen() {
                   style={[styles.button, styles.snoozeButton]} 
                   onPress={handleSnooze}
                 >
-                  <Text style={styles.buttonText}>
-                    Snooze {snoozeDuration}m ({snoozeRemaining} left)
-                  </Text>
+                  <Text style={styles.buttonText}>Snooze</Text>
                 </TouchableOpacity>
               )}
               
@@ -687,9 +685,7 @@ export default function AlarmRingScreen() {
                   style={[styles.button, styles.snoozeButton]} 
                   onPress={handleSnooze}
                 >
-                  <Text style={styles.buttonText}>
-                    Snooze {snoozeDuration}m ({snoozeRemaining} left)
-                  </Text>
+                  <Text style={styles.buttonText}>Snooze</Text>
                 </TouchableOpacity>
               )}
             </>

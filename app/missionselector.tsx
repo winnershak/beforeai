@@ -6,7 +6,6 @@ const missions = [
   { id: 'math', name: 'Math', icon: '🔢' },
   { id: 'typing', name: 'Typing', icon: '⌨️' },
   { id: 'qrcode', name: 'QR/Barcode', icon: '📱' },
-  { id: 'photo', name: 'Photo', icon: '📸' },
 ];
 
 export default function MissionSelectScreen() {
@@ -26,11 +25,6 @@ export default function MissionSelectScreen() {
     } else if (mission.id === 'qrcode') {
       router.push({
         pathname: '/mission/qrcode',
-        params: { ...params }
-      });
-    } else if (mission.id === 'photo') {
-      router.push({
-        pathname: '/mission/photo',
         params: { ...params }
       });
     } else {

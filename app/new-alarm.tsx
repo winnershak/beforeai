@@ -75,6 +75,7 @@ export default function NewAlarmScreen() {
   const [maxSnoozes, setMaxSnoozes] = useState(3);
   const [snoozeInterval, setSnoozeInterval] = useState(5); // in minutes
   const [missionSettings, setMissionSettings] = useState<any>(null);
+  const [isUnlimitedSnoozes, setIsUnlimitedSnoozes] = useState(false);
 
   const days = [
     { label: 'S', value: 0 },
@@ -495,20 +496,22 @@ export default function NewAlarmScreen() {
 
   // Add this effect to load snooze settings
   useEffect(() => {
-    const loadSnoozeSettings = async () => {
+    const loadSettings = async () => {
       try {
-        const settings = await AsyncStorage.getItem('snoozeSettings');
-        if (settings) {
-          const { enabled, max, interval } = JSON.parse(settings);
-          setSnoozeEnabled(enabled);
-          setMaxSnoozes(max);
-          setSnoozeInterval(interval);
+        const snoozeSettingsJson = await AsyncStorage.getItem('snoozeSettings');
+        if (snoozeSettingsJson) {
+          const settings = JSON.parse(snoozeSettingsJson);
+          setSnoozeEnabled(settings.enabled ?? true);
+          setSnoozeInterval(settings.interval ?? 5);
+          setMaxSnoozes(settings.max ?? 3);
+          setIsUnlimitedSnoozes(settings.unlimited ?? false);
         }
       } catch (error) {
         console.error('Error loading snooze settings:', error);
       }
     };
-    loadSnoozeSettings();
+    
+    loadSettings();
   }, []);
 
   // Add useFocusEffect to reload settings when returning from snooze screen
@@ -522,6 +525,7 @@ export default function NewAlarmScreen() {
             setSnoozeEnabled(enabled);
             setMaxSnoozes(max);
             setSnoozeInterval(interval);
+            setIsUnlimitedSnoozes(max === 0);
           }
         } catch (error) {
           console.error('Error loading snooze settings:', error);
@@ -830,15 +834,6 @@ export default function NewAlarmScreen() {
                 thumbTintColor="#00B4D8"
               />
             </View>
-            <View style={styles.vibrationToggle}>
-              <Ionicons name="phone-portrait" size={24} color="#fff" />
-              <Switch
-                value={vibrationEnabled}
-                onValueChange={setVibrationEnabled}
-                trackColor={{ false: '#767577', true: '#00BCD4' }}
-                thumbColor={vibrationEnabled ? '#fff' : '#f4f3f4'}
-              />
-            </View>
           </View>
         </View>
 
@@ -862,7 +857,9 @@ export default function NewAlarmScreen() {
           >
             <Text style={styles.optionLabel}>Snooze</Text>
             <Text style={[styles.optionValue, { color: '#666' }]}>
-              {snoozeEnabled ? `${snoozeInterval} min, ${maxSnoozes} times` : 'Off'}
+              {snoozeEnabled ? 
+                maxSnoozes === 999 ? `${snoozeInterval} min` : `${snoozeInterval} min, ${maxSnoozes} time${maxSnoozes !== 1 ? 's' : ''}` 
+                : 'Off'}
             </Text>
           </Pressable>
         </View>
