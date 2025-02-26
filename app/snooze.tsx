@@ -90,18 +90,7 @@ export default function SnoozeScreen() {
       setIsUnlimited(false);
       setMaxSnoozes(count as number);
     }
-    
-    // Make sure snooze stays enabled when changing max snoozes
-    setSnoozeEnabled(true);
-    
-    // Save settings with snooze enabled
-    await AsyncStorage.setItem('snoozeSettings', JSON.stringify({
-      enabled: true, // Force enabled to true
-      max: count === 'unlimited' ? 999 : count,
-      interval: snoozeInterval,
-      unlimited: count === 'unlimited'
-    }));
-    
+    await saveSettings();
     bottomSheetRef.current?.close();
   };
 

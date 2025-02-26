@@ -67,7 +67,7 @@ export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemP
               editMode: 'true',
               alarmId: alarm.id,
               time: alarm.time,
-              days: alarm.days.join(','),
+              days: alarm.days ? alarm.days.join(',') : '',
               mission: alarm.mission,
             }
           }}

@@ -80,17 +80,22 @@ export default function TabOneScreen() {
 
   const loadAlarms = async () => {
     try {
-      console.log('Home: Starting to load alarms');
-      const savedAlarms = await AsyncStorage.getItem('alarms');
-      console.log('Home: Raw alarms from storage:', savedAlarms);
-      
-      if (savedAlarms) {
-        const parsedAlarms = JSON.parse(savedAlarms);
-        console.log('Home: Setting alarms:', parsedAlarms);
+      const alarmsJson = await AsyncStorage.getItem('alarms');
+      if (alarmsJson) {
+        let parsedAlarms = JSON.parse(alarmsJson);
+        
+        // Ensure every alarm has required properties
+        parsedAlarms = parsedAlarms.map((alarm: any) => ({
+          ...alarm,
+          days: alarm.days || [],
+          time: alarm.time || '00:00', // Ensure time always exists
+          enabled: alarm.enabled !== undefined ? alarm.enabled : true
+        }));
+        
+        // Save the fixed alarms back to storage
+        await AsyncStorage.setItem('alarms', JSON.stringify(parsedAlarms));
+        
         setAlarms(parsedAlarms);
-      } else {
-        console.log('Home: No alarms found in storage');
-        setAlarms([]);
       }
     } catch (error) {
       console.error('Home: Error loading alarms:', error);

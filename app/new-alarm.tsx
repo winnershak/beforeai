@@ -286,7 +286,7 @@ export default function NewAlarmScreen() {
         notificationId: notificationId || null,
         snooze: {
           enabled: snoozeEnabled,
-          maxSnoozes,
+          maxSnoozes: maxSnoozes,
           interval: snoozeInterval
         }
       } as Alarm;

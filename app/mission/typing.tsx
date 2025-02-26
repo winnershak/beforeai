@@ -4,9 +4,8 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 
-const DEFAULT_PHRASES = [
-  "Just do it"
-];
+// Empty array for defaults - no default phrases
+const DEFAULT_PHRASES: string[] = [];
 
 export default function TypingMissionScreen() {
   const router = useRouter();
@@ -19,24 +18,79 @@ export default function TypingMissionScreen() {
   const [phrase, setPhrase] = useState<string>('');
   const [newPhrase, setNewPhrase] = useState<string>('');
 
+  // Load previously selected phrase when component mounts
+  useEffect(() => {
+    const loadSelectedPhrase = async () => {
+      try {
+        // First check if we're editing an existing alarm
+        if (params.alarmId) {
+          const alarmId = params.alarmId as string;
+          console.log(`Loading typing settings for alarm: ${alarmId}`);
+          
+          // Try to load from the alarms array first
+          const alarmsJson = await AsyncStorage.getItem('alarms');
+          if (alarmsJson) {
+            const alarms = JSON.parse(alarmsJson);
+            if (alarms[alarmId] && 
+                alarms[alarmId].mission && 
+                alarms[alarmId].mission.settings && 
+                alarms[alarmId].mission.settings.phrase) {
+              
+              const savedPhrase = alarms[alarmId].mission.settings.phrase;
+              console.log(`Found saved phrase in alarms array: ${savedPhrase}`);
+              setSelectedPhrase(savedPhrase);
+              return; // Exit if we found the phrase
+            }
+          }
+          
+          // If not found in alarms array, try the dedicated key
+          const alarmSpecificKey = `alarm_${alarmId}_typingSettings`;
+          const savedTypingSettings = await AsyncStorage.getItem(alarmSpecificKey);
+          if (savedTypingSettings) {
+            const settings = JSON.parse(savedTypingSettings);
+            if (settings.phrase) {
+              console.log(`Found saved phrase in dedicated key: ${settings.phrase}`);
+              setSelectedPhrase(settings.phrase);
+              if (settings.times) setSelectedTimes(settings.times);
+              return; // Exit if we found the phrase
+            }
+          }
+        }
+        
+        // If no alarm-specific phrase found, try the global setting
+        const savedPhrase = await AsyncStorage.getItem('selectedTypingPhrase');
+        const savedTimes = await AsyncStorage.getItem('selectedTypingTimes');
+        
+        if (savedPhrase) {
+          console.log(`Using globally saved phrase: ${savedPhrase}`);
+          setSelectedPhrase(savedPhrase);
+        }
+        
+        if (savedTimes) {
+          const times = parseInt(savedTimes, 10);
+          if (!isNaN(times)) {
+            setSelectedTimes(times);
+          }
+        }
+      } catch (error) {
+        console.error('Error loading saved phrase:', error);
+      }
+    };
+    
+    loadSelectedPhrase();
+  }, [params.alarmId]);
+
+  // Existing useEffect for loading from URL params
   useEffect(() => {
     if (params.currentPhrase) {
       setSelectedPhrase(params.currentPhrase as string);
     }
   }, [params.currentPhrase]);
 
+  // Existing useEffect for loading custom phrases
   useEffect(() => {
     const loadSavedData = async () => {
       try {
-        // Load saved mission data
-        const missionData = await AsyncStorage.getItem('missionData');
-        if (missionData) {
-          const data = JSON.parse(missionData);
-          if (data.type === 'Typing' && data.phrase) {
-            setPhrase(data.phrase);
-          }
-        }
-
         // Load custom phrases
         const savedPhrases = await AsyncStorage.getItem('customTypingPhrases');
         if (savedPhrases) {
@@ -77,7 +131,7 @@ export default function TypingMissionScreen() {
       await AsyncStorage.setItem('customTypingPhrases', JSON.stringify(updatedPhrases));
       setCustomPhrases(updatedPhrases);
       setNewPhrase('');
-      setSelectedPhrase(newPhrase); // Select the newly added phrase
+      setSelectedPhrase(newPhrase);
     } catch (error) {
       console.error('Error saving phrase:', error);
     }
@@ -87,53 +141,108 @@ export default function TypingMissionScreen() {
     if (!selectedPhrase) return;
 
     try {
+      console.log('Typing mission - saving phrase:', selectedPhrase);
+      console.log('Typing mission - saving times:', selectedTimes);
+      
       // Create mission data
       const typingMission = {
         phrase: selectedPhrase,
-        timeLimit: 30,
-        caseSensitive: false
+        timeLimit: timeLimit,
+        caseSensitive: caseSensitive,
+        times: selectedTimes
       };
 
-      // Save directly to new-alarm's expected format
+      // Save mission settings in multiple locations to ensure accessibility
       await AsyncStorage.setItem('selectedMissionType', 'Typing');
       await AsyncStorage.setItem('selectedMissionSettings', JSON.stringify(typingMission));
       
-      console.log('DEBUG - Saved mission type:', 'Typing');
-      console.log('DEBUG - Saved mission settings:', typingMission);
+      // Also save the specific typing phrase for direct access
+      await AsyncStorage.setItem('selectedTypingPhrase', selectedPhrase);
+      await AsyncStorage.setItem('selectedTypingTimes', selectedTimes.toString());
+      
+      // If we're editing an existing alarm, save to that alarm's specific settings
+      if (params.alarmId) {
+        const alarmId = params.alarmId as string;
+        console.log(`Saving typing settings to specific alarm: ${alarmId}`);
+        
+        // Load existing alarm data first
+        const existingAlarmsJson = await AsyncStorage.getItem('alarms');
+        if (existingAlarmsJson) {
+          const alarms = JSON.parse(existingAlarmsJson);
+          
+          // Find and update the specific alarm
+          if (alarms[alarmId]) {
+            // Make sure we update the mission settings correctly
+            if (!alarms[alarmId].mission) {
+              alarms[alarmId].mission = {
+                name: 'Typing',
+                icon: 'keyboard',
+                id: `mission_${Date.now()}`,
+                settings: {}
+              };
+            }
+            
+            // Ensure mission is set correctly
+            alarms[alarmId].mission.name = 'Typing';
+            alarms[alarmId].mission.icon = 'keyboard';
+            
+            // Update settings
+            alarms[alarmId].mission.settings = {
+              type: 'Typing',
+              phrase: selectedPhrase,
+              times: selectedTimes,
+              timeLimit: timeLimit,
+              caseSensitive: caseSensitive
+            };
+            
+            // Save the updated alarms object
+            await AsyncStorage.setItem('alarms', JSON.stringify(alarms));
+            console.log(`Updated alarm ${alarmId} with typing mission settings:`, alarms[alarmId].mission);
+          } else {
+            console.warn(`Alarm ${alarmId} not found in stored alarms`);
+          }
+        } else {
+          console.warn('No alarms found in storage');
+        }
+        
+        // Also save to a dedicated key for this specific alarm
+        const alarmSpecificKey = `alarm_${alarmId}_typingSettings`;
+        await AsyncStorage.setItem(alarmSpecificKey, JSON.stringify(typingMission));
+        console.log(`Saved typing settings to dedicated key: ${alarmSpecificKey}`);
+      }
+      
+      // Verify what was saved
+      const savedType = await AsyncStorage.getItem('selectedMissionType');
+      const savedSettings = await AsyncStorage.getItem('selectedMissionSettings');
+      const savedPhrase = await AsyncStorage.getItem('selectedTypingPhrase');
+      const savedTimes = await AsyncStorage.getItem('selectedTypingTimes');
+      
+      console.log('Typing mission verified saved data:', {
+        missionType: savedType,
+        missionSettings: savedSettings ? JSON.parse(savedSettings) : null,
+        phrase: savedPhrase,
+        times: savedTimes
+      });
 
-      // Navigate back with simple params
+      // Navigate back with comprehensive params
       router.push({
         pathname: '/new-alarm',
         params: { 
           missionComplete: 'true',
-          missionType: 'Typing'
+          missionType: 'Typing',
+          phrase: selectedPhrase,
+          times: selectedTimes.toString(),
+          alarmId: params.alarmId || '',
+          editMode: params.editMode || 'false'
         }
       });
     } catch (error) {
       console.error('Error saving mission:', error);
+      Alert.alert('Error', 'There was a problem saving your mission settings.');
     }
   };
 
-  const handleSaveMission = async () => {
-    try {
-      const missionData = {
-        type: 'Typing',
-        phrase: selectedPhrase,
-        timeLimit: timeLimit,
-        caseSensitive: caseSensitive,
-      };
-
-      // Save to AsyncStorage
-      await AsyncStorage.setItem('missionData', JSON.stringify(missionData));
-      console.log('Typing mission saved:', missionData);
-
-      // Navigate back
-      router.back();
-    } catch (error) {
-      console.error('Error saving typing mission:', error);
-    }
-  };
-
+  // Modified handleDeletePhrase to allow deletion of any phrase
   const handleDeletePhrase = async (phraseToDelete: string) => {
     Alert.alert(
       'Delete Phrase',
@@ -148,10 +257,12 @@ export default function TypingMissionScreen() {
           style: 'destructive',
           onPress: async () => {
             try {
+              // Remove from custom phrases
               const updatedPhrases = customPhrases.filter(p => p !== phraseToDelete);
               await AsyncStorage.setItem('customTypingPhrases', JSON.stringify(updatedPhrases));
               setCustomPhrases(updatedPhrases);
               
+              // If the deleted phrase was selected, clear the selection
               if (selectedPhrase === phraseToDelete) {
                 setSelectedPhrase('');
               }
@@ -195,31 +306,35 @@ export default function TypingMissionScreen() {
         )}
 
         <View style={styles.phrasesContainer}>
-          {[...DEFAULT_PHRASES, ...customPhrases].map((phrase, index) => (
-            <View key={index} style={styles.phraseRow}>
-              <TouchableOpacity
-                style={[
-                  styles.phraseButton,
-                  selectedPhrase === phrase && styles.selectedPhraseButton
-                ]}
-                onPress={() => setSelectedPhrase(phrase)}
-              >
-                <Text style={[
-                  styles.phraseText,
-                  selectedPhrase === phrase && styles.selectedPhraseText
-                ]}>
-                  {phrase}
-                </Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDeletePhrase(phrase)}
-              >
-                <Ionicons name="trash-outline" size={24} color="#FF453A" />
-              </TouchableOpacity>
-            </View>
-          ))}
+          {customPhrases.length === 0 ? (
+            <Text style={styles.emptyMessage}>No phrases yet. Add one above!</Text>
+          ) : (
+            customPhrases.map((phrase, index) => (
+              <View key={index} style={styles.phraseRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.phraseButton,
+                    selectedPhrase === phrase && styles.selectedPhraseButton
+                  ]}
+                  onPress={() => setSelectedPhrase(phrase)}
+                >
+                  <Text style={[
+                    styles.phraseText,
+                    selectedPhrase === phrase && styles.selectedPhraseText
+                  ]}>
+                    {phrase}
+                  </Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeletePhrase(phrase)}
+                >
+                  <Ionicons name="trash-outline" size={24} color="#FF453A" />
+                </TouchableOpacity>
+              </View>
+            ))
+          )}
         </View>
       </ScrollView>
 
@@ -356,5 +471,11 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 10,
+  },
+  emptyMessage: {
+    color: '#666',
+    textAlign: 'center',
+    marginTop: 20,
+    fontSize: 16,
   },
 }); 

@@ -237,6 +237,10 @@ export const scheduleAlarmNotification = async (alarm: any) => {
     const formattedSoundName = `${soundName.toLowerCase()}.caf`;
     console.log('Formatted sound name:', formattedSoundName);
     
+    // When using days in scheduling
+    const days = alarm.days || [];
+    // Then use days for scheduling
+    
     // Schedule using timeInterval trigger for more reliable alarms
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
