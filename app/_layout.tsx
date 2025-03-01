@@ -3,7 +3,7 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerBackgroundTask } from './background-task';
 import { requestNotificationPermissions } from './notifications';
 import { AppState, AppStateStatus } from 'react-native';
+import * as Notifications from 'expo-notifications';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
@@ -21,13 +22,15 @@ SplashScreen.preventAutoHideAsync();
 // Global flag to track if alarm is active
 let isAlarmActive = false;
 
-export default function RootLayout() {
+export default function AppLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
   const timerRef = useRef<NodeJS.Timeout>();
+  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (loaded) {
@@ -85,6 +88,15 @@ export default function RootLayout() {
     requestNotificationPermissions();
     registerBackgroundTask();
 
+    // Setup notifications
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
     return () => {
       subscription.remove();
     };
@@ -120,7 +132,32 @@ export default function RootLayout() {
     checkPendingAlarm();
   }, []);
 
-  if (!loaded) {
+  useEffect(() => {
+    const checkFirstLaunch = async () => {
+      try {
+        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        
+        // If quiz is completed or user is premium, go to main app
+        // Otherwise, show the quiz
+        if (quizCompleted === 'true' || isPremium === 'true') {
+          setInitialRoute('(tabs)');
+        } else {
+          setInitialRoute('quiz');
+        }
+        
+        setLoading(false);
+      } catch (error) {
+        console.error('Error checking first launch:', error);
+        setInitialRoute('(tabs)'); // Default to main app on error
+        setLoading(false);
+      }
+    };
+    
+    checkFirstLaunch();
+  }, []);
+
+  if (!loaded || loading) {
     return null;
   }
 
@@ -171,6 +208,13 @@ export default function RootLayout() {
           <Stack.Screen name="mission/photo" options={{ title: 'Photo' }} />
           <Stack.Screen name="mission/photo-scanner" options={{ headerShown: false }} />
           <Stack.Screen name="mission/photo-preview" options={{ headerShown: false }} />
+          <Stack.Screen name="quiz/index" options={{ headerShown: false }} />
+          <Stack.Screen name="quiz/question1" options={{ headerShown: false }} />
+          <Stack.Screen name="quiz/question2" options={{ headerShown: false }} />
+          <Stack.Screen name="quiz/question3" options={{ headerShown: false }} />
+          <Stack.Screen name="quiz/question4" options={{ headerShown: false }} />
+          <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
+          <Stack.Screen name="quiz/payment" options={{ headerShown: false }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

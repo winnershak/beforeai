@@ -46,7 +46,20 @@
           ]
         }
       ],
-      "react-native-vision-camera"
+      "react-native-vision-camera",
+      [
+        "expo-background-fetch",
+        {
+          "startOnBoot": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#ffffff"
+        }
+      ]
     ],
     "android": {
       "package": "com.yourusername.alarmyclone"
