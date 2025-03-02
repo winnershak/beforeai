@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration } from 'react-native';
-import { useLocalSearchParams, router } from 'expo-router';
+import { useLocalSearchParams, router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
-import { scheduleAlarmNotification, stopAlarmSound } from './notifications';
+import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, resetAlarmState } from './notifications';
+import * as Notifications from 'expo-notifications';
+import soundAssets from './sounds';
 
 // Add this type definition at the top of your file
 interface Alarm {
@@ -33,6 +35,7 @@ export default function AlarmRingScreen() {
   const [snoozeCount, setSnoozeCount] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const hasInitialized = useRef(false);
+  const hasMissionStarted = useRef(false);
   const [missionFailed, setMissionFailed] = useState(false);
   const [snoozeEnabled, setSnoozeEnabled] = useState(true);
   const [snoozeDuration, setSnoozeDuration] = useState(5); // Default 5 minutes
@@ -49,10 +52,23 @@ export default function AlarmRingScreen() {
     if (hasInitialized.current) return;
     hasInitialized.current = true;
     
+    // Cancel all scheduled notifications since we're now showing the alarm screen
+    Notifications.cancelAllScheduledNotificationsAsync().then(() => {
+      console.log('Cancelled all scheduled notifications when alarm screen opened');
+    }).catch(error => {
+      console.error('Error cancelling notifications:', error);
+    });
+    
     let soundInstance: Audio.Sound | null = null;
     
     const playSound = async () => {
       try {
+        // Check if sound should be disabled (for testing)
+        if (params.disableSound === 'true') {
+          console.log('Sound disabled per request');
+          return;
+        }
+        
         console.log('Loading sound with params:', params);
         
         // Instead, initialize with null and only set when a valid sound is found
@@ -272,13 +288,42 @@ export default function AlarmRingScreen() {
 
   const handleStopAlarm = async () => {
     try {
-      await stopSound();
+      // Stop the sound
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }
+      
+      // Stop vibration
+      Vibration.cancel();
+      
+      // Cancel all scheduled notifications
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log('Cancelled all scheduled notifications');
+      
+      // Reset alarm state
+      resetAlarmState();
+      
+      // Update the alarm if it's a one-time alarm
+      if (params.isOneTimeAlarm === 'true') {
+        const alarmsJson = await AsyncStorage.getItem('alarms');
+        if (alarmsJson) {
+          const alarms = JSON.parse(alarmsJson);
+          const updatedAlarms = alarms.map((alarm: Alarm) => {
+            if (alarm.id === params.alarmId) {
+              return { ...alarm, enabled: false };
+            }
+            return alarm;
+          });
+          await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+        }
+      }
+      
+      // Navigate back
+      router.back();
     } catch (error) {
-      console.log('Error stopping alarm (continuing anyway):', error);
+      console.error('Error stopping alarm:', error);
     }
-    
-    // Navigate regardless of sound stop success
-    router.replace('/');
   };
 
   const handleSnooze = async () => {
@@ -370,13 +415,23 @@ export default function AlarmRingScreen() {
 
   const handleStartMission = async () => {
     try {
+      // Prevent multiple mission starts
+      if (hasMissionStarted.current) {
+        console.log('Mission already started, ignoring duplicate request');
+        return;
+      }
+      
+      hasMissionStarted.current = true;
+      
       if (!currentAlarm) {
         console.error('No current alarm found');
+        hasMissionStarted.current = false;
         return;
       }
       
       if (!currentAlarm.mission) {
         console.error('No mission found in alarm');
+        hasMissionStarted.current = false;
         return;
       }
       
@@ -385,6 +440,11 @@ export default function AlarmRingScreen() {
       
       // Stop the sound before navigating to mission screen
       await stopSound();
+      
+      // Cancel all scheduled notifications since we're now showing the mission screen
+      await Notifications.cancelAllScheduledNotificationsAsync().catch(error => {
+        console.error('Error cancelling notifications:', error);
+      });
       
       // Extract mission type
       let missionType = '';
@@ -404,16 +464,224 @@ export default function AlarmRingScreen() {
       // Convert to lowercase for comparison
       const missionTypeLower = missionType.toLowerCase();
       
-      // Handle each mission type based on what the mission screens expect
-      switch (missionTypeLower) {
-        case 'math':
-          // Load the saved math settings from AsyncStorage
-          const mathSettingsJson = await AsyncStorage.getItem('mathSettings');
-          console.log('Raw math settings JSON:', mathSettingsJson);
-          
-          if (!mathSettingsJson) {
-            console.log('No math settings found, using defaults');
-            router.push({
+      // Navigate to mission screen with a slight delay to ensure clean navigation
+      setTimeout(() => {
+        // Handle each mission type based on what the mission screens expect
+        switch (missionTypeLower) {
+          case 'math':
+            // Load the saved math settings from AsyncStorage
+            AsyncStorage.getItem('mathSettings').then(mathSettingsJson => {
+              console.log('Raw math settings JSON:', mathSettingsJson);
+              
+              if (!mathSettingsJson) {
+                console.log('No math settings found, using defaults');
+                router.replace({
+                  pathname: '/final-math',
+                  params: {
+                    alarmId: currentAlarm.id,
+                    difficulty: 'medium',
+                    times: '1',
+                    timeLimit: '30',
+                    sound: currentAlarm.sound,
+                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                  }
+                });
+                return;
+              }
+              
+              // Parse the settings
+              const mathSettings = JSON.parse(mathSettingsJson);
+              console.log('Parsed math settings:', mathSettings);
+              
+              // Extract the raw values directly without interpretation
+              const rawDifficulty = mathSettings.difficulty || 'medium';
+              const rawTimes = mathSettings.times || '1';
+              const rawTimeLimit = mathSettings.timeLimit || '30';
+              
+              console.log('Math mission with raw settings:', { 
+                difficulty: rawDifficulty, 
+                times: rawTimes, 
+                timeLimit: rawTimeLimit 
+              });
+              
+              // Pass the raw values to final-math.tsx
+              router.replace({
+                pathname: '/final-math',
+                params: {
+                  alarmId: currentAlarm.id,
+                  difficulty: rawDifficulty.toString(),
+                  times: rawTimes.toString(),
+                  timeLimit: rawTimeLimit.toString(),
+                  sound: currentAlarm.sound,
+                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                }
+              });
+            }).catch(error => {
+              console.error('Error loading math settings:', error);
+              hasMissionStarted.current = false;
+            });
+            break;
+            
+          case 'typing':
+            // Load the saved typing settings from AsyncStorage
+            AsyncStorage.getItem('typingSettings').then(typingSettingsJson => {
+              console.log('Raw typing settings JSON:', typingSettingsJson);
+              
+              if (!typingSettingsJson) {
+                console.log('No typing settings found, using defaults');
+                router.replace({
+                  pathname: '/final-typing',
+                  params: {
+                    alarmId: currentAlarm.id,
+                    text: 'The quick brown fox jumps over the lazy dog',
+                    caseSensitive: 'false',
+                    timeLimit: '30',
+                    sound: currentAlarm.sound,
+                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                  }
+                });
+                return;
+              }
+              
+              // Parse the settings
+              const typingSettings = JSON.parse(typingSettingsJson);
+              console.log('Parsed typing settings:', typingSettings);
+              
+              // Extract the raw values directly without interpretation
+              const rawPhrase = typingSettings.phrase || 'The quick brown fox jumps over the lazy dog';
+              const rawCaseSensitive = typingSettings.caseSensitive !== undefined ? 
+                                      typingSettings.caseSensitive.toString() : 'false';
+              const rawTypingTimeLimit = typingSettings.timeLimit || '30';
+              
+              console.log('Typing mission with raw settings:', { 
+                phrase: rawPhrase, 
+                caseSensitive: rawCaseSensitive, 
+                timeLimit: rawTypingTimeLimit 
+              });
+              
+              // Pass the raw values to final-typing.tsx
+              router.replace({
+                pathname: '/final-typing',
+                params: {
+                  alarmId: currentAlarm.id,
+                  text: rawPhrase,
+                  caseSensitive: rawCaseSensitive,
+                  timeLimit: rawTypingTimeLimit.toString(),
+                  sound: currentAlarm.sound,
+                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                }
+              });
+            }).catch(error => {
+              console.error('Error loading typing settings:', error);
+              hasMissionStarted.current = false;
+            });
+            break;
+            
+          case 'qr':
+          case 'qr/barcode':
+            // Load the saved QR settings from AsyncStorage
+            AsyncStorage.getItem('qrSettings').then(qrSettingsJson => {
+              console.log('Raw QR settings JSON:', qrSettingsJson);
+              
+              if (!qrSettingsJson) {
+                console.log('No QR settings found, using defaults');
+                router.replace({
+                  pathname: '/final-qr',
+                  params: {
+                    alarmId: currentAlarm.id,
+                    targetCode: '',
+                    timeLimit: '30',
+                    sound: currentAlarm.sound,
+                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                  }
+                });
+                return;
+              }
+              
+              // Parse the settings
+              const qrSettings = JSON.parse(qrSettingsJson);
+              console.log('Parsed QR settings:', qrSettings);
+              
+              // Extract the raw values directly without interpretation
+              const rawTargetCode = qrSettings.targetCode || '';
+              const rawQrTimeLimit = qrSettings.timeLimit || '30';
+              
+              console.log('QR mission with raw settings:', { 
+                targetCode: rawTargetCode, 
+                timeLimit: rawQrTimeLimit 
+              });
+              
+              // Pass the raw values to final-qr.tsx
+              router.replace({
+                pathname: '/final-qr',
+                params: {
+                  alarmId: currentAlarm.id,
+                  targetCode: rawTargetCode,
+                  timeLimit: rawQrTimeLimit.toString(),
+                  sound: currentAlarm.sound,
+                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                }
+              });
+            }).catch(error => {
+              console.error('Error loading QR settings:', error);
+              hasMissionStarted.current = false;
+            });
+            break;
+            
+          case 'photo':
+            // Load the saved photo settings from AsyncStorage
+            AsyncStorage.getItem('photoSettings').then(photoSettingsJson => {
+              console.log('Raw photo settings JSON:', photoSettingsJson);
+              
+              if (!photoSettingsJson) {
+                console.log('No photo settings found, using defaults');
+                router.replace({
+                  pathname: '/final-photo',
+                  params: {
+                    alarmId: currentAlarm.id,
+                    targetPhoto: '',
+                    timeLimit: '30',
+                    sound: currentAlarm.sound,
+                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                  }
+                });
+                return;
+              }
+              
+              // Parse the settings
+              const photoSettings = JSON.parse(photoSettingsJson);
+              console.log('Parsed photo settings:', photoSettings);
+              
+              // Extract the raw values directly without interpretation
+              const rawPhotoUri = photoSettings.photo || '';
+              const rawPhotoTimeLimit = photoSettings.timeLimit || '30';
+              
+              console.log('Photo mission with raw settings:', { 
+                photoUri: rawPhotoUri, 
+                timeLimit: rawPhotoTimeLimit 
+              });
+              
+              // Pass the raw values to final-photo.tsx
+              router.replace({
+                pathname: '/final-photo',
+                params: {
+                  alarmId: currentAlarm.id,
+                  targetPhoto: rawPhotoUri,
+                  timeLimit: rawPhotoTimeLimit.toString(),
+                  sound: currentAlarm.sound,
+                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                }
+              });
+            }).catch(error => {
+              console.error('Error loading photo settings:', error);
+              hasMissionStarted.current = false;
+            });
+            break;
+            
+          default:
+            console.error('Unknown mission type:', missionType);
+            // Default to math mission
+            router.replace({
               pathname: '/final-math',
               params: {
                 alarmId: currentAlarm.id,
@@ -424,275 +692,96 @@ export default function AlarmRingScreen() {
                 soundVolume: currentAlarm.soundVolume?.toString() || '1'
               }
             });
-            return;
-          }
-          
-          // Parse the settings
-          const mathSettings = JSON.parse(mathSettingsJson);
-          console.log('Parsed math settings:', mathSettings);
-          
-          // Extract the raw values directly without interpretation
-          // final-math.tsx will interpret these values itself
-          const rawDifficulty = mathSettings.difficulty || 'medium';
-          const rawTimes = mathSettings.times || '1';
-          const rawTimeLimit = mathSettings.timeLimit || '30';
-          
-          console.log('Math mission with raw settings:', { 
-            difficulty: rawDifficulty, 
-            times: rawTimes, 
-            timeLimit: rawTimeLimit 
-          });
-          
-          // Pass the raw values to final-math.tsx
-          router.push({
-            pathname: '/final-math',
-            params: {
-              alarmId: currentAlarm.id,
-              difficulty: rawDifficulty.toString(),
-              times: rawTimes.toString(),
-              timeLimit: rawTimeLimit.toString(),
-              sound: currentAlarm.sound,
-              soundVolume: currentAlarm.soundVolume?.toString() || '1'
-            }
-          });
-          break;
-          
-        case 'typing':
-          // Load the saved typing settings from AsyncStorage
-          const typingSettingsJson = await AsyncStorage.getItem('typingSettings');
-          console.log('Raw typing settings JSON:', typingSettingsJson);
-          
-          if (!typingSettingsJson) {
-            console.log('No typing settings found, using defaults');
-            router.push({
-              pathname: '/final-typing',
-              params: {
-                alarmId: currentAlarm.id,
-                text: 'The quick brown fox jumps over the lazy dog',
-                caseSensitive: 'false',
-                timeLimit: '30',
-                sound: currentAlarm.sound,
-                soundVolume: currentAlarm.soundVolume?.toString() || '1'
-              }
-            });
-            return;
-          }
-          
-          // Parse the settings
-          const typingSettings = JSON.parse(typingSettingsJson);
-          console.log('Parsed typing settings:', typingSettings);
-          
-          // Extract the raw values directly without interpretation
-          const rawPhrase = typingSettings.phrase || 'The quick brown fox jumps over the lazy dog';
-          const rawCaseSensitive = typingSettings.caseSensitive !== undefined ? 
-                                  typingSettings.caseSensitive.toString() : 'false';
-          const rawTypingTimeLimit = typingSettings.timeLimit || '30';
-          
-          console.log('Typing mission with raw settings:', { 
-            phrase: rawPhrase, 
-            caseSensitive: rawCaseSensitive, 
-            timeLimit: rawTypingTimeLimit 
-          });
-          
-          // Pass the raw values to final-typing.tsx
-          router.push({
-            pathname: '/final-typing',
-            params: {
-              alarmId: currentAlarm.id,
-              text: rawPhrase,
-              caseSensitive: rawCaseSensitive,
-              timeLimit: rawTypingTimeLimit.toString(),
-              sound: currentAlarm.sound,
-              soundVolume: currentAlarm.soundVolume?.toString() || '1'
-            }
-          });
-          break;
-          
-        case 'qr':
-        case 'qr/barcode':
-          // Load the saved QR settings from AsyncStorage
-          const qrSettingsJson = await AsyncStorage.getItem('qrSettings');
-          console.log('Raw QR settings JSON:', qrSettingsJson);
-          
-          if (!qrSettingsJson) {
-            console.log('No QR settings found, using defaults');
-            router.push({
-              pathname: '/final-qr',
-              params: {
-                alarmId: currentAlarm.id,
-                targetCode: '',
-                timeLimit: '30',
-                sound: currentAlarm.sound,
-                soundVolume: currentAlarm.soundVolume?.toString() || '1'
-              }
-            });
-            return;
-          }
-          
-          // Parse the settings
-          const qrSettings = JSON.parse(qrSettingsJson);
-          console.log('Parsed QR settings:', qrSettings);
-          
-          // Extract the raw values directly without interpretation
-          const rawTargetCode = qrSettings.targetCode || '';
-          const rawQrTimeLimit = qrSettings.timeLimit || '30';
-          
-          console.log('QR mission with raw settings:', { 
-            targetCode: rawTargetCode, 
-            timeLimit: rawQrTimeLimit 
-          });
-          
-          // Pass the raw values to final-qr.tsx
-          router.push({
-            pathname: '/final-qr',
-            params: {
-              alarmId: currentAlarm.id,
-              targetCode: rawTargetCode,
-              timeLimit: rawQrTimeLimit.toString(),
-              sound: currentAlarm.sound,
-              soundVolume: currentAlarm.soundVolume?.toString() || '1'
-            }
-          });
-          break;
-          
-        case 'photo':
-          // Load the saved photo settings from AsyncStorage
-          const photoSettingsJson = await AsyncStorage.getItem('photoSettings');
-          console.log('Raw photo settings JSON:', photoSettingsJson);
-          
-          if (!photoSettingsJson) {
-            console.log('No photo settings found, using defaults');
-            router.push({
-              pathname: '/final-photo',
-              params: {
-                alarmId: currentAlarm.id,
-                targetPhoto: '',
-                timeLimit: '30',
-                sound: currentAlarm.sound,
-                soundVolume: currentAlarm.soundVolume?.toString() || '1'
-              }
-            });
-            return;
-          }
-          
-          // Parse the settings
-          const photoSettings = JSON.parse(photoSettingsJson);
-          console.log('Parsed photo settings:', photoSettings);
-          
-          // Extract the raw values directly without interpretation
-          const rawPhotoUri = photoSettings.photo || '';
-          const rawPhotoTimeLimit = photoSettings.timeLimit || '30';
-          
-          console.log('Photo mission with raw settings:', { 
-            photoUri: rawPhotoUri, 
-            timeLimit: rawPhotoTimeLimit 
-          });
-          
-          // Pass the raw values to final-photo.tsx
-          router.push({
-            pathname: '/final-photo',
-            params: {
-              alarmId: currentAlarm.id,
-              targetPhoto: rawPhotoUri,
-              timeLimit: rawPhotoTimeLimit.toString(),
-              sound: currentAlarm.sound,
-              soundVolume: currentAlarm.soundVolume?.toString() || '1'
-            }
-          });
-          break;
-          
-        default:
-          console.error('Unknown mission type:', missionType);
-          // Default to math mission
-          router.push({
-            pathname: '/final-math',
-            params: {
-              alarmId: currentAlarm.id,
-              difficulty: 'medium',
-              times: '1',
-              timeLimit: '30',
-              sound: currentAlarm.sound,
-              soundVolume: currentAlarm.soundVolume?.toString() || '1'
-            }
-          });
-          break;
-      }
+            break;
+        }
+      }, 100);
     } catch (error) {
       console.error('Error starting mission:', error);
+      hasMissionStarted.current = false;
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>Wake Up!</Text>
-        <Text style={styles.subtitle}>
-          {currentAlarm?.label || "It's time to rise and shine"}
-        </Text>
-        
-        <View style={styles.buttonContainer}>
-          {missionFailed ? (
-            // Show these buttons when returning from a failed mission
-            <>
-              {currentAlarm?.mission && (
-                <TouchableOpacity 
-                  style={[styles.button, styles.retryButton]} 
-                  onPress={handleStartMission}
-                >
-                  <Text style={styles.buttonText}>Retry Mission</Text>
-                </TouchableOpacity>
-              )}
-              
-              {snoozeEnabled && snoozeRemaining > 0 && (
-                <TouchableOpacity 
-                  style={[styles.button, styles.snoozeButton]} 
-                  onPress={handleSnooze}
-                >
-                  <Text style={styles.buttonText}>Snooze</Text>
-                </TouchableOpacity>
-              )}
-              
-              {!currentAlarm?.mission && (
-                <TouchableOpacity 
-                  style={[styles.button, styles.stopButton]} 
-                  onPress={handleStopAlarm}
-                >
-                  <Text style={styles.buttonText}>Stop Alarm</Text>
-                </TouchableOpacity>
-              )}
-            </>
-          ) : (
-            // Show the regular buttons when alarm first rings
-            <>
-              {currentAlarm?.mission ? (
-                <TouchableOpacity 
-                  style={[styles.button, styles.missionButton]} 
-                  onPress={handleStartMission}
-                >
-                  <Text style={styles.buttonText}>Start Mission</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity 
-                  style={[styles.button, styles.stopButton]} 
-                  onPress={handleStopAlarm}
-                >
-                  <Text style={styles.buttonText}>Stop Alarm</Text>
-                </TouchableOpacity>
-              )}
-              
-              {snoozeEnabled && snoozeRemaining > 0 && (
-                <TouchableOpacity 
-                  style={[styles.button, styles.snoozeButton]} 
-                  onPress={handleSnooze}
-                >
-                  <Text style={styles.buttonText}>Snooze</Text>
-                </TouchableOpacity>
-              )}
-            </>
-          )}
+    <>
+      <Stack.Screen 
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: 'fade'
+        }} 
+      />
+      
+      <SafeAreaView style={styles.container}>
+        <View style={styles.content}>
+          <Text style={styles.title}>Wake Up!</Text>
+          <Text style={styles.subtitle}>
+            {currentAlarm?.label || "It's time to rise and shine"}
+          </Text>
+          
+          <View style={styles.buttonContainer}>
+            {missionFailed ? (
+              // Show these buttons when returning from a failed mission
+              <>
+                {currentAlarm?.mission && (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.retryButton]} 
+                    onPress={handleStartMission}
+                  >
+                    <Text style={styles.buttonText}>Retry Mission</Text>
+                  </TouchableOpacity>
+                )}
+                
+                {snoozeEnabled && snoozeRemaining > 0 && (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.snoozeButton]} 
+                    onPress={handleSnooze}
+                  >
+                    <Text style={styles.buttonText}>Snooze</Text>
+                  </TouchableOpacity>
+                )}
+                
+                {!currentAlarm?.mission && (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.stopButton]} 
+                    onPress={handleStopAlarm}
+                  >
+                    <Text style={styles.buttonText}>Stop Alarm</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            ) : (
+              // Show the regular buttons when alarm first rings
+              <>
+                {currentAlarm?.mission ? (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.missionButton]} 
+                    onPress={handleStartMission}
+                  >
+                    <Text style={styles.buttonText}>Start Mission</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.stopButton]} 
+                    onPress={handleStopAlarm}
+                  >
+                    <Text style={styles.buttonText}>Stop Alarm</Text>
+                  </TouchableOpacity>
+                )}
+                
+                {snoozeEnabled && snoozeRemaining > 0 && (
+                  <TouchableOpacity 
+                    style={[styles.button, styles.snoozeButton]} 
+                    onPress={handleSnooze}
+                  >
+                    <Text style={styles.buttonText}>Snooze</Text>
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 }
 

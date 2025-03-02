@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Dimensions, ScrollView } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,8 +22,8 @@ export default function QuizResults() {
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={styles.container}>
-        <SafeAreaView style={styles.safeArea}>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.content}>
             <Text style={styles.title}>Analysis complete</Text>
             
@@ -31,11 +31,14 @@ export default function QuizResults() {
               We've got some news to break to you...
             </Text>
             
-            {/* Using standard Image component */}
-            <Image 
-              source={{uri: scoreImageUri}}
-              style={[styles.scoreImage, {resizeMode: 'contain'}]}
-            />
+            {/* Using standard Image component with adjusted size */}
+            <View style={styles.scoreImageContainer}>
+              <Image 
+                source={{uri: scoreImageUri}}
+                style={styles.scoreImage}
+                resizeMode="contain"
+              />
+            </View>
             
             <View style={styles.resultBox}>
               <Text style={styles.resultHighlight}>
@@ -47,20 +50,21 @@ export default function QuizResults() {
               *This result is an indication only, not a medical diagnosis. For a definitive assessment, please contact your healthcare provider.
             </Text>
           </View>
-          
-          <View style={styles.footer}>
-            <TouchableOpacity 
-              style={styles.button} 
-              onPress={navigateToSymptoms}
-            >
-              <Text style={styles.buttonText}>Check your symptoms</Text>
-              <View style={styles.buttonIconContainer}>
-                <Ionicons name="arrow-forward" size={18} color="#fff" />
-              </View>
-            </TouchableOpacity>
-          </View>
+        </ScrollView>
+        
+        {/* Sticky button at the bottom */}
+        <SafeAreaView style={styles.buttonContainer} edges={['bottom']}>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={navigateToSymptoms}
+          >
+            <Text style={styles.buttonText}>Check your symptoms</Text>
+            <View style={styles.buttonIconContainer}>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </View>
+          </TouchableOpacity>
         </SafeAreaView>
-      </View>
+      </SafeAreaView>
     </>
   );
 }
@@ -70,9 +74,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  safeArea: {
-    flex: 1,
-    justifyContent: 'space-between',
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 90, // Reduced padding to account for the button
   },
   content: {
     flex: 1,
@@ -81,10 +85,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: {
-    fontSize: 32,
+    fontSize: 28, // Slightly smaller
     fontWeight: 'bold',
     color: '#fff',
-    marginBottom: 20,
+    marginBottom: 15, // Reduced margin
     textAlign: 'center',
     textShadowColor: 'rgba(0, 0, 0, 0.75)',
     textShadowOffset: { width: 1, height: 1 },
@@ -93,46 +97,59 @@ const styles = StyleSheet.create({
   resultText: {
     fontSize: 18,
     color: '#fff',
-    marginBottom: 20,
+    marginBottom: 15, // Reduced margin
     textAlign: 'center',
     fontWeight: '300',
   },
+  scoreImageContainer: {
+    width: width * 0.85, // 85% of screen width (reduced from 90%)
+    height: height * 0.35, // 35% of screen height (reduced from 50%)
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 15, // Reduced margin
+  },
   scoreImage: {
-    width: width * 0.7,
-    height: width * 0.4,
-    marginBottom: 20,
+    width: '100%',
+    height: '100%',
   },
   resultBox: {
     backgroundColor: 'rgba(255, 59, 48, 0.2)', // Red tint for warning
     borderWidth: 1,
     borderColor: 'rgba(255, 59, 48, 0.5)',
     borderRadius: 15,
-    padding: 20,
-    marginVertical: 20,
+    padding: 18, // Slightly reduced padding
+    marginVertical: 15, // Reduced margin
     width: '100%',
   },
   resultHighlight: {
-    fontSize: 22,
+    fontSize: 20, // Slightly smaller
     fontWeight: 'bold',
     color: '#fff',
     textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: 28,
   },
   disclaimer: {
     fontSize: 12,
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 15, // Reduced margin
     fontStyle: 'italic',
     lineHeight: 18,
   },
-  footer: {
-    padding: 25,
-    alignItems: 'center',
+  buttonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    paddingHorizontal: 25,
+    paddingTop: 12, // Slightly reduced padding
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   button: {
     backgroundColor: 'rgba(10, 132, 255, 0.9)',
-    paddingVertical: 16,
+    paddingVertical: 15, // Slightly reduced padding
     paddingHorizontal: 24,
     borderRadius: 30,
     width: '100%',
@@ -149,6 +166,7 @@ const styles = StyleSheet.create({
     elevation: 8,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+    marginBottom: 10,
   },
   buttonText: {
     color: '#fff',

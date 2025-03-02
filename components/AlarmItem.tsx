@@ -16,13 +16,14 @@ interface AlarmItemProps {
     volume: number;
     vibration: boolean;
   };
+  formattedDays: string;
   onToggle: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
   onEdit: () => void;
 }
 
-export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemProps) {
+export function AlarmItem({ alarm, formattedDays, onToggle, onDelete, onDuplicate, onEdit }: AlarmItemProps) {
   const [showOptions, setShowOptions] = useState(false);
 
   useEffect(() => {
@@ -32,6 +33,21 @@ export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemP
   useEffect(() => {
     console.log('Mission in render:', alarm.mission);
   }, [alarm.mission]);
+
+  // Days of the week for display - in Monday to Sunday order
+  const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+  
+  // Convert days from strings to numbers, handling both formats (0-6 and 1-7)
+  const selectedDays = alarm.days.map(day => {
+    const dayNum = parseInt(day, 10);
+    // If using JavaScript day format (0=Sunday), convert to our format (7=Sunday)
+    if (dayNum === 0) return 7;
+    return dayNum;
+  });
+
+  // Log the days to help with debugging
+  console.log('AlarmItem - alarm.days:', alarm.days);
+  console.log('AlarmItem - selectedDays after conversion:', selectedDays);
 
   const renderRightActions = (progress: any, dragX: any) => {
     const trans = dragX.interpolate({
@@ -73,21 +89,25 @@ export function AlarmItem({ alarm, onToggle, onDelete, onDuplicate }: AlarmItemP
           }}
           asChild
         >
-          <TouchableOpacity style={styles.mainContent}>
+          <TouchableOpacity style={styles.mainContent} onPress={onEdit}>
             <View style={styles.timeContainer}>
               <Text style={styles.time}>{alarm.time}</Text>
               <View style={styles.daysContainer}>
-                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, index) => (
-                  <Text
-                    key={index}
-                    style={[
-                      styles.day,
-                      alarm.days.includes(day) && styles.selectedDay
-                    ]}
-                  >
-                    {day}
-                  </Text>
-                ))}
+                {daysOfWeek.map((day, index) => {
+                  // index is 0-6, but our days are 1-7 (Monday to Sunday)
+                  const dayNumber = index + 1;
+                  return (
+                    <Text
+                      key={index}
+                      style={[
+                        styles.day,
+                        selectedDays.includes(dayNumber) && styles.selectedDay
+                      ]}
+                    >
+                      {day}
+                    </Text>
+                  );
+                })}
               </View>
               <View style={styles.infoContainer}>
                 {alarm.label && (

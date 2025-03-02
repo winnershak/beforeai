@@ -34,6 +34,14 @@ interface Alarm {
   };
 }
 
+// Add this helper function at the top of your file (outside the component)
+const getDayNumber = (day: string): string => {
+  // Convert day to string if it's not already
+  const dayStr = day.toString();
+  // Return the day as is - we're using 1-7 where 1=Monday, 7=Sunday
+  return dayStr;
+};
+
 export default function NewAlarmScreen() {
   const params = useLocalSearchParams();
   console.log('NewAlarm: Initial params:', params);
@@ -60,7 +68,7 @@ export default function NewAlarmScreen() {
     }
     return new Date();
   });
-  const [selectedDays, setSelectedDays] = useState<number[]>([]);
+  const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedMission, setSelectedMission] = useState('gmmmmmm');
   const [volume, setVolume] = useState(0.5);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
@@ -76,6 +84,7 @@ export default function NewAlarmScreen() {
   const [snoozeInterval, setSnoozeInterval] = useState(5); // in minutes
   const [missionSettings, setMissionSettings] = useState<any>(null);
   const [isUnlimitedSnoozes, setIsUnlimitedSnoozes] = useState(false);
+  const [hasMission, setHasMission] = useState(false);
 
   const days = [
     { label: 'S', value: 0 },
@@ -149,6 +158,7 @@ export default function NewAlarmScreen() {
       console.log('NewAlarm: Starting save process');
       console.log('NewAlarm: isEditing:', isEditing, 'currentAlarmId:', currentAlarmId);
       console.log('NewAlarm: missionType:', missionType);
+      console.log('NewAlarm: selectedDays:', selectedDays);
       
       const alarmsJson = await AsyncStorage.getItem('alarms');
       let alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
@@ -274,11 +284,15 @@ export default function NewAlarmScreen() {
 
       console.log('NewAlarm: Notification scheduled with ID:', notificationId);
 
+      // Make sure days are properly saved as strings
+      const daysAsStrings = selectedDays.map(String);
+      console.log('NewAlarm: Days as strings for saving:', daysAsStrings);
+
       const newAlarm: Alarm = {
         id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         enabled: true,
-        days: selectedDays.map(String),
+        days: daysAsStrings, // Save days as strings
         label: label || '',
         mission: missionObj,
         sound: sound,
@@ -352,6 +366,7 @@ export default function NewAlarmScreen() {
             setSound(currentAlarm.sound);
             setSoundVolume(currentAlarm.soundVolume);
             setVibrationEnabled(currentAlarm.vibration);
+            setHasMission(!!currentAlarm.mission);
           }
         }
       }
@@ -375,6 +390,7 @@ export default function NewAlarmScreen() {
       };
       console.log('Setting new mission for edit:', newMission);
       setMission(newMission);
+      setHasMission(true);
     }
   }, [params.selectedMissionId, params.editMode]);  // Add editMode to dependencies
 
@@ -708,6 +724,91 @@ export default function NewAlarmScreen() {
     loadMissionSettings();
   }, []);
 
+  // Fix the days parsing in the useEffect
+  useEffect(() => {
+    if (params.days) {
+      try {
+        console.log('NewAlarm: Raw days param:', params.days);
+        
+        // Handle different possible formats of the days parameter
+        let daysArray;
+        
+        if (typeof params.days === 'string') {
+          // If it's a single day as a string (like "7")
+          if (params.days.includes('[') || params.days.includes(',')) {
+            // It's a JSON string array or comma-separated list
+            try {
+              daysArray = JSON.parse(params.days);
+            } catch (jsonError) {
+              // If JSON parsing fails, try comma-separated string
+              daysArray = params.days.split(',').filter(day => day.trim() !== '');
+            }
+          } else {
+            // It's a single day (like "7")
+            daysArray = [params.days];
+          }
+        } else if (Array.isArray(params.days)) {
+          // Already an array
+          daysArray = params.days;
+        } else {
+          // Default to empty array if format is unknown
+          daysArray = [];
+        }
+        
+        console.log('NewAlarm: Parsed days array:', daysArray);
+        
+        // Ensure all days are strings
+        const daysAsStrings = Array.isArray(daysArray) 
+          ? daysArray.map(day => day.toString())
+          : [daysArray.toString()];
+        
+        console.log('NewAlarm: Final days as strings:', daysAsStrings);
+        setSelectedDays(daysAsStrings);
+      } catch (error) {
+        console.error('NewAlarm: Error parsing days from params:', error);
+        // Set to empty array as fallback
+        setSelectedDays([]);
+      }
+    }
+  }, [params.days]);
+
+  // Inside your component, update the toggleDay function
+  const toggleDay = (day: string) => {
+    setSelectedDays(prev => {
+      // Make sure prev is an array
+      const prevDays = Array.isArray(prev) ? prev : [];
+      const dayNumber = getDayNumber(day);
+      
+      if (prevDays.includes(dayNumber)) {
+        return prevDays.filter(d => d !== dayNumber);
+      } else {
+        return [...prevDays, dayNumber];
+      }
+    });
+  };
+
+  // Add this effect to load days when editing an alarm
+  useEffect(() => {
+    const loadAlarmDays = async () => {
+      if (isEditing && currentAlarmId) {
+        console.log('NewAlarm: Loading days for editing alarm:', currentAlarmId);
+        const alarmsJson = await AsyncStorage.getItem('alarms');
+        if (alarmsJson) {
+          const alarms = JSON.parse(alarmsJson);
+          const currentAlarm = alarms.find((a: Alarm) => a.id === currentAlarmId);
+          if (currentAlarm && currentAlarm.days) {
+            // Convert days from strings to numbers
+            const daysAsNumbers = currentAlarm.days.map(Number);
+            console.log('NewAlarm: Loaded days:', daysAsNumbers);
+            setSelectedDays(daysAsNumbers.map(String));
+          }
+        }
+      }
+    };
+    
+    loadAlarmDays();
+  }, [isEditing, currentAlarmId]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -742,7 +843,7 @@ export default function NewAlarmScreen() {
                 if (selectedDays.length === 7) {
                   setSelectedDays([]);
                 } else {
-                  setSelectedDays([0, 1, 2, 3, 4, 5, 6]);
+                  setSelectedDays(['1', '2', '3', '4', '5', '6', '7']);
                 }
               }}
               style={styles.dailyContainer}
@@ -756,25 +857,21 @@ export default function NewAlarmScreen() {
             </TouchableOpacity>
           </View>
           <View style={styles.daysContainer}>
-            {days.map((day, index) => (
+            {['1', '2', '3', '4', '5', '6', '7'].map((day) => (
               <TouchableOpacity
-                key={day.value}
+                key={day}
                 style={[
                   styles.dayButton,
-                  selectedDays.includes(index) && styles.selectedDay
+                  selectedDays.includes(day) && styles.selectedDay
                 ]}
-                onPress={() => {
-                  if (selectedDays.includes(index)) {
-                    setSelectedDays(selectedDays.filter(d => d !== index));
-                  } else {
-                    setSelectedDays([...selectedDays, index]);
-                  }
-                }}
+                onPress={() => toggleDay(day)}
               >
                 <Text style={[
                   styles.dayText,
-                  selectedDays.includes(index) && styles.selectedDayText
-                ]}>{day.label}</Text>
+                  selectedDays.includes(day) && styles.selectedDayText
+                ]}>
+                  {getDayLabel(day)}
+                </Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -1179,4 +1276,18 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
   },
-}); 
+});
+
+// Helper function to convert day numbers to labels
+function getDayLabel(day: string) {
+  const labels = {
+    '1': 'M',
+    '2': 'T',
+    '3': 'W',
+    '4': 'T',
+    '5': 'F',
+    '6': 'S',
+    '7': 'S'
+  };
+  return labels[day as keyof typeof labels] || day;
+} 

@@ -15,6 +15,7 @@ import * as Notifications from 'expo-notifications';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
+import { setupNotifications, scheduleRepeatingAlarmNotifications } from './notifications';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -31,6 +32,8 @@ export default function AppLayout() {
   const timerRef = useRef<NodeJS.Timeout>();
   const [initialRoute, setInitialRoute] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isReady, setIsReady] = useState(false);
+  const [isAppReady, setIsAppReady] = useState(false);
 
   useEffect(() => {
     if (loaded) {
@@ -41,7 +44,22 @@ export default function AppLayout() {
   useAlarmManager(); // This will check for active alarms on app launch
 
   useEffect(() => {
+    // Set a small delay to ensure the app is fully mounted
+    const timer = setTimeout(() => {
+      setIsAppReady(true);
+      console.log('App is ready for navigation');
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
     async function checkAlarmTime() {
+      if (!isAppReady) {
+        console.log('App not ready for navigation, skipping alarm check');
+        return;
+      }
+      
       try {
         const alarmsJson = await AsyncStorage.getItem('alarms');
         if (!alarmsJson) return;
@@ -59,12 +77,22 @@ export default function AppLayout() {
 
         if (activeAlarm) {
           console.log('Active alarm found, opening alarm screen');
+          
+          // Schedule repeating notifications first
+          await scheduleRepeatingAlarmNotifications(
+            activeAlarm.id,
+            activeAlarm.sound || 'Beacon',
+            activeAlarm.soundVolume || 1,
+            Boolean(activeAlarm.mission)
+          );
+          
+          // Then navigate to the alarm screen
           router.push({
             pathname: '/alarm-ring',
             params: {
               alarmId: activeAlarm.id,
-              sound: activeAlarm.sound,
-              soundVolume: activeAlarm.soundVolume,
+              sound: activeAlarm.sound || 'Beacon',
+              soundVolume: activeAlarm.soundVolume || 1,
               hasMission: activeAlarm.mission ? 'true' : 'false'
             }
           });
@@ -100,7 +128,7 @@ export default function AppLayout() {
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [isAppReady]);
 
   useEffect(() => {
     // Set app as ready after first render
@@ -157,7 +185,24 @@ export default function AppLayout() {
     checkFirstLaunch();
   }, []);
 
-  if (!loaded || loading) {
+  useEffect(() => {
+    // Setup notifications after the component is mounted
+    const setup = async () => {
+      try {
+        await setupNotifications();
+        console.log('Notifications setup complete');
+      } catch (error) {
+        console.error('Error setting up notifications:', error);
+      } finally {
+        // Mark as ready regardless of success/failure
+        setIsReady(true);
+      }
+    };
+
+    setup();
+  }, []);
+
+  if (!loaded || loading || !isReady) {
     return null;
   }
 
@@ -215,6 +260,8 @@ export default function AppLayout() {
           <Stack.Screen name="quiz/question4" options={{ headerShown: false }} />
           <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
           <Stack.Screen name="quiz/payment" options={{ headerShown: false }} />
+          <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="mission-alarm" options={{ headerShown: false, presentation: 'modal' }} />
         </Stack>
       </ThemeProvider>
     </GestureHandlerRootView>

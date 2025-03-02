@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TextInput, SafeAreaView, TouchableOpacity, Animated, Dimensions, Keyboard } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
@@ -267,61 +267,72 @@ export default function FinalTypingScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      {/* Timer bar */}
-      <View style={styles.timerContainer}>
-        <Animated.View 
-          style={[
-            styles.timerBar,
-            {
-              width: timerAnimation.interpolate({
-                inputRange: [0, 100],
-                outputRange: ['0%', '100%']
-              })
-            }
-          ]} 
-        />
-      </View>
+    <>
+      {/* This hides the header and disables gestures */}
+      <Stack.Screen 
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: 'fade'
+        }} 
+      />
       
-      {missionCompleted ? (
-        <View style={styles.completionContainer}>
-          <Text style={styles.completionText}>Mission Complete!</Text>
-          <Text style={styles.completionSubtext}>Returning to home...</Text>
-        </View>
-      ) : timeExpired ? (
-        <View style={styles.completionContainer}>
-          <Text style={styles.failedText}>Time Expired!</Text>
-          <Text style={styles.completionSubtext}>Alarm will continue...</Text>
-        </View>
-      ) : (
-        <View style={styles.missionContainer}>
-          <View style={styles.progressContainer}>
-            <View style={styles.counterContainer}>
-              <Text style={styles.counter}>
-                {input.length} / {phrase.length}
-              </Text>
-            </View>
-          </View>
-          
-          <View style={styles.phraseContainer}>
-            <View style={styles.letterContainer}>
-              {renderText()}
-            </View>
-          </View>
-          
-          <TextInput
-            ref={inputRef}
-            style={styles.hiddenInput}
-            value={input}
-            onChangeText={handleInputChange}
-            autoCapitalize="none"
-            autoCorrect={false}
-            multiline={false}
-            autoFocus
+      <SafeAreaView style={styles.container}>
+        {/* Timer bar */}
+        <View style={styles.timerContainer}>
+          <Animated.View 
+            style={[
+              styles.timerBar,
+              {
+                width: timerAnimation.interpolate({
+                  inputRange: [0, 100],
+                  outputRange: ['0%', '100%']
+                })
+              }
+            ]} 
           />
         </View>
-      )}
-    </SafeAreaView>
+        
+        {missionCompleted ? (
+          <View style={styles.completionContainer}>
+            <Text style={styles.completionText}>Mission Complete!</Text>
+            <Text style={styles.completionSubtext}>Returning to home...</Text>
+          </View>
+        ) : timeExpired ? (
+          <View style={styles.completionContainer}>
+            <Text style={styles.failedText}>Time Expired!</Text>
+            <Text style={styles.completionSubtext}>Alarm will continue...</Text>
+          </View>
+        ) : (
+          <View style={styles.missionContainer}>
+            <View style={styles.progressContainer}>
+              <View style={styles.counterContainer}>
+                <Text style={styles.counter}>
+                  {input.length} / {phrase.length}
+                </Text>
+              </View>
+            </View>
+            
+            <View style={styles.phraseContainer}>
+              <View style={styles.letterContainer}>
+                {renderText()}
+              </View>
+            </View>
+            
+            <TextInput
+              ref={inputRef}
+              style={styles.hiddenInput}
+              value={input}
+              onChangeText={handleInputChange}
+              autoCapitalize="none"
+              autoCorrect={false}
+              multiline={false}
+              autoFocus
+            />
+          </View>
+        )}
+      </SafeAreaView>
+    </>
   );
 }
 

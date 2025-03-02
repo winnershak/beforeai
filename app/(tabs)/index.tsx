@@ -44,6 +44,23 @@ const calculateTimeUntilAlarm = (alarmTime: string) => {
   return `${hrsUntil}hrs ${minsUntil}min`;
 };
 
+// Update this helper function at the top of your file
+const getDayName = (day: string): string => {
+  // Ensure we're using the correct mapping (1=Monday, 7=Sunday)
+  const dayMap: Record<string, string> = {
+    '1': 'Mon',
+    '2': 'Tue',
+    '3': 'Wed',
+    '4': 'Thu',
+    '5': 'Fri',
+    '6': 'Sat',
+    '7': 'Sun',
+    // Also handle JavaScript day numbers (0=Sunday, 1=Monday)
+    '0': 'Sun'
+  };
+  return dayMap[day] || '';
+};
+
 interface AlarmItemProps {
   alarm: {
     id: string;
@@ -61,11 +78,100 @@ interface AlarmItemProps {
     vibration: boolean;
     soundVolume: number;
   };
+  formattedDays: string;
   onToggle: () => void;
   onDelete: () => void;
   onDuplicate: () => void;
   onEdit: () => void;
 }
+
+// Add this function to calculate the next closest alarm
+const getNextClosestAlarm = (alarms: Alarm[]): Alarm | null => {
+  if (!alarms || alarms.length === 0) return null;
+  
+  // Only consider enabled alarms
+  const enabledAlarms = alarms.filter(alarm => alarm.enabled);
+  if (enabledAlarms.length === 0) return null;
+  
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  
+  // Convert JavaScript day to our format (1-7 where 1=Monday, 7=Sunday)
+  const currentAppDay = currentDay === 0 ? '7' : currentDay.toString();
+  
+  // Calculate time until each alarm
+  const alarmsWithTimeUntil = enabledAlarms.map(alarm => {
+    const [hours, minutes] = alarm.time.split(':').map(Number);
+    const alarmDate = new Date();
+    alarmDate.setHours(hours, minutes, 0, 0);
+    
+    // If alarm time has already passed today
+    if (alarmDate <= now) {
+      // Check if this alarm repeats on any day
+      if (alarm.days && alarm.days.length > 0) {
+        // Find the next day this alarm will ring
+        const alarmDays = alarm.days.map(day => parseInt(day));
+        const currentDayNum = parseInt(currentAppDay);
+        
+        // Sort days to find the next one after current day
+        const sortedDays = [...alarmDays].sort((a, b) => a - b);
+        
+        // Find the next day after current day
+        const nextDay = sortedDays.find(day => day > currentDayNum);
+        
+        if (nextDay) {
+          // Next day is this week
+          const daysUntilNextAlarm = nextDay - currentDayNum;
+          alarmDate.setDate(alarmDate.getDate() + daysUntilNextAlarm);
+        } else {
+          // Next day is next week (wrap around)
+          const nextDayNextWeek = sortedDays[0];
+          const daysUntilNextAlarm = 7 - currentDayNum + nextDayNextWeek;
+          alarmDate.setDate(alarmDate.getDate() + daysUntilNextAlarm);
+        }
+      } else {
+        // One-time alarm that already passed today - not relevant
+        return { alarm, timeUntil: Infinity };
+      }
+    } else {
+      // Alarm is later today - check if it should ring today
+      if (alarm.days && alarm.days.length > 0) {
+        // Only count if alarm is set for current day
+        if (!alarm.days.includes(currentAppDay)) {
+          // Find the next day this alarm will ring
+          const alarmDays = alarm.days.map(day => parseInt(day));
+          const currentDayNum = parseInt(currentAppDay);
+          
+          // Sort days to find the next one after current day
+          const sortedDays = [...alarmDays].sort((a, b) => a - b);
+          
+          // Find the next day after current day
+          const nextDay = sortedDays.find(day => day > currentDayNum);
+          
+          if (nextDay) {
+            // Next day is this week
+            const daysUntilNextAlarm = nextDay - currentDayNum;
+            alarmDate.setDate(alarmDate.getDate() + daysUntilNextAlarm);
+          } else {
+            // Next day is next week (wrap around)
+            const nextDayNextWeek = sortedDays[0];
+            const daysUntilNextAlarm = 7 - currentDayNum + nextDayNextWeek;
+            alarmDate.setDate(alarmDate.getDate() + daysUntilNextAlarm);
+          }
+        }
+      }
+    }
+    
+    const timeUntil = alarmDate.getTime() - now.getTime();
+    return { alarm, timeUntil };
+  });
+  
+  // Sort by time until alarm and get the closest one
+  alarmsWithTimeUntil.sort((a, b) => a.timeUntil - b.timeUntil);
+  
+  // Return the alarm with the smallest time until (the next one to ring)
+  return alarmsWithTimeUntil[0]?.timeUntil < Infinity ? alarmsWithTimeUntil[0].alarm : null;
+};
 
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
@@ -144,6 +250,27 @@ export default function TabOneScreen() {
     }
   };
 
+  // Update the formatDays function to ensure proper sorting
+  const formatDays = (days: string[]): string => {
+    if (!days || days.length === 0) return 'Once';
+    
+    // Custom sort function to handle both formats (1-7 and 0-6)
+    const sortedDays = [...days].sort((a, b) => {
+      // Convert to numbers for comparison
+      let numA = parseInt(a);
+      let numB = parseInt(b);
+      
+      // If using JavaScript format (0=Sunday), convert to our format (7=Sunday)
+      if (numA === 0) numA = 7;
+      if (numB === 0) numB = 7;
+      
+      return numA - numB;
+    });
+    
+    console.log('Sorted days:', sortedDays);
+    return sortedDays.map(day => getDayName(day)).join(', ');
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -153,60 +280,69 @@ export default function TabOneScreen() {
       {alarms.length > 0 && (
         <View style={styles.nextAlarmContainer}>
           <Text style={styles.nextAlarmText}>
-            Ring in {calculateTimeUntilAlarm(
-              alarms
-                .filter(a => a.enabled)
-                .sort((a, b) => a.time.localeCompare(b.time))[0]?.time || ''
-            )}
+            Ring in {calculateTimeUntilAlarm(getNextClosestAlarm(alarms)?.time || '')}
           </Text>
         </View>
       )}
 
-      <FlatList
-        data={alarms}
-        renderItem={({ item }) => {
-          console.log('Rendering alarm:', item); // Debug log
-          return (
-            <AlarmItem
-              key={`alarm-${item.id}`}
-              alarm={{
-                id: item.id,
-                time: item.time,
-                enabled: item.enabled,
-                days: item.days,
-                label: item.label || '',
-                mission: item.mission?.name || null,  // Access name from mission object
-                sound: item.sound,
-                volume: item.soundVolume,
-                vibration: item.vibration
-              }}
-              onToggle={() => toggleAlarm(item.id)}
-              onDelete={() => deleteAlarm(item.id)}
-              onDuplicate={() => duplicateAlarm(item)}
-              onEdit={() => {
-                console.log('Editing alarm with mission:', item.mission); // Debug log
-                router.push({
-                  pathname: '/new-alarm',
-                  params: {
-                    alarmId: item.id,
-                    editMode: 'true',
-                    time: item.time,
-                    days: JSON.stringify(item.days),
-                    label: item.label,
-                    mission: JSON.stringify(item.mission),
-                    sound: item.sound,
-                    volume: item.soundVolume.toString(),
-                    vibration: item.vibration.toString()
-                  }
-                });
-              }}
-            />
-          );
-        }}
-        keyExtractor={item => item.id}
-        style={styles.alarmList}
-        contentContainerStyle={styles.alarmListContent}
-      />
+      {alarms && alarms.length > 0 ? (
+        <FlatList
+          data={alarms}
+          renderItem={({ item }) => {
+            console.log('Rendering alarm:', item); // Debug log
+            return (
+              <AlarmItem
+                key={`alarm-${item.id}`}
+                alarm={{
+                  id: item.id,
+                  time: item.time,
+                  enabled: item.enabled,
+                  days: item.days,
+                  label: item.label || '',
+                  mission: item.mission?.name || null,  // Access name from mission object
+                  sound: item.sound,
+                  volume: item.soundVolume,
+                  vibration: item.vibration
+                }}
+                formattedDays={formatDays(item.days)}
+                onToggle={() => toggleAlarm(item.id)}
+                onDelete={() => deleteAlarm(item.id)}
+                onDuplicate={() => duplicateAlarm(item)}
+                onEdit={() => {
+                  console.log('Editing alarm with mission:', item.mission); // Debug log
+                  router.push({
+                    pathname: '/new-alarm',
+                    params: {
+                      alarmId: item.id,
+                      editMode: 'true',
+                      time: item.time,
+                      days: JSON.stringify(item.days),
+                      label: item.label,
+                      mission: JSON.stringify(item.mission),
+                      sound: item.sound,
+                      volume: item.soundVolume.toString(),
+                      vibration: item.vibration.toString()
+                    }
+                  });
+                }}
+              />
+            );
+          }}
+          keyExtractor={item => item.id}
+          style={styles.alarmList}
+          contentContainerStyle={styles.alarmListContent}
+        />
+      ) : (
+        <View style={styles.emptyStateContainer}>
+          <View style={styles.emptyStateIconContainer}>
+            <Ionicons name="alarm-outline" size={80} color="#007AFF" />
+          </View>
+          <Text style={styles.emptyStateTitle}>Rise and Shine!</Text>
+          <Text style={styles.emptyStateText}>
+            You haven't set any alarms yet. Create your first alarm to start your day right.
+          </Text>
+        </View>
+      )}
 
       <Link href="/new-alarm" asChild>
         <TouchableOpacity style={styles.fab}>
@@ -307,5 +443,49 @@ const styles = StyleSheet.create({
   missionText: {
     color: '#666',
     fontSize: 15,
+  },
+  emptyStateContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginTop: -40, // Adjust based on your header size
+  },
+  emptyStateIconContainer: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    backgroundColor: 'rgba(0, 122, 255, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  emptyStateTitle: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#000',
+    marginBottom: 12,
+    textAlign: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  emptyStateHintContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 122, 255, 0.08)',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+  },
+  emptyStateHint: {
+    fontSize: 15,
+    color: '#007AFF',
+    marginLeft: 8,
+    fontWeight: '500',
   },
 });

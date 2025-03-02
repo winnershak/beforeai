@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated, SafeAreaView } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -14,7 +14,7 @@ const alarmSounds = {
   'Reflection': require('../assets/sounds/reflection.caf'),
 };
 
-export default function MathMission() {
+export default function FinalMathScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [currentProblem, setCurrentProblem] = useState(1);
@@ -431,89 +431,100 @@ export default function MathMission() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      {showCompletion ? (
-        <View style={styles.completionContainer}>
-          <Text style={styles.completionText}>WELL DONE!</Text>
-          <Text style={styles.completionSubText}>Alarm Dismissed</Text>
-        </View>
-      ) : timeExpired ? (
-        <View style={styles.completionContainer}>
-          <Text style={styles.completionText}>Time's Up!</Text>
-          <Text style={styles.completionSubText}>Try Again</Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.header}>
-            <Text style={styles.progress}>{currentProblem} / {times}</Text>
+    <>
+      {/* This hides the header and disables gestures */}
+      <Stack.Screen 
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: 'fade'
+        }} 
+      />
+      
+      <View style={styles.container}>
+        {showCompletion ? (
+          <View style={styles.completionContainer}>
+            <Text style={styles.completionText}>WELL DONE!</Text>
+            <Text style={styles.completionSubText}>Alarm Dismissed</Text>
           </View>
-
-          {/* Timer bar with simplified animation */}
-          <View style={styles.timerContainer}>
-            <Animated.View 
-              style={[
-                styles.timerLine,
-                { width: timerWidth.interpolate({
-                    inputRange: [0, 100],
-                    outputRange: ['0%', '100%']
-                  })
-                }
-              ]} 
-            />
+        ) : timeExpired ? (
+          <View style={styles.completionContainer}>
+            <Text style={styles.completionText}>Time's Up!</Text>
+            <Text style={styles.completionSubText}>Try Again</Text>
           </View>
-
-          <View style={styles.problemContainer}>
-            <Text style={styles.equation}>
-              {problem.numbers[0]}{problem.operation || '+'}{problem.numbers[1]}
-            </Text>
-            <View style={styles.answerBox}>
-              <Text style={styles.answerText}>{answer}</Text>
+        ) : (
+          <>
+            <View style={styles.header}>
+              <Text style={styles.progress}>{currentProblem} / {times}</Text>
             </View>
-          </View>
 
-          <View style={styles.keypad}>
-            {[
-              ['1', '2', '3', 'delete'],
-              ['4', '5', '6', 'submit'],
-              ['7', '8', '9', ''],
-              ['', '0', '', ''],
-            ].map((row, i) => (
-              <View key={i} style={styles.keypadRow}>
-                {row.map((key, j) => (
-                  <TouchableOpacity
-                    key={j}
-                    style={[
-                      styles.key,
-                      key === 'submit' && styles.submitKey,
-                      key === '' && styles.emptyKey,
-                    ]}
-                    onPress={() => {
-                      if (key === 'delete') handleDelete();
-                      else if (key === 'submit') handleSubmit();
-                      else if (key !== '') handleNumber(key);
-                    }}
-                  >
-                    {key === 'delete' ? (
-                      <Text style={styles.keyText}>✕</Text>
-                    ) : key === 'submit' ? (
-                      <Text style={styles.keyText}>✓</Text>
-                    ) : (
-                      <Text style={styles.keyText}>{key}</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
+            {/* Timer bar with simplified animation */}
+            <View style={styles.timerContainer}>
+              <Animated.View 
+                style={[
+                  styles.timerLine,
+                  { width: timerWidth.interpolate({
+                      inputRange: [0, 100],
+                      outputRange: ['0%', '100%']
+                    })
+                  }
+                ]} 
+              />
+            </View>
+
+            <View style={styles.problemContainer}>
+              <Text style={styles.equation}>
+                {problem.numbers[0]}{problem.operation || '+'}{problem.numbers[1]}
+              </Text>
+              <View style={styles.answerBox}>
+                <Text style={styles.answerText}>{answer}</Text>
               </View>
-            ))}
-          </View>
-          <TouchableOpacity 
-            style={styles.doneButton}
-            onPress={handleDone}
-          >
-            <Text style={styles.doneText}>Done</Text>
-          </TouchableOpacity>
-        </>
-      )}
-    </View>
+            </View>
+
+            <View style={styles.keypad}>
+              {[
+                ['1', '2', '3', 'delete'],
+                ['4', '5', '6', 'submit'],
+                ['7', '8', '9', ''],
+                ['', '0', '', ''],
+              ].map((row, i) => (
+                <View key={i} style={styles.keypadRow}>
+                  {row.map((key, j) => (
+                    <TouchableOpacity
+                      key={j}
+                      style={[
+                        styles.key,
+                        key === 'submit' && styles.submitKey,
+                        key === '' && styles.emptyKey,
+                      ]}
+                      onPress={() => {
+                        if (key === 'delete') handleDelete();
+                        else if (key === 'submit') handleSubmit();
+                        else if (key !== '') handleNumber(key);
+                      }}
+                    >
+                      {key === 'delete' ? (
+                        <Text style={styles.keyText}>✕</Text>
+                      ) : key === 'submit' ? (
+                        <Text style={styles.keyText}>✓</Text>
+                      ) : (
+                        <Text style={styles.keyText}>{key}</Text>
+                      )}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              ))}
+            </View>
+            <TouchableOpacity 
+              style={styles.doneButton}
+              onPress={handleDone}
+            >
+              <Text style={styles.doneText}>Done</Text>
+            </TouchableOpacity>
+          </>
+        )}
+      </View>
+    </>
   );
 }
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Alert, Animated } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Camera } from 'react-native-vision-camera';
 import { useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
@@ -237,58 +237,67 @@ export default function FinalQRScanner() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      {showCompletion ? (
-        <View style={styles.completionContainer}>
-          <Text style={styles.completionText}>WELL DONE!</Text>
-          <Text style={styles.completionSubText}>Alarm Dismissed</Text>
-        </View>
-      ) : showFailure ? (
-        <View style={styles.completionContainer}>
-          <Text style={styles.completionText}>Wrong QR Code!</Text>
-          <Text style={styles.completionSubText}>Try Again</Text>
-        </View>
-      ) : timeExpired ? (
-        <View style={styles.completionContainer}>
-          <Text style={styles.completionText}>Time's Up!</Text>
-          <Text style={styles.completionSubText}>Try Again</Text>
-        </View>
-      ) : (
-        <>
-          <View style={styles.header}>
-            <Text style={styles.title}>Scan any QR code</Text>
-            <Text style={styles.subtitle}>
-              Scan any QR code to dismiss the alarm
-            </Text>
+    <>
+      <Stack.Screen 
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
+          animation: 'fade'
+        }} 
+      />
+      <SafeAreaView style={styles.container}>
+        {showCompletion ? (
+          <View style={styles.completionContainer}>
+            <Text style={styles.completionText}>WELL DONE!</Text>
+            <Text style={styles.completionSubText}>Alarm Dismissed</Text>
           </View>
-
-          <View style={styles.scannerContainer}>
-            <Camera
-              style={StyleSheet.absoluteFillObject}
-              device={device}
-              isActive={!hasScanned}
-              codeScanner={codeScanner}
-              enableZoomGesture
-            />
-            <View style={styles.overlay}>
-              <View style={styles.scanArea}>
-                <View style={styles.scanFrame} />
-              </View>
-              <Text style={styles.overlayText}>
-                Place a QR/Barcode inside the rectangle
+        ) : showFailure ? (
+          <View style={styles.completionContainer}>
+            <Text style={styles.completionText}>Wrong QR Code!</Text>
+            <Text style={styles.completionSubText}>Try Again</Text>
+          </View>
+        ) : timeExpired ? (
+          <View style={styles.completionContainer}>
+            <Text style={styles.completionText}>Time's Up!</Text>
+            <Text style={styles.completionSubText}>Try Again</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.header}>
+              <Text style={styles.title}>Scan any QR code</Text>
+              <Text style={styles.subtitle}>
+                Scan any QR code to dismiss the alarm
               </Text>
             </View>
-          </View>
 
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={handleFailure}
-          >
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </>
-      )}
-    </SafeAreaView>
+            <View style={styles.scannerContainer}>
+              <Camera
+                style={StyleSheet.absoluteFillObject}
+                device={device}
+                isActive={!hasScanned}
+                codeScanner={codeScanner}
+                enableZoomGesture
+              />
+              <View style={styles.overlay}>
+                <View style={styles.scanArea}>
+                  <View style={styles.scanFrame} />
+                </View>
+                <Text style={styles.overlayText}>
+                  Place a QR/Barcode inside the rectangle
+                </Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.backButton}
+              onPress={handleFailure}
+            >
+              <Ionicons name="arrow-back" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </>
+        )}
+      </SafeAreaView>
+    </>
   );
 }
 

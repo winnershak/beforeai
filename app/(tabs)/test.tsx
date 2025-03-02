@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Alert } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { scheduleAlarmNotification, initializeNotifications, testNotificationIn5Seconds as scheduleTestNotification } from '../notifications';
+import * as Notifications from 'expo-notifications';
 
 export default function TestScreen() {
   const [hasAlarm, setHasAlarm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   
   // Check if there are any alarms on mount
   useEffect(() => {
     checkAlarms();
+    // Initialize notifications
+    initializeNotifications();
   }, []);
   
   const checkAlarms = async () => {
@@ -58,6 +63,45 @@ export default function TestScreen() {
     }
   };
   
+  // New function to test notification in 5 seconds
+  const testNotificationIn5Seconds = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Get the first alarm from storage
+      const alarmsJson = await AsyncStorage.getItem('alarms');
+      if (!alarmsJson) {
+        Alert.alert('No Alarms', 'Please create an alarm first');
+        setIsLoading(false);
+        return;
+      }
+      
+      const alarms = JSON.parse(alarmsJson);
+      if (alarms.length === 0) {
+        Alert.alert('No Alarms', 'Please create an alarm first');
+        setIsLoading(false);
+        return;
+      }
+      
+      const alarm = alarms[0]; // Use the first alarm
+      
+      // Use the imported function with the different name
+      const notificationId = await scheduleTestNotification(alarm);
+      
+      if (notificationId) {
+        Alert.alert('Test Scheduled', `Notification will appear in 5 seconds. ID: ${notificationId}`);
+      } else {
+        Alert.alert('Error', 'Failed to schedule test notification');
+      }
+      
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Error scheduling test notification:', error);
+      Alert.alert('Error', `Failed to schedule test: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setIsLoading(false);
+    }
+  };
+  
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
@@ -79,6 +123,17 @@ export default function TestScreen() {
           >
             <Text style={styles.buttonText}>
               {hasAlarm ? 'Play Alarm Now' : 'Create an alarm first'}
+            </Text>
+          </TouchableOpacity>
+          
+          {/* New test notification button */}
+          <TouchableOpacity 
+            style={[styles.button, styles.testButton, !hasAlarm && styles.disabledButton]} 
+            onPress={testNotificationIn5Seconds}
+            disabled={!hasAlarm || isLoading}
+          >
+            <Text style={styles.buttonText}>
+              {isLoading ? 'Scheduling...' : 'Test Notification (5s)'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -128,6 +183,9 @@ const styles = StyleSheet.create({
   },
   playButton: {
     backgroundColor: '#4CAF50',
+  },
+  testButton: {
+    backgroundColor: '#FF9500',
   },
   disabledButton: {
     backgroundColor: '#cccccc',

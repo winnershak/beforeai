@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "alarmyclone",
-    "slug": "alarmyclone",
+    "name": "Rise",
+    "slug": "rise",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -14,12 +14,23 @@
     "assetBundlePatterns": [
       "**/*"
     ],
+    "notification": {
+      "icon": "./assets/images/notification-icon.png",
+      "color": "#ffffff",
+      "iosDisplayInForeground": true,
+      "ios": {
+        "soundFile": "./assets/sounds/orkney.caf"
+      }
+    },
     "ios": {
-      "bundleIdentifier": "com.yourusername.alarmyclone",
+      "bundleIdentifier": "com.yourusername.rise",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification"
+          "remote-notification",
+          "audio",
+          "fetch",
+          "processing"
         ],
         "NSCameraUsageDescription": "This app uses the camera for QR code scanning.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for...",
@@ -27,15 +38,12 @@
         "UIViewControllerBasedStatusBarAppearance": false
       }
     },
-    "notification": {
-      "ios": {
-        "soundFile": "assets/sounds/orkney.caf"
-      }
-    },
     "plugins": [
       [
         "expo-notifications",
         {
+          "icon": "./assets/images/notification-icon.png",
+          "color": "#ffffff",
           "sounds": [
             "./assets/sounds/orkney.caf",
             "./assets/sounds/radar.caf",
@@ -52,17 +60,10 @@
         {
           "startOnBoot": true
         }
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#ffffff"
-        }
       ]
     ],
     "android": {
-      "package": "com.yourusername.alarmyclone"
+      "package": "com.yourusername.rise"
     }
   }
 }

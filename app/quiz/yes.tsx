@@ -8,19 +8,23 @@ import {
   Dimensions,
   Image,
   Alert,
-  Platform
+  Platform,
+  ActivityIndicator
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CacheManager } from 'react-native-expo-image-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import mockPurchasesService from '../../services/MockPurchasesService';
+import { checkSubscriptionStatus, getSubscriptionDetails, expireSubscription } from '../utils/subscriptionUtils';
 
 const { width, height } = Dimensions.get('window');
 
 export default function YesScreen() {
   const [personName, setPersonName] = useState("Friend");
   const [selectedPlan, setSelectedPlan] = useState('monthly'); // 'monthly' or 'yearly'
+  const [loading, setLoading] = useState(false);
   
   // Fetch the person's name from AsyncStorage using the correct key
   useEffect(() => {
@@ -37,6 +41,9 @@ export default function YesScreen() {
     };
     
     fetchUserName();
+    
+    // Initialize the mock purchases service
+    mockPurchasesService.initialize();
   }, []);
 
   // Preload the background image
@@ -55,34 +62,62 @@ export default function YesScreen() {
   }, []);
 
   // Function to handle subscription
-  const handleSubscription = () => {
-    if (__DEV__) {
-      // In development, show a mock subscription flow
-      Alert.alert(
-        "Development Mode",
-        `This is a development build. In production, this would open the App Store subscription dialog for the ${selectedPlan} plan. Would you like to simulate a successful subscription?`,
-        [
-          {
-            text: "Cancel",
-            style: "cancel"
-          },
-          {
-            text: "Simulate Success",
-            onPress: () => {
-              Alert.alert("Success", `${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} subscription processed successfully!`, [
-                {
-                  text: "OK",
-                  onPress: () => router.push('/(tabs)')
-                }
-              ]);
+  const handleSubscription = async () => {
+    try {
+      setLoading(true);
+      
+      // Simulate purchase process
+      const isYearly = selectedPlan === 'yearly';
+      const success = await mockPurchasesService.purchaseSubscription(isYearly);
+      
+      if (success) {
+        Alert.alert(
+          "Subscription Successful", 
+          `Thank you for subscribing to the ${isYearly ? 'yearly' : 'monthly'} plan!`,
+          [
+            {
+              text: "Continue",
+              onPress: () => router.push('/(tabs)')
             }
-          }
-        ]
-      );
-    } else {
-      // In production, this would trigger the actual in-app purchase
-      // You would use a library like react-native-iap or expo-in-app-purchases
-      router.push('/(tabs)');
+          ]
+        );
+      } else {
+        Alert.alert("Subscription Failed", "There was an issue with your subscription. Please try again.");
+      }
+    } catch (error) {
+      console.error('Error during subscription:', error);
+      Alert.alert("Error", "An unexpected error occurred.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Function to restore purchases
+  const handleRestore = async () => {
+    try {
+      setLoading(true);
+      const hasSubscription = await mockPurchasesService.hasActiveSubscription();
+      
+      if (hasSubscription) {
+        const details = await mockPurchasesService.getSubscriptionDetails();
+        Alert.alert(
+          "Subscription Restored", 
+          `Your ${details.type} subscription has been restored.`,
+          [
+            {
+              text: "Continue",
+              onPress: () => router.push('/(tabs)')
+            }
+          ]
+        );
+      } else {
+        Alert.alert("No Active Subscription", "We couldn't find any active subscriptions to restore.");
+      }
+    } catch (error) {
+      console.error('Error restoring subscription:', error);
+      Alert.alert("Error", "An error occurred while restoring your subscription.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -114,6 +149,7 @@ export default function YesScreen() {
                   selectedPlan === 'monthly' && styles.selectedOption
                 ]}
                 onPress={() => setSelectedPlan('monthly')}
+                disabled={loading}
               >
                 <Text style={styles.subscriptionTitle}>Monthly</Text>
                 <Text style={styles.subscriptionPrice}>$12.99/month</Text>
@@ -125,6 +161,7 @@ export default function YesScreen() {
                   selectedPlan === 'yearly' && styles.selectedOption
                 ]}
                 onPress={() => setSelectedPlan('yearly')}
+                disabled={loading}
               >
                 <Text style={styles.subscriptionTitle}>Yearly</Text>
                 <Text style={styles.subscriptionPrice}>$4.99/month</Text>
@@ -137,8 +174,21 @@ export default function YesScreen() {
               <TouchableOpacity 
                 style={styles.button}
                 onPress={handleSubscription}
+                disabled={loading}
               >
-                <Text style={styles.buttonText}>Subscribe Now</Text>
+                {loading ? (
+                  <ActivityIndicator color="#000" size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>Subscribe Now</Text>
+                )}
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.restoreButton}
+                onPress={handleRestore}
+                disabled={loading}
+              >
+                <Text style={styles.restoreText}>Restore Purchases</Text>
               </TouchableOpacity>
               
               <View style={styles.guaranteesContainer}>
@@ -243,12 +293,23 @@ const styles = StyleSheet.create({
     paddingVertical: 18,
     paddingHorizontal: 25,
     borderRadius: 30,
-    marginBottom: 20,
+    marginBottom: 15,
   },
   buttonText: {
     color: '#000',
     fontSize: 20,
     fontWeight: 'bold',
+  },
+  restoreButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    marginBottom: 15,
+  },
+  restoreText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    textDecorationLine: 'underline',
   },
   guaranteesContainer: {
     flexDirection: 'row',
