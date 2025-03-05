@@ -35,7 +35,7 @@
         "NSCameraUsageDescription": "This app uses the camera for QR code scanning.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for...",
         "NSPhotoLibraryUsageDescription": "This app uses the photo library for...",
-        "UIViewControllerBasedStatusBarAppearance": false
+        "UIViewControllerBasedStatusBarAppearance": true
       }
     },
     "plugins": [
@@ -54,7 +54,12 @@
           ]
         }
       ],
-      "react-native-vision-camera",
+      [
+        "react-native-vision-camera",
+        {
+          "cameraPermissionText": "$(PRODUCT_NAME) needs access to your Camera."
+        }
+      ],
       [
         "expo-background-fetch",
         {

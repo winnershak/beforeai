@@ -85,6 +85,7 @@ export default function NewAlarmScreen() {
   const [missionSettings, setMissionSettings] = useState<any>(null);
   const [isUnlimitedSnoozes, setIsUnlimitedSnoozes] = useState(false);
   const [hasMission, setHasMission] = useState(false);
+  const [missionName, setMissionName] = useState('');
 
   const days = [
     { label: 'S', value: 0 },
@@ -229,6 +230,13 @@ export default function NewAlarmScreen() {
         missionSettings = {
           type: 'QR'
         };
+      } else if (missionType === 'Wordle') {
+        missionSettings = {
+          type: 'Wordle',
+          difficulty: 'medium',
+          times: 1,
+          timeLimit: 300
+        };
       }
 
       // Create mission object if missionType exists
@@ -243,31 +251,17 @@ export default function NewAlarmScreen() {
         else if (missionType === 'Typing') missionIcon = 'keyboard';
         else if (missionType === 'Photo') missionIcon = 'camera';
         else if (missionType === 'QR/Barcode') missionIcon = 'qrcode';
+        else if (missionType === 'Wordle') missionIcon = 'grid';
         
-        // Special handling for QR/Barcode mission
-        if (missionType === 'QR/Barcode') {
-          // Get the QR code directly from AsyncStorage
-          const qrCode = await AsyncStorage.getItem('selectedAlarmQR');
-          console.log('NewAlarm: Retrieved QR code:', qrCode);
-          
-          // Create mission object with QR code in settings
-          missionObj = {
-            id: missionId,
-            name: missionType,
-            icon: missionIcon,
-            settings: { targetCode: qrCode }
-          };
-          
-          console.log('NewAlarm: Created mission with QR settings:', missionObj);
-        } else {
-          // For other mission types
-          missionObj = {
-            id: missionId,
-            name: missionType,
-            icon: missionIcon,
-            settings: missionSettings
-          };
-        }
+        // Create mission object
+        missionObj = {
+          id: missionId,
+          name: missionType,
+          icon: missionIcon,
+          settings: missionSettings
+        };
+        
+        console.log('NewAlarm: Created mission object:', missionObj);
       }
 
       console.log('NewAlarm: Final mission object:', missionObj);
@@ -809,15 +803,109 @@ export default function NewAlarmScreen() {
     loadAlarmDays();
   }, [isEditing, currentAlarmId]);
 
+  // Update the useEffect for Wordle mission type
+  useEffect(() => {
+    // Check for Wordle mission type from params
+    if (params.selectedMissionType === 'Wordle') {
+      console.log('Setting Wordle mission type');
+      setMissionType('Wordle');
+      
+      // Create default Wordle settings
+      const wordleSettings = {
+        difficulty: 'medium',
+        times: 1,
+        timeLimit: 90 // 90 seconds
+      };
+      
+      // Save mission type and settings
+      Promise.all([
+        AsyncStorage.setItem('selectedMissionType', 'Wordle'),
+        AsyncStorage.setItem('wordleSettings', JSON.stringify(wordleSettings))
+      ])
+      .then(() => {
+        console.log('Wordle mission type and settings saved');
+        setMissionSettings(wordleSettings);
+      })
+      .catch(error => {
+        console.error('Error saving Wordle mission:', error);
+      });
+    }
+  }, [params.selectedMissionType]);
+
+  useEffect(() => {
+    // Load mission from params if available
+    if (params.mission) {
+      try {
+        // Check if the mission is already a valid object
+        let missionData;
+        if (typeof params.mission === 'string') {
+          // Try to parse it as JSON
+          try {
+            missionData = JSON.parse(params.mission);
+          } catch (parseError) {
+            console.error('Error parsing mission data:', parseError);
+            // If it fails to parse, try to use it as a string
+            missionData = {
+              name: params.mission,
+              icon: '🧩',
+              settings: { type: params.mission }
+            };
+          }
+        } else {
+          // It's already an object
+          missionData = params.mission;
+        }
+        
+        console.log('New Alarm - Parsed mission data:', missionData);
+        
+        // Set mission name and icon
+        if (missionData.name) setMissionName(missionData.name);
+        if (missionData.icon) setMissionIcon(missionData.icon);
+        
+        // Set mission type based on settings.type
+        if (missionData.settings && missionData.settings.type) {
+          const missionType = missionData.settings.type;
+          console.log('New Alarm - Setting mission type from settings:', missionType);
+          setMissionType(missionType);
+          setMissionSettings(missionData.settings);
+          setHasMission(true);
+        }
+      } catch (error) {
+        console.error('Error processing mission data:', error);
+      }
+    } 
+    // Fallback to legacy params if mission JSON is not available
+    else if (params.selectedMissionType) {
+      console.log('New Alarm - Loading mission type:', params.selectedMissionType);
+      setMissionType(params.selectedMissionType as string);
+      if (params.selectedMissionName) setMissionName(params.selectedMissionName as string);
+      if (params.selectedMissionIcon) setMissionIcon(params.selectedMissionIcon as string);
+      setHasMission(true);
+      
+      if (params.missionSettings) {
+        try {
+          if (typeof params.missionSettings === 'string') {
+            setMissionSettings(JSON.parse(params.missionSettings));
+          } else {
+            setMissionSettings(params.missionSettings);
+          }
+        } catch (error) {
+          console.error('Error parsing mission settings:', error);
+        }
+      }
+    }
+  }, [params.mission, params.selectedMissionType]);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.closeButton}>
-          <Ionicons name="close" size={24} color="#fff" />
+        <TouchableOpacity 
+          onPress={() => router.back()} 
+          style={styles.closeButton}
+          hitSlop={{top: 20, bottom: 20, left: 20, right: 20}}
+        >
+          <Ionicons name="close" size={28} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {params.editMode === 'true' ? 'Edit Alarm' : 'New Alarm'}
-        </Text>
       </View>
 
       <View style={styles.timePickerContainer}>
@@ -979,20 +1067,21 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    padding: 20,
+    paddingHorizontal: 20,
     paddingTop: 60,
+    paddingBottom: 20,
+    zIndex: 10,
   },
   closeButton: {
-    position: 'absolute',
-    left: 20,
-    padding: 8,
-  },
-  headerTitle: {
-    color: '#fff',
-    fontSize: 17,
-    fontWeight: '600',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(60, 60, 60, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
   },
   timePickerContainer: {
     alignItems: 'center',

@@ -230,12 +230,7 @@ export default function AppLayout() {
           <Stack.Screen 
             name="new-alarm" 
             options={{
-              title: 'New Alarm',
-              headerLargeTitle: false,
-              headerTitleStyle: {
-                fontSize: 17,
-                fontWeight: '600',
-              },
+              headerShown: false,
             }}
           />
           <Stack.Screen 

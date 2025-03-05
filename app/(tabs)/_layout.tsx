@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
-import React, { useEffect } from 'react';
-import { Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/HapticTab';
 import { IconSymbol } from '@/components/ui/IconSymbol';
@@ -11,6 +14,37 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
+
+  useEffect(() => {
+    // Check if user has premium access
+    const checkPremiumAccess = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Check if user completed quiz
+        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+        
+        // Check if user has premium access
+        const userIsPremium = await AsyncStorage.getItem('isPremium');
+        
+        if (quizCompleted !== 'true' && userIsPremium !== 'true') {
+          // Redirect to quiz if not completed and not premium
+          router.replace('/quiz');
+          return;
+        }
+        
+        setIsPremium(userIsPremium === 'true');
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error checking premium access:', error);
+        setIsLoading(false);
+      }
+    };
+
+    checkPremiumAccess();
+  }, []);
 
   useEffect(() => {
     async function setupNotifications() {
@@ -33,46 +67,54 @@ export default function TabLayout() {
     setupNotifications();
   }, []);
 
+  if (isLoading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#0A84FF" />
+      </View>
+    );
+  }
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: false,
-        tabBarButton: HapticTab,
-        tabBarBackground: TabBarBackground,
-        tabBarStyle: Platform.select({
-          ios: {
-            position: 'absolute',
-          },
-          default: {},
-        }),
-      }}>
+        tabBarActiveTintColor: '#2196F3',
+        tabBarInactiveTintColor: '#8E8E93',
+        tabBarStyle: {
+          backgroundColor: '#1C1C1E',
+          borderTopColor: '#38383A',
+        },
+        tabBarLabelStyle: {
+          fontSize: 12,
+        },
+        headerStyle: {
+          backgroundColor: '#1C1C1E',
+        },
+        headerTintColor: '#fff',
+      }}
+    >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'Alarms',
+          tabBarIcon: ({ color }) => <Ionicons name="alarm" size={28} color={color} />,
+          headerTitle: 'Alarms',
         }}
       />
       <Tabs.Screen
-        name="sleep"
+        name="trophies"
         options={{
-          title: "Sleep Time",
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="moon.fill" color={color} />
+          title: 'Trophies',
+          tabBarIcon: ({ color }) => <Ionicons name="trophy" size={28} color={color} />,
+          headerTitle: 'Trophies & Achievements',
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="settings"
         options={{
-          title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="debug"
-        options={{
-          title: 'Debug',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="hammer.fill" color={color} />,
+          title: 'Settings',
+          tabBarIcon: ({ color }) => <Ionicons name="settings" size={28} color={color} />,
+          headerTitle: 'Settings',
         }}
       />
     </Tabs>

@@ -42,7 +42,6 @@ export default function QuizQuestion6() {
                 <View style={styles.progressBar}>
                   <View style={[styles.progress, { width: '75%' }]} />
                 </View>
-                <Text style={styles.progressText}>6 of 8</Text>
               </View>
             </View>
             
@@ -80,9 +79,9 @@ export default function QuizQuestion6() {
             <View style={styles.footer}>
               <TouchableOpacity 
                 style={styles.skipButton}
-                onPress={() => router.push('/quiz/userInfo')}
+                onPress={() => router.push('/quiz/question8')}
               >
-                <Text style={styles.skipButtonText}>Skip Test</Text>
+                <Text style={styles.skipButtonText}>Skip</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -128,10 +127,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#0A84FF',
     borderRadius: 3,
-  },
-  progressText: {
-    color: '#fff',
-    fontSize: 12,
   },
   content: {
     flex: 1,

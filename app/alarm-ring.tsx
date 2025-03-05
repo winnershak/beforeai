@@ -415,59 +415,44 @@ export default function AlarmRingScreen() {
 
   const handleStartMission = async () => {
     try {
-      // Prevent multiple mission starts
-      if (hasMissionStarted.current) {
-        console.log('Mission already started, ignoring duplicate request');
-        return;
-      }
-      
+      if (hasMissionStarted.current) return;
       hasMissionStarted.current = true;
       
+      // Get the current alarm
+      const currentAlarm = await getCurrentAlarm();
       if (!currentAlarm) {
         console.error('No current alarm found');
         hasMissionStarted.current = false;
         return;
       }
       
-      if (!currentAlarm.mission) {
-        console.error('No mission found in alarm');
-        hasMissionStarted.current = false;
-        return;
-      }
+      // Get the mission type
+      const mission = currentAlarm.mission;
+      console.log('Mission object:', mission);
       
-      console.log('Starting mission for alarm:', currentAlarm.id);
-      console.log('Mission data:', JSON.stringify(currentAlarm.mission, null, 2));
-      
-      // Stop the sound before navigating to mission screen
-      await stopSound();
-      
-      // Cancel all scheduled notifications since we're now showing the mission screen
-      await Notifications.cancelAllScheduledNotificationsAsync().catch(error => {
-        console.error('Error cancelling notifications:', error);
-      });
-      
-      // Extract mission type
+      // Determine mission type - check both name and settings.type
       let missionType = '';
-      
-      if (typeof currentAlarm.mission === 'string') {
-        missionType = currentAlarm.mission;
-      } else if (currentAlarm.mission.name) {
-        missionType = currentAlarm.mission.name;
-      } else if (currentAlarm.mission.type) {
-        missionType = currentAlarm.mission.type;
-      } else if (currentAlarm.mission.settings?.type) {
-        missionType = currentAlarm.mission.settings.type;
+      if (mission) {
+        if (mission.name === 'Wordle' || mission.settings?.type === 'Wordle') {
+          missionType = 'Wordle';
+        } else if (mission.name === 'Math' || mission.settings?.type === 'Math') {
+          missionType = 'Math';
+        } else if (mission.name === 'Typing' || mission.settings?.type === 'Typing') {
+          missionType = 'Typing';
+        } else if (mission.name === 'Photo' || mission.settings?.type === 'Photo') {
+          missionType = 'Photo';
+        } else if (mission.name === 'QR/Barcode' || mission.settings?.type === 'QR') {
+          missionType = 'QR';
+        } else {
+          missionType = mission.name || '';
+        }
       }
       
-      console.log('Mission type determined as:', missionType);
+      console.log('Detected mission type:', missionType);
       
-      // Convert to lowercase for comparison
-      const missionTypeLower = missionType.toLowerCase();
-      
-      // Navigate to mission screen with a slight delay to ensure clean navigation
+      // Navigate based on mission type
       setTimeout(() => {
-        // Handle each mission type based on what the mission screens expect
-        switch (missionTypeLower) {
+        switch (missionType.toLowerCase()) {
           case 'math':
             // Load the saved math settings from AsyncStorage
             AsyncStorage.getItem('mathSettings').then(mathSettingsJson => {
@@ -678,6 +663,62 @@ export default function AlarmRingScreen() {
             });
             break;
             
+          case 'wordle':
+            console.log('Starting Wordle mission');
+            // Use Promise chain instead of await
+            AsyncStorage.setItem('missionInProgress', 'true')
+              .then(() => {
+                // Set the current alarm ID for the mission
+                if (currentAlarm.id) {
+                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
+                }
+                return Promise.resolve();
+              })
+              .then(() => {
+                // Navigate to the final-wordle screen
+                router.replace({
+                  pathname: '/final-wordle',
+                  params: {
+                    alarmId: currentAlarm.id,
+                    sound: currentAlarm.sound,
+                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                  }
+                });
+              })
+              .catch(error => {
+                console.error('Error starting Wordle mission:', error);
+                hasMissionStarted.current = false;
+              });
+            break;
+            
+          case 'tetris':
+            console.log('Starting Tetris mission');
+            // Use Promise chain instead of await
+            AsyncStorage.setItem('missionInProgress', 'true')
+              .then(() => {
+                // Set the current alarm ID for the mission
+                if (currentAlarm.id) {
+                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
+                }
+                return Promise.resolve();
+              })
+              .then(() => {
+                // Navigate to the Tetris game
+                router.replace({
+                  pathname: '/final-tetris',
+                  params: {
+                    alarmId: currentAlarm.id,
+                    sound: currentAlarm.sound,
+                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                  }
+                });
+              })
+              .catch(error => {
+                console.error('Error starting Tetris mission:', error);
+                hasMissionStarted.current = false;
+              });
+            break;
+            
           default:
             console.error('Unknown mission type:', missionType);
             // Default to math mission
@@ -698,6 +739,69 @@ export default function AlarmRingScreen() {
     } catch (error) {
       console.error('Error starting mission:', error);
       hasMissionStarted.current = false;
+    }
+  };
+
+  // Update the getMissionType function to handle Wordle
+  const getMissionType = (mission: any): string => {
+    if (!mission) return '';
+    
+    if (mission.name === 'Wordle' || mission.settings?.type === 'Wordle') {
+      return 'Wordle';
+    } else if (mission.name === 'Math' || mission.settings?.type === 'Math') {
+      return 'Math';
+    } else if (mission.name === 'Typing' || mission.settings?.type === 'Typing') {
+      return 'Typing';
+    } else if (mission.name === 'Photo' || mission.settings?.type === 'Photo') {
+      return 'Photo';
+    } else if (mission.name === 'QR/Barcode' || mission.settings?.type === 'QR') {
+      return 'QR';
+    }
+    
+    return '';
+  };
+
+  // Update the getCurrentAlarm function to use the route params if no currentAlarmId is found
+  const getCurrentAlarm = async (): Promise<Alarm | null> => {
+    try {
+      // Try to get the current alarm ID from AsyncStorage
+      let currentAlarmId = await AsyncStorage.getItem('currentAlarmId');
+      
+      // If no ID in AsyncStorage, try to get it from route params
+      if (!currentAlarmId && params.alarmId) {
+        currentAlarmId = params.alarmId as string;
+        console.log('Using alarmId from params:', currentAlarmId);
+        
+        // Save it to AsyncStorage for future use
+        await AsyncStorage.setItem('currentAlarmId', currentAlarmId);
+      }
+      
+      if (!currentAlarmId) {
+        console.error('No current alarm ID found in storage or params');
+        return null;
+      }
+      
+      // Get all alarms
+      const alarmsJson = await AsyncStorage.getItem('alarms');
+      if (!alarmsJson) {
+        console.error('No alarms found in storage');
+        return null;
+      }
+      
+      // Find the current alarm
+      const alarms = JSON.parse(alarmsJson);
+      const currentAlarm = alarms.find((alarm: Alarm) => alarm.id === currentAlarmId);
+      
+      if (!currentAlarm) {
+        console.error('Current alarm not found in alarms list');
+        return null;
+      }
+      
+      console.log('Found current alarm:', currentAlarm);
+      return currentAlarm;
+    } catch (error) {
+      console.error('Error getting current alarm:', error);
+      return null;
     }
   };
 

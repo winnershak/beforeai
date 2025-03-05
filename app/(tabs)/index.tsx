@@ -25,23 +25,38 @@ interface Alarm {
   soundVolume: number;
 }
 
-// Add this function to calculate time difference
-const calculateTimeUntilAlarm = (alarmTime: string) => {
+// Add this function to calculate time difference with better edge case handling
+const calculateTimeUntilAlarm = (alarm: Alarm | null): string => {
+  if (!alarm) return "No alarms scheduled";
+  if (!alarm.enabled) return "No alarms scheduled";
+  
+  const alarmTime = alarm.time;
+  if (!alarmTime) return "No alarms scheduled";
+  
   const [hours, minutes] = alarmTime.split(':').map(Number);
   const now = new Date();
-  const alarm = new Date();
-  alarm.setHours(hours, minutes, 0);
+  const alarmDate = new Date();
+  alarmDate.setHours(hours, minutes, 0);
 
   // If alarm time is earlier than current time, set it for next day
-  if (alarm < now) {
-    alarm.setDate(alarm.getDate() + 1);
+  if (alarmDate < now) {
+    alarmDate.setDate(alarmDate.getDate() + 1);
   }
 
-  const diff = alarm.getTime() - now.getTime();
+  const diff = alarmDate.getTime() - now.getTime();
   const hrsUntil = Math.floor(diff / (1000 * 60 * 60));
   const minsUntil = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-  return `${hrsUntil}hrs ${minsUntil}min`;
+  // Create a more descriptive message
+  let timeMessage = `Ring in ${hrsUntil}hrs ${minsUntil}min`;
+  
+  // Add day information if available
+  if (alarm.days && alarm.days.length > 0) {
+    const dayNames = alarm.days.map(day => getDayName(day)).join(', ');
+    timeMessage += ` on ${dayNames}`;
+  }
+  
+  return timeMessage;
 };
 
 // Update this helper function at the top of your file
@@ -85,7 +100,7 @@ interface AlarmItemProps {
   onEdit: () => void;
 }
 
-// Add this function to calculate the next closest alarm
+// Update the getNextClosestAlarm function to handle all edge cases
 const getNextClosestAlarm = (alarms: Alarm[]): Alarm | null => {
   if (!alarms || alarms.length === 0) return null;
   
@@ -102,7 +117,7 @@ const getNextClosestAlarm = (alarms: Alarm[]): Alarm | null => {
   // Calculate time until each alarm
   const alarmsWithTimeUntil = enabledAlarms.map(alarm => {
     const [hours, minutes] = alarm.time.split(':').map(Number);
-    const alarmDate = new Date();
+    let alarmDate = new Date();
     alarmDate.setHours(hours, minutes, 0, 0);
     
     // If alarm time has already passed today
@@ -130,8 +145,8 @@ const getNextClosestAlarm = (alarms: Alarm[]): Alarm | null => {
           alarmDate.setDate(alarmDate.getDate() + daysUntilNextAlarm);
         }
       } else {
-        // One-time alarm that already passed today - not relevant
-        return { alarm, timeUntil: Infinity };
+        // One-time alarm for tomorrow
+        alarmDate.setDate(alarmDate.getDate() + 1);
       }
     } else {
       // Alarm is later today - check if it should ring today
@@ -163,7 +178,7 @@ const getNextClosestAlarm = (alarms: Alarm[]): Alarm | null => {
     }
     
     const timeUntil = alarmDate.getTime() - now.getTime();
-    return { alarm, timeUntil };
+    return { alarm, timeUntil, nextRingDate: alarmDate };
   });
   
   // Sort by time until alarm and get the closest one
@@ -274,16 +289,22 @@ export default function TabOneScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>Alarm</Text>
+        <Text style={styles.title}>Alarms</Text>
+        
+        <TouchableOpacity 
+          style={styles.reminderButton}
+          onPress={() => router.navigate('/(tabs)/bedtime')}
+        >
+          <Ionicons name="moon" size={20} color="#fff" style={styles.reminderIcon} />
+          <Text style={styles.reminderText}>Bedtime</Text>
+        </TouchableOpacity>
       </View>
 
-      {alarms.length > 0 && (
-        <View style={styles.nextAlarmContainer}>
-          <Text style={styles.nextAlarmText}>
-            Ring in {calculateTimeUntilAlarm(getNextClosestAlarm(alarms)?.time || '')}
-          </Text>
-        </View>
-      )}
+      <View style={styles.nextAlarmContainer}>
+        <Text style={styles.nextAlarmText}>
+          {calculateTimeUntilAlarm(getNextClosestAlarm(alarms))}
+        </Text>
+      </View>
 
       {alarms && alarms.length > 0 ? (
         <FlatList
@@ -344,11 +365,27 @@ export default function TabOneScreen() {
         </View>
       )}
 
-      <Link href="/new-alarm" asChild>
-        <TouchableOpacity style={styles.fab}>
-          <Text style={styles.fabText}>+</Text>
+      <View style={styles.fabContainer}>
+        <TouchableOpacity
+          style={styles.bedtimeFab}
+          onPress={() => router.push({
+            pathname: '/new-alarm',
+            params: { 
+              bedtimeMode: 'true',
+              defaultTime: '22:00'
+            }
+          })}
+        >
+          <Ionicons name="moon" size={24} color="#fff" />
         </TouchableOpacity>
-      </Link>
+        
+        <TouchableOpacity
+          style={styles.fab}
+          onPress={() => router.push('/new-alarm')}
+        >
+          <Ionicons name="add" size={24} color="#fff" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -414,22 +451,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  fab: {
+  fabContainer: {
     position: 'absolute',
     bottom: 80,
     right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    alignItems: 'center',
+  },
+  bedtimeFab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#8e44ad',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  fab: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     backgroundColor: '#FF3B30',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 4,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    zIndex: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
   },
   fabText: {
     fontSize: 30,
@@ -486,6 +539,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#007AFF',
     marginLeft: 8,
+    fontWeight: '500',
+  },
+  reminderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1c1c1e',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  reminderIcon: {
+    marginRight: 10,
+  },
+  reminderText: {
+    color: '#fff',
+    fontSize: 16,
     fontWeight: '500',
   },
 });

@@ -15,10 +15,10 @@ export default function QuizQuestion7() {
 
   const handleOptionSelect = (option: string) => {
     setSelectedOption(option);
-    // Save answer and navigate immediately
+    // Save answer and navigate to question8
     AsyncStorage.setItem('quiz_q7', option)
       .then(() => {
-        router.push('/quiz/userInfo');  // Note: Changed to userInfo since it's the last question
+        router.push('/quiz/question8');
       })
       .catch(error => console.error('Error saving answer:', error));
   };
@@ -42,9 +42,8 @@ export default function QuizQuestion7() {
               </TouchableOpacity>
               <View style={styles.progressContainer}>
                 <View style={styles.progressBar}>
-                  <View style={[styles.progress, { width: '87.5%' }]} />
+                  <View style={[styles.progress, { width: '77.8%' }]} />
                 </View>
-                <Text style={styles.progressText}>7 of 8</Text>
               </View>
             </View>
             
@@ -80,9 +79,9 @@ export default function QuizQuestion7() {
             <View style={styles.footer}>
               <TouchableOpacity 
                 style={styles.skipButton}
-                onPress={() => router.push('/quiz/userInfo')}
+                onPress={() => router.push('/quiz/question8')}
               >
-                <Text style={styles.skipButtonText}>Skip Test</Text>
+                <Text style={styles.skipButtonText}>Skip</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -128,10 +127,6 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#0A84FF',
     borderRadius: 3,
-  },
-  progressText: {
-    color: '#fff',
-    fontSize: 12,
   },
   content: {
     flex: 1,

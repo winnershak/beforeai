@@ -71,6 +71,10 @@ export default function YesScreen() {
       const success = await mockPurchasesService.purchaseSubscription(isYearly);
       
       if (success) {
+        // Set premium status and mark quiz as completed
+        await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        
         Alert.alert(
           "Subscription Successful", 
           `Thank you for subscribing to the ${isYearly ? 'yearly' : 'monthly'} plan!`,
