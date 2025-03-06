@@ -43,6 +43,7 @@ export default function AlarmRingScreen() {
   const [snoozeRemaining, setSnoozeRemaining] = useState(3);
   const [currentAlarm, setCurrentAlarm] = useState<Alarm | null>(null);
   const [hasMission, setHasMission] = useState(false);
+  const [missionType, setMissionType] = useState('');
 
   console.log('AlarmRingScreen params:', params);
 
@@ -418,8 +419,7 @@ export default function AlarmRingScreen() {
       if (hasMissionStarted.current) return;
       hasMissionStarted.current = true;
       
-      // Get the current alarm
-      const currentAlarm = await getCurrentAlarm();
+      // Use the currentAlarm state variable instead of fetching it again
       if (!currentAlarm) {
         console.error('No current alarm found');
         hasMissionStarted.current = false;
@@ -439,10 +439,12 @@ export default function AlarmRingScreen() {
           missionType = 'Math';
         } else if (mission.name === 'Typing' || mission.settings?.type === 'Typing') {
           missionType = 'Typing';
-        } else if (mission.name === 'Photo' || mission.settings?.type === 'Photo') {
-          missionType = 'Photo';
         } else if (mission.name === 'QR/Barcode' || mission.settings?.type === 'QR') {
           missionType = 'QR';
+        } else if (mission.name === 'Steps' || mission.settings?.type === 'Steps') {
+          missionType = 'Steps';
+        } else if (mission.name === 'Cookie Jam' || mission.settings?.type === 'CookieJam') {
+          missionType = 'CookieJam';
         } else {
           missionType = mission.name || '';
         }
@@ -613,54 +615,37 @@ export default function AlarmRingScreen() {
             });
             break;
             
-          case 'photo':
-            // Load the saved photo settings from AsyncStorage
-            AsyncStorage.getItem('photoSettings').then(photoSettingsJson => {
-              console.log('Raw photo settings JSON:', photoSettingsJson);
-              
-              if (!photoSettingsJson) {
-                console.log('No photo settings found, using defaults');
+          case 'CookieJam':
+          case 'cookiejam':
+            console.log('Starting Cookie Jam mission');
+            // Use Promise chain instead of await
+            AsyncStorage.setItem('missionInProgress', 'true')
+              .then(() => {
+                // Set the current alarm ID for the mission
+                if (currentAlarm.id) {
+                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
+                }
+                return Promise.resolve();
+              })
+              .then(() => {
+                // Navigate to the Cookie Jam game
+                console.log('Navigating to cookie jam with params:', { 
+                  alarmId: currentAlarm.id,
+                  settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
+                });
+                
                 router.replace({
-                  pathname: '/final-photo',
-                  params: {
+                  pathname: '/final-cookiejam',
+                  params: { 
                     alarmId: currentAlarm.id,
-                    targetPhoto: '',
-                    timeLimit: '30',
-                    sound: currentAlarm.sound,
-                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
+                    settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
                   }
                 });
-                return;
-              }
-              
-              // Parse the settings
-              const photoSettings = JSON.parse(photoSettingsJson);
-              console.log('Parsed photo settings:', photoSettings);
-              
-              // Extract the raw values directly without interpretation
-              const rawPhotoUri = photoSettings.photo || '';
-              const rawPhotoTimeLimit = photoSettings.timeLimit || '30';
-              
-              console.log('Photo mission with raw settings:', { 
-                photoUri: rawPhotoUri, 
-                timeLimit: rawPhotoTimeLimit 
+              })
+              .catch(error => {
+                console.error('Error starting Cookie Jam mission:', error);
+                hasMissionStarted.current = false;
               });
-              
-              // Pass the raw values to final-photo.tsx
-              router.replace({
-                pathname: '/final-photo',
-                params: {
-                  alarmId: currentAlarm.id,
-                  targetPhoto: rawPhotoUri,
-                  timeLimit: rawPhotoTimeLimit.toString(),
-                  sound: currentAlarm.sound,
-                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                }
-              });
-            }).catch(error => {
-              console.error('Error loading photo settings:', error);
-              hasMissionStarted.current = false;
-            });
             break;
             
           case 'wordle':
@@ -719,6 +704,39 @@ export default function AlarmRingScreen() {
               });
             break;
             
+          case 'Steps':
+          case 'steps':
+            console.log('Starting Steps mission');
+            // Use Promise chain instead of await
+            AsyncStorage.setItem('missionInProgress', 'true')
+              .then(() => {
+                // Set the current alarm ID for the mission
+                if (currentAlarm.id) {
+                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
+                }
+                return Promise.resolve();
+              })
+              .then(() => {
+                // Navigate to the Steps game
+                console.log('Navigating to step counter with params:', { 
+                  alarmId: currentAlarm.id,
+                  settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
+                });
+                
+                router.replace({
+                  pathname: '/final-step-counter',
+                  params: { 
+                    alarmId: currentAlarm.id,
+                    settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
+                  }
+                });
+              })
+              .catch(error => {
+                console.error('Error starting Steps mission:', error);
+                hasMissionStarted.current = false;
+              });
+            break;
+            
           default:
             console.error('Unknown mission type:', missionType);
             // Default to math mission
@@ -742,20 +760,25 @@ export default function AlarmRingScreen() {
     }
   };
 
-  // Update the getMissionType function to handle Wordle
+  // Update the getMissionType function to handle Steps case-insensitively
   const getMissionType = (mission: any): string => {
     if (!mission) return '';
     
-    if (mission.name === 'Wordle' || mission.settings?.type === 'Wordle') {
+    const missionName = mission.name?.toLowerCase() || '';
+    const missionType = mission.settings?.type?.toLowerCase() || '';
+    
+    if (missionName === 'wordle' || missionType === 'wordle') {
       return 'Wordle';
-    } else if (mission.name === 'Math' || mission.settings?.type === 'Math') {
+    } else if (missionName === 'math' || missionType === 'math') {
       return 'Math';
-    } else if (mission.name === 'Typing' || mission.settings?.type === 'Typing') {
+    } else if (missionName === 'typing' || missionType === 'typing') {
       return 'Typing';
-    } else if (mission.name === 'Photo' || mission.settings?.type === 'Photo') {
-      return 'Photo';
-    } else if (mission.name === 'QR/Barcode' || mission.settings?.type === 'QR') {
+    } else if (missionName === 'qr/barcode' || missionType === 'qr') {
       return 'QR';
+    } else if (missionName === 'steps' || missionType === 'steps') {
+      return 'Steps';
+    } else if (missionName === 'cookie jam' || missionType === 'cookiejam') {
+      return 'CookieJam';
     }
     
     return '';

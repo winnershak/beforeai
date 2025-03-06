@@ -86,6 +86,7 @@ export default function NewAlarmScreen() {
   const [isUnlimitedSnoozes, setIsUnlimitedSnoozes] = useState(false);
   const [hasMission, setHasMission] = useState(false);
   const [missionName, setMissionName] = useState('');
+  const [missionEmoji, setMissionEmoji] = useState('');
 
   const days = [
     { label: 'S', value: 0 },
@@ -489,19 +490,36 @@ export default function NewAlarmScreen() {
     }, [])
   );
 
-  const getMissionEmoji = (missionType: string) => {
-    switch (missionType) {
-      case 'Math':
-        return '🔢';
-      case 'Typing':
-        return '⌨️';
-      case 'QR/Barcode':
-        return '📱';
-      case 'Photo':
-        return '📸';
-      default:
-        return '';
+  const getMissionEmoji = (missionType: string): string => {
+    const missionEmojis: Record<string, string> = {
+      'Math': '🔢',
+      'Typing': '⌨️',
+      'Wordle': '🎲',
+      'QR/Barcode': '📱',
+      'Tetris': '🎮',
+      'Cookie Jam': '🍪'
+    };
+    
+    // Check if we have a direct match
+    if (missionEmojis[missionType]) {
+      return missionEmojis[missionType];
     }
+    
+    // Try case-insensitive match
+    const lowerCaseMissionType = missionType.toLowerCase();
+    for (const [key, emoji] of Object.entries(missionEmojis)) {
+      if (key.toLowerCase() === lowerCaseMissionType) {
+        return emoji;
+      }
+    }
+    
+    // Special case for Cookie Jam
+    if (lowerCaseMissionType.includes('cookie') || lowerCaseMissionType.includes('jam')) {
+      return '🍪';
+    }
+    
+    // Default to bell emoji if no match
+    return '🔔';
   };
 
   // Add this effect to load snooze settings
@@ -836,47 +854,102 @@ export default function NewAlarmScreen() {
     // Load mission from params if available
     if (params.mission) {
       try {
-        // Check if the mission is already a valid object
+        // Make sure we're working with a string before trying to parse
         let missionData;
         if (typeof params.mission === 'string') {
-          // Try to parse it as JSON
-          try {
-            missionData = JSON.parse(params.mission);
-          } catch (parseError) {
-            console.error('Error parsing mission data:', parseError);
-            // If it fails to parse, try to use it as a string
+          // Check if it's already a JSON string
+          if (params.mission.startsWith('{')) {
+            try {
+              missionData = JSON.parse(params.mission);
+              console.log('New Alarm - Successfully parsed mission JSON:', missionData);
+            } catch (parseError) {
+              console.error('Error parsing mission JSON:', parseError);
+              // Create a basic mission object as fallback
+              missionData = {
+                name: params.selectedMissionName || 'Mission',
+                icon: params.selectedMissionIcon || '🧩',
+                type: params.selectedMissionType || 'Unknown',
+                settings: (() => {
+                  if (typeof params.missionSettings === 'string') {
+                    try {
+                      return JSON.parse(params.missionSettings);
+                    } catch (e) {
+                      return {};
+                    }
+                  }
+                  return {};
+                })()
+              };
+            }
+          } else {
+            // It's a plain string, not JSON
+            console.log('New Alarm - Mission is a plain string:', params.mission);
             missionData = {
-              name: params.mission,
-              icon: '🧩',
-              settings: { type: params.mission }
+              name: params.selectedMissionName || params.mission,
+              icon: params.selectedMissionIcon || '🧩',
+              type: params.selectedMissionType || params.mission,
+              settings: (() => {
+                if (typeof params.missionSettings === 'string') {
+                  try {
+                    return JSON.parse(params.missionSettings);
+                  } catch (e) {
+                    return {};
+                  }
+                }
+                return {};
+              })()
             };
           }
-        } else {
+        } else if (typeof params.mission === 'object') {
           // It's already an object
           missionData = params.mission;
+        } else {
+          // Fallback to using individual params
+          missionData = {
+            name: params.selectedMissionName || 'Mission',
+            icon: params.selectedMissionIcon || '🧩',
+            type: params.selectedMissionType || 'Unknown',
+            settings: (() => {
+              if (typeof params.missionSettings === 'string') {
+                try {
+                  return JSON.parse(params.missionSettings);
+                } catch (e) {
+                  return {};
+                }
+              }
+              return {};
+            })()
+          };
         }
         
-        console.log('New Alarm - Parsed mission data:', missionData);
+        console.log('New Alarm - Final mission data:', missionData);
         
         // Set mission name and icon
         if (missionData.name) setMissionName(missionData.name);
         if (missionData.icon) setMissionIcon(missionData.icon);
         
-        // Set mission type based on settings.type
-        if (missionData.settings && missionData.settings.type) {
-          const missionType = missionData.settings.type;
-          console.log('New Alarm - Setting mission type from settings:', missionType);
-          setMissionType(missionType);
-          setMissionSettings(missionData.settings);
+        // Set mission type based on type or settings.type
+        const type = missionData.type || (missionData.settings && missionData.settings.type);
+        if (type) {
+          console.log('New Alarm - Setting mission type:', type);
+          setMissionType(type);
+          setMissionSettings(missionData.settings || {});
           setHasMission(true);
         }
       } catch (error) {
         console.error('Error processing mission data:', error);
+        // Fallback to using individual params
+        if (params.selectedMissionType) {
+          setMissionType(params.selectedMissionType as string);
+          setHasMission(true);
+        }
+        if (params.selectedMissionName) setMissionName(params.selectedMissionName as string);
+        if (params.selectedMissionIcon) setMissionIcon(params.selectedMissionIcon as string);
       }
     } 
     // Fallback to legacy params if mission JSON is not available
     else if (params.selectedMissionType) {
-      console.log('New Alarm - Loading mission type:', params.selectedMissionType);
+      console.log('New Alarm - Loading mission type from params:', params.selectedMissionType);
       setMissionType(params.selectedMissionType as string);
       if (params.selectedMissionName) setMissionName(params.selectedMissionName as string);
       if (params.selectedMissionIcon) setMissionIcon(params.selectedMissionIcon as string);
@@ -894,7 +967,32 @@ export default function NewAlarmScreen() {
         }
       }
     }
+
+    // Add this in the useEffect that handles mission data
+    console.log('Mission type received:', missionType);
+    console.log('Mission emoji for this type:', missionType ? getMissionEmoji(missionType) : '');
   }, [params.mission, params.selectedMissionType]);
+
+  useEffect(() => {
+    const loadMissionType = async () => {
+      try {
+        const missionType = await AsyncStorage.getItem('selectedMissionType');
+        const missionEmoji = await AsyncStorage.getItem('selectedMissionEmoji');
+        
+        if (missionType) {
+          setMissionType(missionType);
+        }
+        
+        if (missionEmoji) {
+          setMissionEmoji(missionEmoji);
+        }
+      } catch (error) {
+        console.error('Error loading mission type:', error);
+      }
+    };
+    
+    loadMissionType();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -974,7 +1072,7 @@ export default function NewAlarmScreen() {
             <View style={styles.sectionContent}>
               <Text style={styles.sectionTitle}>Mission</Text>
               <Text style={[styles.sectionValue, { color: 'white' }]}>
-                {missionType ? `${getMissionEmoji(missionType)} ${missionType}` : 'None'}
+                {missionType ? `${missionEmoji} ${missionType}` : 'None'}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />

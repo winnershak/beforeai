@@ -316,6 +316,54 @@ export default function FinalMathScreen() {
         setTimeout(() => {
           router.push('/');
         }, 2000);
+
+        // Add trophy and stats update
+        try {
+          // Update mission-specific count
+          const missionName = 'Math';
+          const missionCountKey = `${missionName.toLowerCase()}Count`;
+          const missionCount = await AsyncStorage.getItem(missionCountKey);
+          const newMissionCount = missionCount ? parseInt(missionCount) + 1 : 1;
+          await AsyncStorage.setItem(missionCountKey, newMissionCount.toString());
+          
+          // Update mission breakdown
+          const breakdownJson = await AsyncStorage.getItem('missionBreakdown');
+          let breakdown = breakdownJson ? JSON.parse(breakdownJson) : {};
+          breakdown[missionName] = newMissionCount;
+          await AsyncStorage.setItem('missionBreakdown', JSON.stringify(breakdown));
+          
+          // Add XP (50 XP for completing mission)
+          const currentXP = await AsyncStorage.getItem('userXP');
+          const newXP = currentXP ? parseInt(currentXP) + 50 : 50;
+          await AsyncStorage.setItem('userXP', newXP.toString());
+          
+          // Update streak
+          const currentDate = new Date().toISOString().split('T')[0]; // Today's date
+          const lastCompletionDate = await AsyncStorage.getItem('lastCompletionDate');
+          const currentStreak = await AsyncStorage.getItem('currentStreak');
+          let newStreak = 1;
+          
+          if (currentStreak) {
+            const yesterdayDate = new Date();
+            yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+            const yesterday = yesterdayDate.toISOString().split('T')[0];
+            
+            if (lastCompletionDate === yesterday) {
+              // Completed yesterday, increment streak
+              newStreak = parseInt(currentStreak) + 1;
+            } else if (lastCompletionDate === currentDate) {
+              // Already completed today, maintain streak
+              newStreak = parseInt(currentStreak);
+            }
+          }
+          
+          await AsyncStorage.setItem('currentStreak', newStreak.toString());
+          await AsyncStorage.setItem('lastCompletionDate', currentDate);
+          
+          console.log(`Updated stats for ${missionName}: count=${newMissionCount}, streak=${newStreak}`);
+        } catch (error) {
+          console.error('Error updating stats:', error);
+        }
       }
     } else {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);

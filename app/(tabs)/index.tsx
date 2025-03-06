@@ -18,6 +18,7 @@ interface Alarm {
     id: string;
     name: string;
     icon: string;
+    type?: string;
   } | null;
   sound: string;
   volume: number;
@@ -25,42 +26,42 @@ interface Alarm {
   soundVolume: number;
 }
 
-// Add this function to calculate time difference with better edge case handling
+// Update the time display logic
 const calculateTimeUntilAlarm = (alarm: Alarm | null): string => {
-  if (!alarm) return "No alarms scheduled";
-  if (!alarm.enabled) return "No alarms scheduled";
+  if (!alarm) return 'No alarms set';
   
-  const alarmTime = alarm.time;
-  if (!alarmTime) return "No alarms scheduled";
-  
-  const [hours, minutes] = alarmTime.split(':').map(Number);
+  // Get current date and time
   const now = new Date();
-  const alarmDate = new Date();
-  alarmDate.setHours(hours, minutes, 0);
-
-  // If alarm time is earlier than current time, set it for next day
-  if (alarmDate < now) {
-    alarmDate.setDate(alarmDate.getDate() + 1);
-  }
-
-  const diff = alarmDate.getTime() - now.getTime();
-  const hrsUntil = Math.floor(diff / (1000 * 60 * 60));
-  const minsUntil = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-
-  // Create a more descriptive message
-  let timeMessage = `Ring in ${hrsUntil}hrs ${minsUntil}min`;
+  const today = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
   
-  // Add day information if available
-  if (alarm.days && alarm.days.length > 0) {
-    const dayNames = alarm.days.map(day => getDayName(day)).join(', ');
-    timeMessage += ` on ${dayNames}`;
+  // Parse alarm time
+  const [hours, minutes] = alarm.time.split(':').map(Number);
+  
+  // Create a date object for the alarm time today
+  const alarmTime = new Date();
+  alarmTime.setHours(hours, minutes, 0, 0);
+  
+  // If alarm is for today and in the future
+  if (alarm.days.includes(today.toString()) && alarmTime > now) {
+    // Format time only (e.g., "8:30 AM")
+    return `Alarm at ${formatTime(alarm.time)}`;
   }
   
-  return timeMessage;
+  // For alarms on other days, show the day name only
+  const nextDay = getNextAlarmDay(alarm.days, today);
+  if (nextDay !== null) {
+    const dayName = getDayName(nextDay);
+    return `Alarm on ${dayName}`;
+  }
+  
+  return 'No upcoming alarms';
 };
 
 // Update this helper function at the top of your file
-const getDayName = (day: string): string => {
+const getDayName = (day: string | number): string => {
+  // Convert to string if it's a number
+  const dayStr = day.toString();
+  
   // Ensure we're using the correct mapping (1=Monday, 7=Sunday)
   const dayMap: Record<string, string> = {
     '1': 'Mon',
@@ -73,7 +74,41 @@ const getDayName = (day: string): string => {
     // Also handle JavaScript day numbers (0=Sunday, 1=Monday)
     '0': 'Sun'
   };
-  return dayMap[day] || '';
+  return dayMap[dayStr] || '';
+};
+
+// Add this helper function at the top of your file
+const formatTime = (time: string): string => {
+  const [hours, minutes] = time.split(':').map(Number);
+  
+  // Convert to 12-hour format
+  const period = hours >= 12 ? 'PM' : 'AM';
+  const hour12 = hours % 12 || 12; // Convert 0 to 12 for 12 AM
+  
+  return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
+};
+
+// Add this helper function to find the next alarm day
+const getNextAlarmDay = (days: string[], today: number): number | null => {
+  if (!days || days.length === 0) return null;
+  
+  // Convert days to numbers
+  const numericDays = days.map(day => parseInt(day));
+  
+  // First try to find a day later this week
+  for (let i = today + 1; i <= 7; i++) {
+    if (numericDays.includes(i)) return i;
+  }
+  
+  // If not found, wrap around to the beginning of the week
+  for (let i = 1; i <= today; i++) {
+    if (numericDays.includes(i)) return i;
+  }
+  
+  // Handle Sunday (0 in JavaScript)
+  if (numericDays.includes(0)) return 0;
+  
+  return null;
 };
 
 interface AlarmItemProps {
@@ -84,14 +119,15 @@ interface AlarmItemProps {
     days: string[];
     label: string;
     mission: {
-      id: string;
+      id?: string;
       name: string;
-      icon: string;
-    } | null;
+      icon?: string;
+      type?: string;
+    } | string | null;
     sound: string;
     volume: number;
     vibration: boolean;
-    soundVolume: number;
+    soundVolume?: number;
   };
   formattedDays: string;
   onToggle: () => void;
@@ -188,6 +224,32 @@ const getNextClosestAlarm = (alarms: Alarm[]): Alarm | null => {
   return alarmsWithTimeUntil[0]?.timeUntil < Infinity ? alarmsWithTimeUntil[0].alarm : null;
 };
 
+// Update the getMissionEmoji function to match the new emojis
+const getMissionEmoji = (missionType: string): string => {
+  // Handle null or undefined mission type
+  if (!missionType) return '🔔';
+  
+  // Normalize the mission type for comparison
+  const normalizedType = typeof missionType === 'string' 
+    ? missionType.toLowerCase() 
+    : '';
+  
+  // Direct mapping for exact matches
+  if (normalizedType === 'math') return '🔢';
+  if (normalizedType === 'typing') return '⌨️';
+  if (normalizedType === 'wordle') return '🎲';
+  if (normalizedType === 'qr' || normalizedType === 'qr/barcode') return '📱';
+  
+  // Special case for Tetris - use puzzle emoji
+  if (normalizedType.includes('tetris')) return '🧩';
+  
+  // Special case for Cookie Jam - use bell emoji
+  if (normalizedType.includes('cookie') || normalizedType.includes('jam')) return '🔔';
+  
+  // Default fallback
+  return '🔔';
+};
+
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const router = useRouter();
@@ -222,26 +284,89 @@ export default function TabOneScreen() {
       console.error('Home: Error loading alarms:', error);
     }
   };
+  
+  // Define fixAlarmEmojis inside the component
+  const fixAlarmEmojis = async () => {
+    try {
+      // Get all alarms
+      const alarmsString = await AsyncStorage.getItem('alarms');
+      if (!alarmsString) return;
+      
+      const alarmIds = JSON.parse(alarmsString);
+      let anyUpdated = false;
+      
+      // Process each alarm
+      for (const alarmId of alarmIds) {
+        const alarmString = await AsyncStorage.getItem(`alarm_${alarmId}`);
+        if (!alarmString) continue;
+        
+        const alarm = JSON.parse(alarmString);
+        
+        // Check if the alarm has a mission
+        if (alarm.mission) {
+          const missionName = typeof alarm.mission === 'object' ? alarm.mission.name : alarm.mission;
+          const correctEmoji = getMissionEmoji(missionName);
+          
+          // If the mission is an object with an icon property
+          if (typeof alarm.mission === 'object' && alarm.mission.icon) {
+            // Check if the emoji is incorrect
+            if (alarm.mission.icon !== correctEmoji) {
+              // Update the emoji
+              alarm.mission.icon = correctEmoji;
+              anyUpdated = true;
+              
+              // Save the updated alarm
+              await AsyncStorage.setItem(`alarm_${alarmId}`, JSON.stringify(alarm));
+            }
+          }
+        }
+      }
+      
+      // If any alarms were updated, refresh the list
+      if (anyUpdated) {
+        loadAlarms();
+      }
+    } catch (error) {
+      console.error('Error fixing alarm emojis:', error);
+    }
+  };
+  
+  // Call both functions in useEffect
+  useEffect(() => {
+    loadAlarms();
+    fixAlarmEmojis();
+  }, []);
 
   const toggleAlarm = async (id: string) => {
-    const updatedAlarms = alarms.map(alarm => {
-      if (alarm.id === id) {
-        const updatedAlarm = { 
-          ...alarm, 
-          enabled: !alarm.enabled 
-        };
-        if (updatedAlarm.enabled) {
-          scheduleAlarmNotification(updatedAlarm);
-        } else {
-          cancelAlarmNotification(id);
+    try {
+      const updatedAlarms = alarms.map(alarm => {
+        if (alarm.id === id) {
+          // Make sure time is defined
+          if (!alarm.time) {
+            console.warn(`Alarm ${id} has undefined time, setting default`);
+            alarm.time = '08:00'; // Default time
+          }
+          
+          const updatedAlarm = { 
+            ...alarm, 
+            enabled: !alarm.enabled 
+          };
+          
+          if (updatedAlarm.enabled) {
+            scheduleAlarmNotification(updatedAlarm);
+          } else {
+            cancelAlarmNotification(id);
+          }
+          return updatedAlarm;
         }
-        return updatedAlarm;
-      }
-      return alarm;
-    });
-    
-    setAlarms(updatedAlarms);
-    await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+        return alarm;
+      });
+      
+      setAlarms(updatedAlarms);
+      await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+    } catch (error) {
+      console.error('Error toggling alarm:', error);
+    }
   };
 
   const deleteAlarm = async (id: string) => {
@@ -288,18 +413,6 @@ export default function TabOneScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Alarms</Text>
-        
-        <TouchableOpacity 
-          style={styles.reminderButton}
-          onPress={() => router.navigate('/(tabs)/bedtime')}
-        >
-          <Ionicons name="moon" size={20} color="#fff" style={styles.reminderIcon} />
-          <Text style={styles.reminderText}>Bedtime</Text>
-        </TouchableOpacity>
-      </View>
-
       <View style={styles.nextAlarmContainer}>
         <Text style={styles.nextAlarmText}>
           {calculateTimeUntilAlarm(getNextClosestAlarm(alarms))}
@@ -311,6 +424,7 @@ export default function TabOneScreen() {
           data={alarms}
           renderItem={({ item }) => {
             console.log('Rendering alarm:', item); // Debug log
+            console.log('Mission in render:', item.mission);
             return (
               <AlarmItem
                 key={`alarm-${item.id}`}
@@ -320,7 +434,7 @@ export default function TabOneScreen() {
                   enabled: item.enabled,
                   days: item.days,
                   label: item.label || '',
-                  mission: item.mission?.name || null,  // Access name from mission object
+                  mission: item.mission ? (typeof item.mission === 'string' ? item.mission : item.mission.name) : null,
                   sound: item.sound,
                   volume: item.soundVolume,
                   vibration: item.vibration
@@ -339,53 +453,43 @@ export default function TabOneScreen() {
                       time: item.time,
                       days: JSON.stringify(item.days),
                       label: item.label,
-                      mission: JSON.stringify(item.mission),
+                      mission: item.mission ? JSON.stringify(item.mission) : null,
                       sound: item.sound,
                       volume: item.soundVolume.toString(),
                       vibration: item.vibration.toString()
                     }
                   });
                 }}
-              />
+              >
+                {item.mission && (
+                  <View style={styles.missionContainer}>
+                    <Text style={styles.missionIcon}>
+                      {getMissionEmoji(item.mission.name)}
+                    </Text>
+                    <Text style={styles.missionName}>
+                      {typeof item.mission === 'object' ? item.mission.name : item.mission}
+                    </Text>
+                  </View>
+                )}
+              </AlarmItem>
             );
           }}
           keyExtractor={item => item.id}
-          style={styles.alarmList}
-          contentContainerStyle={styles.alarmListContent}
+          contentContainerStyle={styles.alarmList}
         />
       ) : (
-        <View style={styles.emptyStateContainer}>
-          <View style={styles.emptyStateIconContainer}>
-            <Ionicons name="alarm-outline" size={80} color="#007AFF" />
-          </View>
-          <Text style={styles.emptyStateTitle}>Rise and Shine!</Text>
-          <Text style={styles.emptyStateText}>
-            You haven't set any alarms yet. Create your first alarm to start your day right.
-          </Text>
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyStateText}>No alarms yet</Text>
+          <Text style={styles.emptyStateSubtext}>Tap + to add an alarm</Text>
         </View>
       )}
 
-      <View style={styles.fabContainer}>
-        <TouchableOpacity
-          style={styles.bedtimeFab}
-          onPress={() => router.push({
-            pathname: '/new-alarm',
-            params: { 
-              bedtimeMode: 'true',
-              defaultTime: '22:00'
-            }
-          })}
-        >
-          <Ionicons name="moon" size={24} color="#fff" />
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          style={styles.fab}
-          onPress={() => router.push('/new-alarm')}
-        >
-          <Ionicons name="add" size={24} color="#fff" />
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.addButton}
+        onPress={() => router.push('/new-alarm')}
+      >
+        <Ionicons name="add" size={30} color="#fff" />
+      </TouchableOpacity>
     </View>
   );
 }
@@ -393,34 +497,21 @@ export default function TabOneScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
-    paddingTop: 60,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 34,
-    fontWeight: 'bold',
-    color: '#fff',
+    backgroundColor: '#121212',
+    paddingTop: 20,
   },
   nextAlarmContainer: {
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginBottom: 10,
   },
   nextAlarmText: {
     color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
+    fontSize: 18,
+    fontWeight: '500',
   },
   alarmList: {
     flex: 1,
-  },
-  alarmListContent: {
-    paddingBottom: 140,
   },
   alarmItem: {
     flexDirection: 'row',
@@ -451,27 +542,43 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  fabContainer: {
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 30,
+    marginTop: -40, // Adjust based on your header size
+  },
+  emptyStateText: {
+    fontSize: 16,
+    lineHeight: 22,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 30,
+  },
+  emptyStateSubtext: {
+    fontSize: 15,
+    color: '#007AFF',
+    marginLeft: 8,
+    fontWeight: '500',
+  },
+  missionContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  missionIcon: {
+    fontSize: 20,
+    color: '#fff',
+  },
+  missionName: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  addButton: {
     position: 'absolute',
     bottom: 80,
     right: 20,
-    alignItems: 'center',
-  },
-  bedtimeFab: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#8e44ad',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 8,
-  },
-  fab: {
     width: 64,
     height: 64,
     borderRadius: 32,
@@ -483,80 +590,5 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
-  },
-  fabText: {
-    fontSize: 30,
-    color: '#fff',
-  },
-  labelMissionContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  missionText: {
-    color: '#666',
-    fontSize: 15,
-  },
-  emptyStateContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    marginTop: -40, // Adjust based on your header size
-  },
-  emptyStateIconContainer: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: 'rgba(0, 122, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
-  },
-  emptyStateTitle: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#000',
-    marginBottom: 12,
-    textAlign: 'center',
-  },
-  emptyStateText: {
-    fontSize: 16,
-    lineHeight: 22,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 30,
-  },
-  emptyStateHintContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 122, 255, 0.08)',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-  },
-  emptyStateHint: {
-    fontSize: 15,
-    color: '#007AFF',
-    marginLeft: 8,
-    fontWeight: '500',
-  },
-  reminderButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1c1c1e',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#333',
-  },
-  reminderIcon: {
-    marginRight: 10,
-  },
-  reminderText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '500',
   },
 });

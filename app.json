@@ -50,7 +50,14 @@
             "./assets/sounds/beacon.caf",
             "./assets/sounds/chimes.caf",
             "./assets/sounds/circuit.caf",
-            "./assets/sounds/reflection.caf"
+            "./assets/sounds/reflection.caf",
+            "./assets/sounds/slice.caf",
+            "./assets/sounds/quiet-boom.caf",
+            "./assets/sounds/completeword.caf",
+            "./assets/sounds/tetris.caf",
+            "./assets/sounds/frenchcomplete.caf",
+            "./assets/sounds/mount.caf",
+            "./assets/sounds/achieve.caf"
           ]
         }
       ],
@@ -65,7 +72,10 @@
         {
           "startOnBoot": true
         }
-      ]
+      ],
+      ["expo-sensors", {
+        "motionPermission": "Allow $(PRODUCT_NAME) to access your device motion."
+      }]
     ],
     "android": {
       "package": "com.yourusername.rise"

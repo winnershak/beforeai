@@ -54,6 +54,8 @@
     <string>$(PRODUCT_NAME) needs access to your Camera.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>This app uses the microphone for...</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Allow $(PRODUCT_NAME) to access your device motion.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app uses the photo library for...</string>
     <key>UIBackgroundModes</key>

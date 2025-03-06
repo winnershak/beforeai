@@ -16,8 +16,8 @@ import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CacheManager } from 'react-native-expo-image-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import mockPurchasesService from '../../services/MockPurchasesService';
-import { checkSubscriptionStatus, getSubscriptionDetails, expireSubscription } from '../utils/subscriptionUtils';
+import RevenueCatService from '../../services/RevenueCatService';
+import Purchases, { PurchasesPackage } from 'react-native-purchases';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,6 +25,7 @@ export default function YesScreen() {
   const [personName, setPersonName] = useState("Friend");
   const [selectedPlan, setSelectedPlan] = useState('monthly'); // 'monthly' or 'yearly'
   const [loading, setLoading] = useState(false);
+  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   
   // Fetch the person's name from AsyncStorage using the correct key
   useEffect(() => {
@@ -42,8 +43,18 @@ export default function YesScreen() {
     
     fetchUserName();
     
-    // Initialize the mock purchases service
-    mockPurchasesService.initialize();
+    // Initialize the RevenueCat service
+    const initializeRevenueCat = async () => {
+      try {
+        await RevenueCatService.initialize();
+        const availablePackages = await RevenueCatService.getSubscriptionPackages();
+        setPackages(availablePackages);
+      } catch (error) {
+        console.error('Error initializing RevenueCat:', error);
+      }
+    };
+    
+    initializeRevenueCat();
   }, []);
 
   // Preload the background image
@@ -66,18 +77,25 @@ export default function YesScreen() {
     try {
       setLoading(true);
       
-      // Simulate purchase process
-      const isYearly = selectedPlan === 'yearly';
-      const success = await mockPurchasesService.purchaseSubscription(isYearly);
+      // Find the selected package
+      const packageType = selectedPlan === 'yearly' ? 'annual' : 'monthly';
+      const selectedPackage = packages.find(pkg => pkg.packageType === packageType);
+      
+      if (!selectedPackage) {
+        Alert.alert("Error", "Selected subscription package not available.");
+        return;
+      }
+      
+      // Purchase the package
+      const success = await RevenueCatService.purchasePackage(selectedPackage);
       
       if (success) {
-        // Set premium status and mark quiz as completed
-        await AsyncStorage.setItem('isPremium', 'true');
+        // Mark quiz as completed
         await AsyncStorage.setItem('quizCompleted', 'true');
         
         Alert.alert(
           "Subscription Successful", 
-          `Thank you for subscribing to the ${isYearly ? 'yearly' : 'monthly'} plan!`,
+          `Thank you for subscribing to the ${selectedPlan} plan!`,
           [
             {
               text: "Continue",
@@ -100,13 +118,13 @@ export default function YesScreen() {
   const handleRestore = async () => {
     try {
       setLoading(true);
-      const hasSubscription = await mockPurchasesService.hasActiveSubscription();
+      const restored = await RevenueCatService.restorePurchases();
       
-      if (hasSubscription) {
-        const details = await mockPurchasesService.getSubscriptionDetails();
+      if (restored) {
+        const details = await RevenueCatService.getSubscriptionDetails();
         Alert.alert(
           "Subscription Restored", 
-          `Your ${details.type} subscription has been restored.`,
+          `Your subscription has been restored.`,
           [
             {
               text: "Continue",

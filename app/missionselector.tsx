@@ -1,159 +1,193 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
+import { router, useLocalSearchParams, Stack } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// Define mission types with emojis
 const missions = [
-  { id: 'math', name: 'Math', icon: '🔢' },
-  { id: 'typing', name: 'Typing', icon: '⌨️' },
-  { id: 'qrcode', name: 'QR/Barcode', icon: '📱' },
-  { id: 'wordle', name: 'Wordle Game', icon: '🎲' },
-  { id: 'tetris', name: 'Tetris', icon: '🧩' },
-];
-
-// Add Tetris to the mission options
-const missionOptions = [
-  { 
-    id: 'math', 
-    name: 'Math', 
+  {
+    id: 'math',
+    name: 'Math',
+    emoji: '🔢',
     description: 'Solve math problems to turn off the alarm',
-    icon: 'calculator-outline'
+    needsConfig: true
   },
-  { 
-    id: 'typing', 
-    name: 'Typing', 
-    description: 'Type a passage correctly to turn off the alarm',
-    icon: 'keypad-outline'
+  {
+    id: 'typing',
+    name: 'Typing',
+    emoji: '⌨️',
+    description: 'Type the phrase correctly to turn off the alarm',
+    needsConfig: true
   },
-  { 
-    id: 'wordle', 
-    name: 'Wordle', 
-    description: 'Guess the 5-letter word to turn off the alarm',
-    icon: 'text-outline'
+  {
+    id: 'wordle',
+    name: 'Wordle',
+    emoji: '🎲',
+    description: 'Guess the word to turn off the alarm',
+    needsConfig: false
   },
-  { 
-    id: 'photo', 
-    name: 'Photo', 
-    description: 'Take a photo of a specific object to turn off the alarm',
-    icon: 'camera-outline'
+  {
+    id: 'qr',
+    name: 'QR/Barcode',
+    emoji: '📱',
+    description: 'Scan a specific code to turn off the alarm',
+    needsConfig: true
   },
-  { 
-    id: 'qr', 
-    name: 'QR/Barcode', 
-    description: 'Scan a QR code or barcode to turn off the alarm',
-    icon: 'qr-code-outline'
+  {
+    id: 'tetris',
+    name: 'Tetris',
+    emoji: '🧩',
+    description: 'Clear lines in Tetris to turn off the alarm',
+    needsConfig: true
   },
-  { 
-    id: 'tetris', 
-    name: 'Tetris', 
-    description: 'Reach 1000 points in Tetris to turn off the alarm',
-    icon: 'grid-outline'
+  {
+    id: 'cookiejam',
+    name: 'Cookie Jam',
+    emoji: '🔔',
+    description: 'Match food to turn off the alarm',
+    needsConfig: false
   }
 ];
 
-export default function MissionSelectScreen() {
+export default function MissionSelector() {
   const params = useLocalSearchParams();
-
-  const handleMissionSelect = (mission: {id: string, name: string, icon: string}) => {
-    if (mission.id === 'math') {
-      router.push({
-        pathname: '/mission/math',
-        params: { ...params }
-      });
-    } else if (mission.id === 'typing') {
-      router.push({
-        pathname: '/mission/typing',
-        params: { ...params }
-      });
-    } else if (mission.id === 'qrcode') {
-      router.push({
-        pathname: '/mission/qrcode',
-        params: { ...params }
-      });
-    } else if (mission.id === 'wordle') {
-      router.push({
-        pathname: '/new-alarm',
-        params: {
-          ...params,
-          selectedMissionId: mission.id,
-          selectedMissionName: mission.name,
-          selectedMissionIcon: mission.icon,
-          selectedMissionType: 'Wordle'
-        }
-      });
-    } else if (mission.id === 'tetris') {
-      router.push({
-        pathname: '/mission/tetris',
-        params: { ...params }
-      });
-    } else {
-      router.push({
-        pathname: '/new-alarm',
-        params: {
-          ...params,
-          selectedMissionId: mission.id,
-          selectedMissionName: mission.name,
-          selectedMissionIcon: mission.icon
-        }
-      });
-    }
-  };
-
+  const [selectedMission, setSelectedMission] = useState<string | null>(null);
+  
+  // Check if a mission was previously selected
   useEffect(() => {
-    if (params.selectedMissionId) {
-      // How is the mission being set here?
-      // Are we properly constructing the mission object?
-    }
+    const checkPreviousMission = async () => {
+      try {
+        if (params.selectedMissionId) {
+          setSelectedMission(params.selectedMissionId as string);
+        } else {
+          const savedMission = await AsyncStorage.getItem('selectedMissionId');
+          if (savedMission) {
+            setSelectedMission(savedMission);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking previous mission:', error);
+      }
+    };
+    
+    checkPreviousMission();
   }, [params.selectedMissionId]);
-
-  const saveAlarm = async () => {
-    // How is the mission being included in newAlarm?
-    // Is the mission structure correct when updating?
-    // Are we properly preserving the mission when editing?
+  
+  const handleMissionSelect = async (mission: any) => {
+    try {
+      console.log(`Selected mission: ${mission.id}`);
+      setSelectedMission(mission.id);
+      
+      // Save selected mission ID
+      await AsyncStorage.setItem('selectedMissionId', mission.id);
+      await AsyncStorage.setItem('selectedMissionType', mission.name);
+      await AsyncStorage.setItem('selectedMissionEmoji', mission.emoji);
+      
+      // Route to the appropriate configuration page based on mission type
+      switch (mission.id) {
+        case 'math':
+          // Navigate to math configuration
+          router.push('/mission/math');
+          break;
+        
+        case 'typing':
+          // Navigate to typing configuration
+          router.push('/mission/typing');
+          break;
+        
+        case 'qr':
+          // Navigate to QR code configuration
+          router.push('/mission/qrcode');
+          break;
+        
+        case 'tetris':
+          // For Tetris, save default settings and go back to new-alarm
+          await AsyncStorage.setItem('tetrisLines', '3'); // Default to 3 lines
+          await AsyncStorage.setItem('tetrisTimeLimit', '120'); // Default to 120 seconds
+          console.log('Saved default Tetris settings');
+          router.push('/new-alarm');
+          break;
+        
+        default:
+          // For other missions (Wordle, Cookie Jam), go directly back to new-alarm
+          router.push('/new-alarm');
+          break;
+      }
+    } catch (error) {
+      console.error('Error selecting mission:', error);
+    }
   };
-
+  
+  const renderMissionItem = ({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[
+        styles.missionItem,
+        selectedMission === item.id && styles.selectedMission
+      ]}
+      onPress={() => handleMissionSelect(item)}
+    >
+      <View style={styles.missionContent}>
+        <Text style={styles.missionEmoji}>{item.emoji}</Text>
+        <View style={styles.missionTextContainer}>
+          <Text style={styles.missionName}>{item.name}</Text>
+          <Text style={styles.missionDescription}>{item.description}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+  
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Choose Mission</Text>
-      {missions.map((mission) => (
-        <TouchableOpacity
-          key={mission.id}
-          style={styles.missionButton}
-          onPress={() => handleMissionSelect(mission)}
-        >
-          <Text style={styles.missionIcon}>{mission.icon}</Text>
-          <Text style={styles.missionName}>{mission.name}</Text>
-        </TouchableOpacity>
-      ))}
-    </View>
+    <SafeAreaView style={styles.container}>
+      <Stack.Screen options={{ title: 'Choose Mission' }} />
+      
+      <FlatList
+        data={missions}
+        renderItem={renderMissionItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  listContent: {
     padding: 16,
-    backgroundColor: '#1c1c1e',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 20,
+  missionItem: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    marginBottom: 16,
+    padding: 16,
+    borderWidth: 2,
+    borderColor: 'transparent',
   },
-  missionButton: {
+  selectedMission: {
+    borderColor: '#4169E1',
+  },
+  missionContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#2c2c2e',
-    borderRadius: 12,
-    marginBottom: 12,
   },
-  missionIcon: {
-    fontSize: 24,
-    marginRight: 12,
+  missionEmoji: {
+    fontSize: 32,
+    marginRight: 16,
+  },
+  missionTextContainer: {
+    flex: 1,
   },
   missionName: {
     fontSize: 18,
+    fontWeight: 'bold',
     color: '#fff',
+    marginBottom: 4,
+  },
+  missionDescription: {
+    fontSize: 14,
+    color: '#999',
   },
 }); 

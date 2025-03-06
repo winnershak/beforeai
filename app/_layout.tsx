@@ -16,6 +16,7 @@ import * as Notifications from 'expo-notifications';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
 import { setupNotifications, scheduleRepeatingAlarmNotifications } from './notifications';
+import './utils/expo-sensors-patch';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();

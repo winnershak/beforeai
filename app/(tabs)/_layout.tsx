@@ -11,6 +11,7 @@ import { IconSymbol } from '@/components/ui/IconSymbol';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import RevenueCatService from '../services/RevenueCatService';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -23,19 +24,22 @@ export default function TabLayout() {
       try {
         setIsLoading(true);
         
+        // Initialize RevenueCat
+        await RevenueCatService.initialize();
+        
+        // Check if user has premium access
+        const isPremium = await RevenueCatService.checkSubscriptionStatus();
+        
         // Check if user completed quiz
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
-        // Check if user has premium access
-        const userIsPremium = await AsyncStorage.getItem('isPremium');
-        
-        if (quizCompleted !== 'true' && userIsPremium !== 'true') {
+        if (quizCompleted !== 'true' && !isPremium) {
           // Redirect to quiz if not completed and not premium
           router.replace('/quiz');
           return;
         }
         
-        setIsPremium(userIsPremium === 'true');
+        setIsPremium(isPremium);
         setIsLoading(false);
       } catch (error) {
         console.error('Error checking premium access:', error);
@@ -104,9 +108,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="trophies"
         options={{
-          title: 'Trophies',
+          title: 'Stats',
           tabBarIcon: ({ color }) => <Ionicons name="trophy" size={28} color={color} />,
-          headerTitle: 'Trophies & Achievements',
+          headerTitle: 'Stats',
         }}
       />
       <Tabs.Screen

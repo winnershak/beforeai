@@ -10,7 +10,12 @@ interface AlarmItemProps {
     time: string;
     enabled: boolean;
     days: string[];
-    mission: string | null;
+    mission: {
+      id?: string;
+      name: string;
+      icon?: string;
+      type?: string;
+    } | string | null;
     label?: string;
     sound: string;
     volume: number;
@@ -21,6 +26,7 @@ interface AlarmItemProps {
   onDelete: () => void;
   onDuplicate: () => void;
   onEdit: () => void;
+  children?: React.ReactNode;
 }
 
 export function AlarmItem({ alarm, formattedDays, onToggle, onDelete, onDuplicate, onEdit }: AlarmItemProps) {
@@ -84,7 +90,7 @@ export function AlarmItem({ alarm, formattedDays, onToggle, onDelete, onDuplicat
               alarmId: alarm.id,
               time: alarm.time,
               days: alarm.days ? alarm.days.join(',') : '',
-              mission: alarm.mission,
+              mission: typeof alarm.mission === 'object' ? JSON.stringify(alarm.mission) : alarm.mission,
             }
           }}
           asChild
@@ -168,18 +174,33 @@ export function AlarmItem({ alarm, formattedDays, onToggle, onDelete, onDuplicat
   );
 }
 
-const getMissionEmoji = (missionType: string) => {
+const getMissionEmoji = (mission: any) => {
+  // If mission is an object with icon property, use that
+  if (typeof mission === 'object' && mission !== null && mission.icon) {
+    return mission.icon;
+  }
+  
+  // If mission is an object with type property, use that for the switch
+  const missionType = typeof mission === 'object' && mission !== null ? 
+    (mission.type || mission.name) : mission;
+  
   switch (missionType) {
     case 'Math':
       return '🔢';
     case 'Typing':
       return '⌨️';
     case 'QR/Barcode':
+    case 'QR':
       return '📱';
     case 'Photo':
       return '📸';
+    case 'Wordle':
+    case 'Wordle Game':
+      return '🎲';
+    case 'Tetris':
+      return '🧩';
     default:
-      return '';
+      return '🔔'; // Default emoji
   }
 };
 
