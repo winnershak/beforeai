@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Rise",
-    "slug": "rise",
+    "name": "Bliss Alarm Clock",
+    "slug": "bliss-alarm-clock",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -23,19 +23,19 @@
       }
     },
     "ios": {
-      "bundleIdentifier": "com.yourusername.rise",
+      "bundleIdentifier": "com.yourusername.blissalarm",
       "supportsTablet": true,
       "infoPlist": {
         "UIBackgroundModes": [
           "remote-notification",
           "audio",
-          "fetch",
-          "processing"
+          "fetch"
         ],
-        "NSCameraUsageDescription": "This app uses the camera for QR code scanning.",
+        "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for...",
         "NSPhotoLibraryUsageDescription": "This app uses the photo library for...",
-        "UIViewControllerBasedStatusBarAppearance": true
+        "UIViewControllerBasedStatusBarAppearance": false,
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "plugins": [
@@ -73,12 +73,26 @@
           "startOnBoot": true
         }
       ],
-      ["expo-sensors", {
-        "motionPermission": "Allow $(PRODUCT_NAME) to access your device motion."
-      }]
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Allow $(PRODUCT_NAME) to access your device motion."
+        }
+      ]
     ],
     "android": {
-      "package": "com.yourusername.rise"
-    }
+      "package": "com.yourusername.blissalarm",
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "extra": {
+      "eas": {
+        "projectId": "f07e5c10-0728-48d3-b981-ee3955943523"
+      }
+    },
+    "scheme": "blissalarm"
   }
 }

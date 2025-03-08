@@ -13,4 +13,6 @@ export const getSubscriptionDetails = async () => {
 // For testing - simulate subscription expiration
 export const expireSubscription = async () => {
   await mockPurchasesService.cancelSubscription();
-}; 
+};
+
+export default {}; 

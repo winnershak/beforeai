@@ -1,1 +1,3 @@
-// If this file exists, update it to hide headers 
+export default function MissionLayout() {
+  return null;
+} 

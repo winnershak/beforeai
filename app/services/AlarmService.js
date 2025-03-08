@@ -47,4 +47,6 @@ export async function playAlarmSound(alarmId) {
     console.error('Error playing alarm sound:', error);
     return null;
   }
-} 
+}
+
+export default {}; 

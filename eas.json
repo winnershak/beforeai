@@ -1,0 +1,28 @@
+{
+  "cli": {
+    "version": ">= 3.13.3",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal"
+    },
+    "production": {}
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "appleId": "erasyl.shahmardanov@icloud.com",
+        "ascAppId": "6742881418",
+        "appleTeamId": "8L789T788W"
+      }
+    }
+  }
+}

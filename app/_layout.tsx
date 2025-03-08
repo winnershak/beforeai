@@ -9,9 +9,15 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerBackgroundTask } from './background-task';
-import { requestNotificationPermissions } from './notifications';
+import { 
+  requestNotificationPermissions, 
+  setupNotificationHandlers, 
+  stopAlarmSound,
+  scheduleAlarmNotification
+} from './notifications';
 import { AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import ErrorBoundary from './components/ErrorBoundary';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
@@ -24,6 +30,11 @@ SplashScreen.preventAutoHideAsync();
 // Global flag to track if alarm is active
 let isAlarmActive = false;
 
+const handleError = (error: Error) => {
+  console.log('Caught error:', error);
+  // Log to analytics or handle gracefully
+};
+
 export default function AppLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
@@ -35,6 +46,7 @@ export default function AppLayout() {
   const [loading, setLoading] = useState(true);
   const [isReady, setIsReady] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
+  const notificationHandlersSetup = useRef(false);
 
   useEffect(() => {
     if (loaded) {
@@ -66,37 +78,16 @@ export default function AppLayout() {
         if (!alarmsJson) return;
         
         const alarms = JSON.parse(alarmsJson);
-        const currentTime = new Date().toLocaleTimeString('en-US', { 
-          hour12: false,
-          hour: '2-digit',
-          minute: '2-digit'
-        });
         
-        const activeAlarm = alarms.find((alarm: any) => 
-          alarm.enabled && alarm.time === currentTime
-        );
-
-        if (activeAlarm) {
-          console.log('Active alarm found, opening alarm screen');
-          
-          // Schedule repeating notifications first
-          await scheduleRepeatingAlarmNotifications(
-            activeAlarm.id,
-            activeAlarm.sound || 'Beacon',
-            activeAlarm.soundVolume || 1,
-            Boolean(activeAlarm.mission)
-          );
-          
-          // Then navigate to the alarm screen
-          router.push({
-            pathname: '/alarm-ring',
-            params: {
-              alarmId: activeAlarm.id,
-              sound: activeAlarm.sound || 'Beacon',
-              soundVolume: activeAlarm.soundVolume || 1,
-              hasMission: activeAlarm.mission ? 'true' : 'false'
-            }
-          });
+        // IMPORTANT: Don't check for current time and navigate to alarm screen
+        // This is causing alarms to trigger immediately
+        // Instead, just make sure alarms are scheduled properly
+        
+        for (const alarm of alarms) {
+          if (alarm.enabled) {
+            // Just ensure the alarm is scheduled, don't navigate
+            await scheduleAlarmNotification(alarm);
+          }
         }
       } catch (error) {
         console.error('Error checking alarm time:', error);
@@ -116,15 +107,6 @@ export default function AppLayout() {
     // Initial setup
     requestNotificationPermissions();
     registerBackgroundTask();
-
-    // Setup notifications
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-      }),
-    });
 
     return () => {
       subscription.remove();
@@ -190,7 +172,13 @@ export default function AppLayout() {
     // Setup notifications after the component is mounted
     const setup = async () => {
       try {
-        await setupNotifications();
+        // Only set up notification handlers once
+        if (!notificationHandlersSetup.current) {
+          setupNotificationHandlers();
+          notificationHandlersSetup.current = true;
+          console.log('Notification handlers set up');
+        }
+        
         console.log('Notifications setup complete');
       } catch (error) {
         console.error('Error setting up notifications:', error);
@@ -203,63 +191,121 @@ export default function AppLayout() {
     setup();
   }, []);
 
+  useEffect(() => {
+    const checkNotificationPermissions = async () => {
+      try {
+        // Check if user is premium or has completed quiz
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+        
+        // Only check permissions if user has completed onboarding
+        if (isPremium === 'true' || quizCompleted === 'true') {
+          const { status } = await Notifications.getPermissionsAsync();
+          
+          // Only redirect if permissions not granted AND not in quiz flow
+          if (status !== 'granted' && initialRoute !== 'quiz' && initialRoute !== null) {
+            // Check if we've already shown the permission screen recently
+            const lastPrompt = await AsyncStorage.getItem('lastPermissionPrompt');
+            const now = Date.now();
+            
+            // Only show once per day max
+            if (!lastPrompt || (now - parseInt(lastPrompt)) > 86400000) {
+              await AsyncStorage.setItem('lastPermissionPrompt', now.toString());
+              router.replace('/screens/NotificationPermissionScreen');
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking notification permissions:', error);
+      }
+    };
+    
+    // Only run this check if the app is fully ready
+    if (isReady && initialRoute !== null) {
+      checkNotificationPermissions();
+    }
+  }, [isReady, initialRoute]);
+
+  useEffect(() => {
+    // This will run when the app comes to the foreground
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        console.log('App has come to the foreground, stopping any alarm sounds');
+        stopAlarmSound();
+      }
+    };
+
+    // Subscribe to app state changes
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
+    // Also stop sounds when the component mounts (app starts)
+    stopAlarmSound();
+
+    // Clean up the subscription
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   if (!loaded || loading || !isReady) {
     return null;
   }
 
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ErrorBoundary onError={handleError}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
         <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerStyle: {
-              backgroundColor: '#1C1C1E',  // Dark background
-            },
-            headerTintColor: '#fff',       // White text and icons
-            headerTitleStyle: {
-              color: '#fff',               // White title text
-            },
-          }}
-        >
-          <Stack.Screen
-            name="(tabs)"
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen 
-            name="new-alarm" 
-            options={{
-              headerShown: false,
-            }}
-          />
-          <Stack.Screen 
-            name="missionselector" 
-            options={{
-              title: 'Choose Mission',
-              presentation: 'card',
-              headerLargeTitle: false,
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+          <Stack
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: '#1C1C1E',  // Dark background
+              },
+              headerTintColor: '#fff',       // White text and icons
               headerTitleStyle: {
-                fontSize: 17,
-                fontWeight: '600',
+                color: '#fff',               // White title text
               },
             }}
-          />
-          <Stack.Screen name="mission/photo" options={{ title: 'Photo' }} />
-          <Stack.Screen name="mission/photo-scanner" options={{ headerShown: false }} />
-          <Stack.Screen name="mission/photo-preview" options={{ headerShown: false }} />
-          <Stack.Screen name="quiz/index" options={{ headerShown: false }} />
-          <Stack.Screen name="quiz/question1" options={{ headerShown: false }} />
-          <Stack.Screen name="quiz/question2" options={{ headerShown: false }} />
-          <Stack.Screen name="quiz/question3" options={{ headerShown: false }} />
-          <Stack.Screen name="quiz/question4" options={{ headerShown: false }} />
-          <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
-          <Stack.Screen name="quiz/payment" options={{ headerShown: false }} />
-          <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
-          <Stack.Screen name="mission-alarm" options={{ headerShown: false, presentation: 'modal' }} />
-        </Stack>
-      </ThemeProvider>
-    </GestureHandlerRootView>
+          >
+            <Stack.Screen
+              name="(tabs)"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen 
+              name="new-alarm" 
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen 
+              name="missionselector" 
+              options={{
+                title: 'Choose Mission',
+                presentation: 'card',
+                headerLargeTitle: false,
+                headerTitleStyle: {
+                  fontSize: 17,
+                  fontWeight: '600',
+                },
+              }}
+            />
+            <Stack.Screen name="mission/photo" options={{ title: 'Photo' }} />
+            <Stack.Screen name="mission/photo-scanner" options={{ headerShown: false }} />
+            <Stack.Screen name="mission/photo-preview" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/index" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/question1" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/question2" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/question3" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/question4" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/payment" options={{ headerShown: false }} />
+            <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
+            <Stack.Screen name="mission-alarm" options={{ headerShown: false, presentation: 'modal' }} />
+          </Stack>
+        </ThemeProvider>
+      </GestureHandlerRootView>
+    </ErrorBoundary>
   );
 }

@@ -72,4 +72,6 @@ export function useAlarmManager() {
     dismissAlarm,
     checkActiveAlarm
   };
-} 
+}
+
+export default {}; 

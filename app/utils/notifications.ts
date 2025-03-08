@@ -1,4 +1,4 @@
-export const scheduleAlarmNotification = async (alarm: any) => {
+export const scheduleAlarmNotificationUtil = async (alarm: any) => {
   try {
     // Check if time is defined
     if (!alarm || !alarm.time) {
@@ -13,4 +13,6 @@ export const scheduleAlarmNotification = async (alarm: any) => {
   } catch (error) {
     console.error('Error scheduling notifications:', error);
   }
-}; 
+};
+
+export default {}; 

@@ -2,15 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Platform, Linking } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import RevenueCatService from '../../services/RevenueCatService';
+import RevenueCatService from '../services/RevenueCatService';
 
 export default function SettingsScreen() {
-  const [subscriptionDetails, setSubscriptionDetails] = useState(null);
+  const [subscriptionDetails, setSubscriptionDetails] = useState<{
+    expirationDate: Date;
+    latestPurchaseDate: Date;
+    productIdentifier: string;
+    isYearly: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const getSubscriptionInfo = async () => {
-      const details = await RevenueCatService.getSubscriptionDetails();
-      setSubscriptionDetails(details);
+      try {
+        const details = await RevenueCatService.safelyGetSubscriptionDetails();
+        setSubscriptionDetails(details);
+      } catch (error) {
+        console.log('Error getting subscription info:', error);
+      }
     };
     
     getSubscriptionInfo();

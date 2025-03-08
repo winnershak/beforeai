@@ -16,8 +16,8 @@ import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { CacheManager } from 'react-native-expo-image-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import RevenueCatService from '../../services/RevenueCatService';
-import Purchases, { PurchasesPackage } from 'react-native-purchases';
+import RevenueCatService from '../services/RevenueCatService';
+import * as Notifications from 'expo-notifications';
 
 const { width, height } = Dimensions.get('window');
 
@@ -25,7 +25,7 @@ export default function YesScreen() {
   const [personName, setPersonName] = useState("Friend");
   const [selectedPlan, setSelectedPlan] = useState('monthly'); // 'monthly' or 'yearly'
   const [loading, setLoading] = useState(false);
-  const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [packages, setPackages] = useState<any[]>([]);
   
   // Fetch the person's name from AsyncStorage using the correct key
   useEffect(() => {
@@ -92,6 +92,10 @@ export default function YesScreen() {
       if (success) {
         // Mark quiz as completed
         await AsyncStorage.setItem('quizCompleted', 'true');
+        await AsyncStorage.setItem('isPremium', 'true');
+        
+        // Request notification permissions
+        await requestNotificationPermissions();
         
         Alert.alert(
           "Subscription Successful", 
@@ -140,6 +144,27 @@ export default function YesScreen() {
       Alert.alert("Error", "An error occurred while restoring your subscription.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const requestNotificationPermissions = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        
+        if (status === 'granted') {
+          console.log('Notification permissions granted');
+          await AsyncStorage.setItem('notificationPermissionGranted', 'true');
+        } else {
+          console.log('Notification permissions denied');
+        }
+      } else {
+        await AsyncStorage.setItem('notificationPermissionGranted', 'true');
+      }
+    } catch (error) {
+      console.error('Error requesting notification permissions:', error);
     }
   };
 

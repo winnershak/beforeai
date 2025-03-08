@@ -1,15 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-// Configure notifications
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
 export default class NotificationService {
   // Schedule a bedtime notification
   static async scheduleBedtimeNotification(hour, minute, weekday, body = 'Time to disconnect and prepare for sleep!') {

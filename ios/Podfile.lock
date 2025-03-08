@@ -335,6 +335,8 @@ PODS:
     - ReactCommon/turbomodule/bridging
     - ReactCommon/turbomodule/core
     - Yoga
+  - PurchasesHybridCommon (13.22.0):
+    - RevenueCat (= 5.18.0)
   - RCT-Folly (2024.01.01.00):
     - boost
     - DoubleConversion
@@ -1885,6 +1887,7 @@ PODS:
     - React-logger (= 0.76.7)
     - React-perflogger (= 0.76.7)
     - React-utils (= 0.76.7)
+  - RevenueCat (5.18.0)
   - RNCAsyncStorage (1.23.1):
     - React-Core
   - RNDateTimePicker (8.2.0):
@@ -1920,6 +1923,9 @@ PODS:
   - RNNotifee/NotifeeCore (9.1.8):
     - React-Core
   - RNPermissions (5.2.5):
+    - React-Core
+  - RNPurchases (8.8.0):
+    - PurchasesHybridCommon (= 13.22.0)
     - React-Core
   - RNReanimated (3.16.7):
     - DoubleConversion
@@ -2167,6 +2173,7 @@ DEPENDENCIES:
   - RNIap (from `../node_modules/react-native-iap`)
   - "RNNotifee (from `../node_modules/@notifee/react-native`)"
   - RNPermissions (from `../node_modules/react-native-permissions`)
+  - RNPurchases (from `../node_modules/react-native-purchases`)
   - RNReanimated (from `../node_modules/react-native-reanimated`)
   - RNScreens (from `../node_modules/react-native-screens`)
   - UMAppLoader (from `../node_modules/unimodules-app-loader/ios`)
@@ -2178,6 +2185,8 @@ SPEC REPOS:
     - libavif
     - libdav1d
     - lottie-ios
+    - PurchasesHybridCommon
+    - RevenueCat
     - SDWebImage
     - SDWebImageAVIFCoder
     - SDWebImageSVGCoder
@@ -2408,6 +2417,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/@notifee/react-native"
   RNPermissions:
     :path: "../node_modules/react-native-permissions"
+  RNPurchases:
+    :path: "../node_modules/react-native-purchases"
   RNReanimated:
     :path: "../node_modules/react-native-reanimated"
   RNScreens:
@@ -2466,6 +2477,7 @@ SPEC CHECKSUMS:
   libdav1d: 23581a4d8ec811ff171ed5e2e05cd27bad64c39f
   lottie-ios: a881093fab623c467d3bce374367755c272bdd59
   lottie-react-native: 64e768349391867509ebdd097663ac991afcbd8c
+  PurchasesHybridCommon: 16367f792481e8e2d61101ecb607b566937aa67f
   RCT-Folly: 84578c8756030547307e4572ab1947de1685c599
   RCTDeprecation: 7691283dd69fed46f6653d376de6fa83aaad774c
   RCTRequired: eac044a04629288f272ee6706e31f81f3a2b4bfe
@@ -2527,6 +2539,7 @@ SPEC CHECKSUMS:
   React-utils: 0342746d2cf989cf5e0d1b84c98cfa152edbdf3f
   ReactCodegen: e1c019dc68733dd2c5d3b263b4a6dc72002c0045
   ReactCommon: 81e0744ee33adfd6d586141b927024f488bc49ea
+  RevenueCat: e825836f5d6baa870c53d7281be25a5fd91abd91
   RNCAsyncStorage: aa75595c1aefa18f868452091fa0c411a516ce11
   RNDateTimePicker: 818460dc31b0dc5ec58289003e27dd8d022fb79c
   RNFS: 89de7d7f4c0f6bafa05343c578f61118c8282ed8
@@ -2534,6 +2547,7 @@ SPEC CHECKSUMS:
   RNIap: f94647b3a3dbd5fa08ad7ed847eb588aa5fe95fe
   RNNotifee: 5e3b271e8ea7456a36eec994085543c9adca9168
   RNPermissions: 92fa8c09d19da18e4f5e55971d666e1a2d1f480a
+  RNPurchases: d1f57477a73970b532790a85f48d1611d7b5b030
   RNReanimated: 66cf0f600a26d2b5e74c6e0b1c77c1ab1f62fc05
   RNScreens: 4a5ab20b324ed1e3fe3862796b8f8e0a6208c415
   SDWebImage: 8a6b7b160b4d710e2a22b6900e25301075c34cb3
@@ -2545,6 +2559,6 @@ SPEC CHECKSUMS:
   Yoga: 90d80701b27946c4b23461c00a7207f300a6ff71
   ZXingObjC: 8898711ab495761b2dbbdec76d90164a6d7e14c5
 
-PODFILE CHECKSUM: 28cf46049eeb0dc1cdab304ebaefdf146f68e202
+PODFILE CHECKSUM: 641199a2ef320f603244bc1e2e6864c829956a07
 
 COCOAPODS: 1.16.2

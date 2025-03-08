@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { scheduleAlarmNotification, cancelAlarmNotification } from '../notifications';
+import * as Notifications from 'expo-notifications';
 
 // Define the Alarm type
 interface Alarm {
@@ -255,6 +256,7 @@ export default function TabOneScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const [isCreatingAlarm, setIsCreatingAlarm] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
 
   // Keep the loadAlarms effect
   useEffect(() => {
@@ -411,8 +413,53 @@ export default function TabOneScreen() {
     return sortedDays.map(day => getDayName(day)).join(', ');
   };
 
+  // Add this effect to check notification permissions
+  useEffect(() => {
+    checkNotificationPermissions();
+  }, []);
+  
+  // Add this function to check permissions
+  const checkNotificationPermissions = async () => {
+    try {
+      const { status } = await Notifications.getPermissionsAsync();
+      setNotificationsEnabled(status === 'granted');
+    } catch (error) {
+      console.error('Error checking notification permissions:', error);
+    }
+  };
+  
+  // Add this function to open settings
+  const openNotificationSettings = () => {
+    if (Platform.OS === 'ios') {
+      Linking.openURL('app-settings:');
+    } else {
+      Linking.openSettings();
+    }
+  };
+
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Alarms</Text>
+      </View>
+      
+      {/* Notification Permission Banner */}
+      {!notificationsEnabled && (
+        <TouchableOpacity 
+          style={styles.permissionBanner}
+          onPress={openNotificationSettings}
+        >
+          <Ionicons name="notifications-off" size={24} color="#FF3B30" />
+          <View style={styles.permissionTextContainer}>
+            <Text style={styles.permissionTitle}>Notifications Disabled</Text>
+            <Text style={styles.permissionText}>
+              Alarms require notifications to function properly. Tap here to enable in Settings.
+            </Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color="#999" />
+        </TouchableOpacity>
+      )}
+
       <View style={styles.nextAlarmContainer}>
         <Text style={styles.nextAlarmText}>
           {calculateTimeUntilAlarm(getNextClosestAlarm(alarms))}
@@ -499,6 +546,16 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#121212',
     paddingTop: 20,
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    marginBottom: 10,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '500',
   },
   nextAlarmContainer: {
     paddingHorizontal: 20,
@@ -590,5 +647,31 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 6,
+  },
+  permissionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+    marginHorizontal: 16,
+    marginVertical: 8,
+    padding: 16,
+    borderRadius: 12,
+    borderLeftWidth: 4,
+    borderLeftColor: '#FF3B30',
+  },
+  permissionTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+    marginRight: 8,
+  },
+  permissionTitle: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  permissionText: {
+    color: '#CCCCCC',
+    fontSize: 14,
   },
 });

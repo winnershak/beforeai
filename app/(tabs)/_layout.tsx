@@ -12,6 +12,7 @@ import TabBarBackground from '@/components/ui/TabBarBackground';
 import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import RevenueCatService from '../services/RevenueCatService';
+import { registerBackgroundTask } from '../background-task';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
@@ -24,11 +25,24 @@ export default function TabLayout() {
       try {
         setIsLoading(true);
         
-        // Initialize RevenueCat
-        await RevenueCatService.initialize();
+        // Initialize RevenueCat with error handling
+        try {
+          await RevenueCatService.initialize();
+        } catch (error) {
+          console.error('RevenueCat initialization failed:', error);
+          // Continue anyway - we'll use mock mode
+        }
         
         // Check if user has premium access
-        const isPremium = await RevenueCatService.checkSubscriptionStatus();
+        let isPremium = false;
+        try {
+          isPremium = await RevenueCatService.checkSubscriptionStatus();
+        } catch (error) {
+          console.error('Error checking premium status:', error);
+          // Fall back to AsyncStorage
+          const premiumStatus = await AsyncStorage.getItem('isPremium');
+          isPremium = premiumStatus === 'true';
+        }
         
         // Check if user completed quiz
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
@@ -42,7 +56,7 @@ export default function TabLayout() {
         setIsPremium(isPremium);
         setIsLoading(false);
       } catch (error) {
-        console.error('Error checking premium access:', error);
+        console.error('Error in premium access check:', error);
         setIsLoading(false);
       }
     };
@@ -69,6 +83,10 @@ export default function TabLayout() {
     }
 
     setupNotifications();
+  }, []);
+
+  useEffect(() => {
+    registerBackgroundTask().catch(console.error);
   }, []);
 
   if (isLoading) {
