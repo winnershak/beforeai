@@ -21,7 +21,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
-import { setupNotifications, scheduleRepeatingAlarmNotifications } from './notifications';
+import { setupAlarms, scheduleAlarmNotification as setupAlarmsScheduleAlarmNotification } from './notifications';
 import './utils/expo-sensors-patch';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -47,6 +47,7 @@ export default function AppLayout() {
   const [isReady, setIsReady] = useState(false);
   const [isAppReady, setIsAppReady] = useState(false);
   const notificationHandlersSetup = useRef(false);
+  const [hasNavigatedToAlarm, setHasNavigatedToAlarm] = useState(false);
 
   useEffect(() => {
     if (loaded) {
@@ -86,7 +87,7 @@ export default function AppLayout() {
         for (const alarm of alarms) {
           if (alarm.enabled) {
             // Just ensure the alarm is scheduled, don't navigate
-            await scheduleAlarmNotification(alarm);
+            await setupAlarmsScheduleAlarmNotification(alarm);
           }
         }
       } catch (error) {
@@ -246,6 +247,75 @@ export default function AppLayout() {
       subscription.remove();
     };
   }, []);
+
+  useEffect(() => {
+    // Check for active alarms when the app opens or comes to foreground
+    const checkForActiveAlarms = async () => {
+      if (!isAppReady) {
+        console.log('App not ready for navigation, skipping alarm check');
+        return false;
+      }
+
+      try {
+        console.log('Checking for active alarms...');
+        
+        // Get current alarm data from storage
+        const activeAlarmJson = await AsyncStorage.getItem('currentAlarmData');
+        
+        if (activeAlarmJson) {
+          const activeAlarmData = JSON.parse(activeAlarmJson);
+          console.log('Found active alarm data:', activeAlarmData);
+          
+          // Navigate to the alarm-ring screen immediately with no delay
+          console.log('Found active alarm, navigating to alarm-ring screen immediately');
+          
+          try {
+            // Use replace instead of push to avoid navigation stack issues
+            router.replace({
+              pathname: '/alarm-ring',
+              params: {
+                alarmId: activeAlarmData.alarmId,
+                sound: activeAlarmData.sound,
+                soundVolume: activeAlarmData.soundVolume,
+                hasMission: activeAlarmData.hasMission ? 'true' : 'false',
+                mission: JSON.stringify(activeAlarmData.mission)
+              }
+            });
+            return true;
+          } catch (error) {
+            console.error('Navigation error:', error);
+          }
+        } else {
+          console.log('No active alarm data found');
+        }
+        
+        return false;
+      } catch (error) {
+        console.error('Error checking for active alarms:', error);
+        return false;
+      }
+    };
+
+    // Run the check immediately when the app is ready
+    if (isAppReady) {
+      // Run the check immediately
+      checkForActiveAlarms();
+      
+      // Also check when app state changes to active
+      const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+        if (nextAppState === 'active') {
+          console.log('App came to foreground, checking for active alarms');
+          checkForActiveAlarms();
+        }
+      });
+      
+      return () => {
+        subscription.remove();
+      };
+    }
+    
+    return undefined;
+  }, [isAppReady]);
 
   if (!loaded || loading || !isReady) {
     return null;

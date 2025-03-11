@@ -57,8 +57,65 @@ export default function AlarmRingScreen() {
   const [currentAlarm, setCurrentAlarm] = useState<Alarm | null>(null);
   const [hasMission, setHasMission] = useState(false);
   const [missionType, setMissionType] = useState('');
+  const loadAlarmRef = useRef<(() => Promise<void>) | null>(null);
 
   console.log('AlarmRingScreen params:', params);
+
+  // Add this useEffect to ensure the alarm-ring screen is properly displayed
+  useEffect(() => {
+    // This will run when the alarm-ring screen is mounted
+    console.log('AlarmRingScreen mounted');
+    
+    // Cancel all notifications when alarm screen is opened
+    Notifications.cancelAllScheduledNotificationsAsync()
+      .then(() => console.log('Cancelled all scheduled notifications when alarm screen opened'))
+      .catch(error => console.error('Error cancelling notifications:', error));
+    
+    // Make sure we have the current alarm data
+    const checkCurrentAlarmData = async () => {
+      try {
+        // If we don't have an alarmId in params, try to get it from storage
+        if (!params.alarmId) {
+          const activeAlarmJson = await AsyncStorage.getItem('currentAlarmData');
+          if (activeAlarmJson) {
+            const activeAlarmData = JSON.parse(activeAlarmJson);
+            
+            // If we have active alarm data, load that alarm
+            if (activeAlarmData && activeAlarmData.alarmId) {
+              console.log('Found active alarm data:', activeAlarmData);
+              
+              // Update params with the alarm ID
+              Object.assign(params, { 
+                alarmId: activeAlarmData.alarmId,
+                sound: activeAlarmData.sound,
+                soundVolume: activeAlarmData.soundVolume
+              });
+              
+              // Call loadAlarm if it's available
+              if (loadAlarmRef.current) {
+                loadAlarmRef.current();
+              }
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking current alarm data:', error);
+      }
+    };
+    
+    checkCurrentAlarmData();
+    
+    // Start vibration if enabled
+    if (currentAlarm?.vibration !== false) {
+      startVibration();
+    }
+    
+    // Clean up when component unmounts
+    return () => {
+      stopVibration();
+      stopSound();
+    };
+  }, []);
 
   // Play alarm sound only once
   useEffect(() => {
@@ -88,6 +145,19 @@ export default function AlarmRingScreen() {
         // Use a default sound if none is specified
         const soundName = params.sound as string || 'Beacon';
         console.log('Using sound:', soundName);
+        
+        // Configure audio session first
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          interruptionModeIOS: 1, // DuckOthers = 1
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          interruptionModeAndroid: 1, // DuckOthers = 1
+          playThroughEarpieceAndroid: false
+        });
+        
+        console.log('Audio mode configured for alarm');
         
         // Map sound names to their files
         let soundFile;
@@ -135,86 +205,79 @@ export default function AlarmRingScreen() {
         // Set up a status update listener
         sound.setOnPlaybackStatusUpdate(status => {
           if (status.isLoaded) {
-            if (!status.isPlaying && status.shouldPlay) {
+            if (!status.isPlaying && status.shouldPlay && isPlaying) {
               console.log('Sound stopped unexpectedly, restarting...');
-              sound.playAsync().catch(err => console.error('Error restarting sound:', err));
+              sound.playAsync().catch(err => {
+                if (err.message?.includes('not loaded')) {
+                  console.log('Sound was unloaded, cannot restart');
+                  setIsPlaying(false);
+                } else {
+                  console.error('Error restarting sound:', err);
+                }
+              });
             }
           }
         });
         
+        // Start playing the sound
+        await sound.playAsync();
+        console.log('Alarm sound started playing');
+        
       } catch (error) {
-        console.error('Error playing sound:', error);
+        console.error('Error playing alarm sound:', error);
       }
     };
     
     // Load the alarm data
     const loadAlarm = async () => {
       try {
-        const alarmId = params.alarmId as string;
-        console.log('Loading alarm with ID:', alarmId);
+        console.log('Loading alarm with ID:', params.alarmId);
         
-        // If no alarm ID is provided, try to get it from AsyncStorage
-        if (!alarmId) {
-          const pendingNavData = await AsyncStorage.getItem('pendingAlarmNavigation');
-          if (pendingNavData) {
-            const navData = JSON.parse(pendingNavData);
-            if (navData.params && navData.params.alarmId) {
-              console.log('Found alarm ID in AsyncStorage:', navData.params.alarmId);
-              // Use this alarm ID and other params
-              const newParams = {
-                ...params,
-                alarmId: navData.params.alarmId,
-                sound: navData.params.sound || 'Beacon',
-                soundVolume: navData.params.soundVolume || 1.0
+        // Get all alarms from storage
+        const alarmsJson = await AsyncStorage.getItem('alarms');
+        const alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
+        console.log('Found alarms:', alarms.length);
+        
+        // First try to find the alarm by ID from params
+        let alarm = alarms.find((a: Alarm) => a.id === params.alarmId);
+        
+        // If not found by ID from params, check if we have an active alarm in storage
+        if (!alarm) {
+          const activeAlarmJson = await AsyncStorage.getItem('currentAlarmData');
+          if (activeAlarmJson) {
+            const activeAlarmData = JSON.parse(activeAlarmJson);
+            // Try to find this alarm in our alarms list
+            alarm = alarms.find((a: Alarm) => a.id === activeAlarmData.alarmId);
+            
+            // If still not found, use the active alarm data directly
+            if (!alarm && activeAlarmData.alarmId) {
+              console.log('Using active alarm data:', activeAlarmData);
+              // Create a temporary alarm object from the active alarm data
+              alarm = {
+                id: activeAlarmData.alarmId,
+                time: new Date().toLocaleTimeString(),
+                enabled: true,
+                days: [],
+                label: 'Alarm',
+                sound: activeAlarmData.sound || 'Beacon',
+                soundVolume: activeAlarmData.soundVolume || 1,
+                vibration: true,
+                mission: activeAlarmData.mission,
+                snooze: {
+                  enabled: true,
+                  maxSnoozes: 3,
+                  interval: 5
+                }
               };
-              // Update params
-              Object.assign(params, newParams);
             }
           }
         }
         
-        // If we still don't have an alarm ID, use a default alarm
-        if (!params.alarmId) {
-          console.log('No alarm ID found, using default alarm settings');
-          setCurrentAlarm({
-            id: 'default',
-            time: new Date().toLocaleTimeString(),
-            enabled: true,
-            days: [],
-            label: 'Alarm',
-            sound: 'Beacon',
-            soundVolume: 1.0,
-            vibration: true,
-            snooze: {
-              enabled: true,
-              maxSnoozes: 3,
-              interval: 5
-            }
-          });
-          
-          // Play default sound
-          playSound();
-          return;
-        }
-        
-        // Load alarms from storage
-        const alarmsJson = await AsyncStorage.getItem('alarms');
-        if (!alarmsJson) {
-          console.log('No alarms found in storage');
-          return;
-        }
-        
-        const alarms = JSON.parse(alarmsJson);
-        console.log('Found alarms:', alarms.length);
-        
-        // Find the current alarm
-        const alarm = alarms.find((a: Alarm) => a.id === params.alarmId);
-        
         if (!alarm) {
           console.error('Alarm not found with ID:', params.alarmId);
-          // Use default alarm settings
+          // Create a default alarm if none is found
           setCurrentAlarm({
-            id: 'default',
+            id: 'default_alarm',
             time: new Date().toLocaleTimeString(),
             enabled: true,
             days: [],
@@ -243,7 +306,7 @@ export default function AlarmRingScreen() {
           // Check if this alarm has a mission
           if (alarm.mission) {
             setHasMission(true);
-            setMissionType(alarm.mission.type || 'math');
+            setMissionType(typeof alarm.mission === 'string' ? alarm.mission : alarm.mission.name || 'unknown');
           }
         }
         
@@ -257,13 +320,15 @@ export default function AlarmRingScreen() {
       }
     };
     
-    loadAlarm();
+    // Store the function in the ref so it can be used elsewhere
+    loadAlarmRef.current = loadAlarm;
     
     // Cleanup function
     return () => {
       if (soundInstance) {
-        soundInstance.stopAsync().catch(err => console.error('Error stopping sound:', err));
-        soundInstance.unloadAsync().catch(err => console.error('Error unloading sound:', err));
+        console.log('Cleaning up sound in useEffect');
+        soundInstance.stopAsync().catch(() => {});
+        soundInstance.unloadAsync().catch(() => {});
       }
     };
   }, [params]);
@@ -290,9 +355,15 @@ export default function AlarmRingScreen() {
     try {
       // Stop the sound
       if (sound) {
+        console.log('Stopping alarm sound from handleStopAlarm');
         await sound.stopAsync();
         await sound.unloadAsync();
+        setSound(null);
+        setIsPlaying(false);
       }
+      
+      // Also stop any sound playing from notifications
+      await stopAlarmSound();
       
       // Cancel all scheduled notifications
       await Notifications.cancelAllScheduledNotificationsAsync();
@@ -300,6 +371,10 @@ export default function AlarmRingScreen() {
       
       // Reset alarm state
       resetAlarmState();
+      
+      // Clear the current alarm data from AsyncStorage
+      await AsyncStorage.removeItem('currentAlarmData');
+      console.log('Cleared current alarm data from storage');
       
       // Update the alarm if it's a one-time alarm
       if (params.isOneTimeAlarm === 'true') {
@@ -325,10 +400,19 @@ export default function AlarmRingScreen() {
 
   const handleSnooze = async () => {
     try {
-      console.log('Snooze button pressed - navigating to snooze-confirmation');
+      // Stop the sound first
+      if (sound) {
+        console.log('Stopping alarm sound from handleSnooze');
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+        setIsPlaying(false);
+      }
       
-      // Stop the current alarm sound
-      await stopSound();
+      // Also stop any sound playing from notifications
+      await stopAlarmSound();
+      
+      console.log('Snooze button pressed - navigating to snooze-confirmation');
       
       // Calculate snooze time based on settings
       const snoozeMinutes = currentAlarm?.snooze?.interval || 
@@ -412,347 +496,40 @@ export default function AlarmRingScreen() {
 
   const handleStartMission = async () => {
     try {
-      if (hasMissionStarted.current) return;
-      hasMissionStarted.current = true;
-      
-      // Use the currentAlarm state variable instead of fetching it again
-      if (!currentAlarm) {
-        console.error('No current alarm found');
-        hasMissionStarted.current = false;
-        return;
+      // Stop the sound first
+      if (sound) {
+        console.log('Stopping alarm sound from handleStartMission');
+        await sound.stopAsync();
+        await sound.unloadAsync();
+        setSound(null);
+        setIsPlaying(false);
       }
       
-      // Get the mission type
-      const mission = currentAlarm.mission;
-      console.log('Mission object:', mission);
+      // Also stop any sound playing from notifications
+      await stopAlarmSound();
       
-      // Determine mission type - check both name and settings.type
-      let missionType = '';
-      if (mission) {
-        if (mission.name === 'Wordle' || mission.settings?.type === 'Wordle') {
-          missionType = 'Wordle';
-        } else if (mission.name === 'Math' || mission.settings?.type === 'Math') {
-          missionType = 'Math';
-        } else if (mission.name === 'Typing' || mission.settings?.type === 'Typing') {
-          missionType = 'Typing';
-        } else if (mission.name === 'QR/Barcode' || mission.settings?.type === 'QR') {
-          missionType = 'QR';
-        } else if (mission.name === 'Steps' || mission.settings?.type === 'Steps') {
-          missionType = 'Steps';
-        } else if (mission.name === 'Cookie Jam' || mission.settings?.type === 'CookieJam') {
-          missionType = 'CookieJam';
-        } else {
-          missionType = mission.name || '';
-        }
+      console.log('Starting mission in alarm-ring screen with type:', missionType);
+      
+      // Navigate to the appropriate mission screen based on mission type
+      if (missionType.toLowerCase() === 'tetris') {
+        router.replace('/final-tetris');
+      } else if (missionType.toLowerCase() === 'math') {
+        router.replace('/final-math');
+      } else if (missionType.toLowerCase() === 'typing') {
+        router.replace('/final-typing');
+      } else if (missionType.toLowerCase() === 'qr') {
+        router.replace('/final-qr');
+      } else if (missionType.toLowerCase() === 'wordle') {
+        router.replace('/final-wordle');
+      } else if (missionType.toLowerCase() === 'cookiejam') {
+        router.replace('/final-cookiejam');
+      } else {
+        // Default to math if mission type is unknown
+        console.warn('Unknown mission type:', missionType);
+        router.replace('/final-math');
       }
-      
-      console.log('Detected mission type:', missionType);
-      
-      // Navigate based on mission type
-      setTimeout(() => {
-        switch (missionType.toLowerCase()) {
-          case 'math':
-            // Load the saved math settings from AsyncStorage
-            AsyncStorage.getItem('mathSettings').then(mathSettingsJson => {
-              console.log('Raw math settings JSON:', mathSettingsJson);
-              
-              if (!mathSettingsJson) {
-                console.log('No math settings found, using defaults');
-                router.replace({
-                  pathname: '/final-math',
-                  params: {
-                    alarmId: currentAlarm.id,
-                    difficulty: 'medium',
-                    times: '1',
-                    timeLimit: '30',
-                    sound: currentAlarm.sound,
-                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                  }
-                });
-                return;
-              }
-              
-              // Parse the settings
-              const mathSettings = JSON.parse(mathSettingsJson);
-              console.log('Parsed math settings:', mathSettings);
-              
-              // Extract the raw values directly without interpretation
-              const rawDifficulty = mathSettings.difficulty || 'medium';
-              const rawTimes = mathSettings.times || '1';
-              const rawTimeLimit = mathSettings.timeLimit || '30';
-              
-              console.log('Math mission with raw settings:', { 
-                difficulty: rawDifficulty, 
-                times: rawTimes, 
-                timeLimit: rawTimeLimit 
-              });
-              
-              // Pass the raw values to final-math.tsx
-              router.replace({
-                pathname: '/final-math',
-                params: {
-                  alarmId: currentAlarm.id,
-                  difficulty: rawDifficulty.toString(),
-                  times: rawTimes.toString(),
-                  timeLimit: rawTimeLimit.toString(),
-                  sound: currentAlarm.sound,
-                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                }
-              });
-            }).catch(error => {
-              console.error('Error loading math settings:', error);
-              hasMissionStarted.current = false;
-            });
-            break;
-            
-          case 'typing':
-            // Load the saved typing settings from AsyncStorage
-            AsyncStorage.getItem('typingSettings').then(typingSettingsJson => {
-              console.log('Raw typing settings JSON:', typingSettingsJson);
-              
-              if (!typingSettingsJson) {
-                console.log('No typing settings found, using defaults');
-                router.replace({
-                  pathname: '/final-typing',
-                  params: {
-                    alarmId: currentAlarm.id,
-                    text: 'The quick brown fox jumps over the lazy dog',
-                    caseSensitive: 'false',
-                    timeLimit: '30',
-                    sound: currentAlarm.sound,
-                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                  }
-                });
-                return;
-              }
-              
-              // Parse the settings
-              const typingSettings = JSON.parse(typingSettingsJson);
-              console.log('Parsed typing settings:', typingSettings);
-              
-              // Extract the raw values directly without interpretation
-              const rawPhrase = typingSettings.phrase || 'The quick brown fox jumps over the lazy dog';
-              const rawCaseSensitive = typingSettings.caseSensitive !== undefined ? 
-                                      typingSettings.caseSensitive.toString() : 'false';
-              const rawTypingTimeLimit = typingSettings.timeLimit || '30';
-              
-              console.log('Typing mission with raw settings:', { 
-                phrase: rawPhrase, 
-                caseSensitive: rawCaseSensitive, 
-                timeLimit: rawTypingTimeLimit 
-              });
-              
-              // Pass the raw values to final-typing.tsx
-              router.replace({
-                pathname: '/final-typing',
-                params: {
-                  alarmId: currentAlarm.id,
-                  text: rawPhrase,
-                  caseSensitive: rawCaseSensitive,
-                  timeLimit: rawTypingTimeLimit.toString(),
-                  sound: currentAlarm.sound,
-                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                }
-              });
-            }).catch(error => {
-              console.error('Error loading typing settings:', error);
-              hasMissionStarted.current = false;
-            });
-            break;
-            
-          case 'qr':
-          case 'qr/barcode':
-            // Load the saved QR settings from AsyncStorage
-            AsyncStorage.getItem('qrSettings').then(qrSettingsJson => {
-              console.log('Raw QR settings JSON:', qrSettingsJson);
-              
-              if (!qrSettingsJson) {
-                console.log('No QR settings found, using defaults');
-                router.replace({
-                  pathname: '/final-qr',
-                  params: {
-                    alarmId: currentAlarm.id,
-                    targetCode: '',
-                    timeLimit: '30',
-                    sound: currentAlarm.sound,
-                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                  }
-                });
-                return;
-              }
-              
-              // Parse the settings
-              const qrSettings = JSON.parse(qrSettingsJson);
-              console.log('Parsed QR settings:', qrSettings);
-              
-              // Extract the raw values directly without interpretation
-              const rawTargetCode = qrSettings.targetCode || '';
-              const rawQrTimeLimit = qrSettings.timeLimit || '30';
-              
-              console.log('QR mission with raw settings:', { 
-                targetCode: rawTargetCode, 
-                timeLimit: rawQrTimeLimit 
-              });
-              
-              // Pass the raw values to final-qr.tsx
-              router.replace({
-                pathname: '/final-qr',
-                params: {
-                  alarmId: currentAlarm.id,
-                  targetCode: rawTargetCode,
-                  timeLimit: rawQrTimeLimit.toString(),
-                  sound: currentAlarm.sound,
-                  soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                }
-              });
-            }).catch(error => {
-              console.error('Error loading QR settings:', error);
-              hasMissionStarted.current = false;
-            });
-            break;
-            
-          case 'CookieJam':
-          case 'cookiejam':
-            console.log('Starting Cookie Jam mission');
-            // Use Promise chain instead of await
-            AsyncStorage.setItem('missionInProgress', 'true')
-              .then(() => {
-                // Set the current alarm ID for the mission
-                if (currentAlarm.id) {
-                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
-                }
-                return Promise.resolve();
-              })
-              .then(() => {
-                // Navigate to the Cookie Jam game
-                console.log('Navigating to cookie jam with params:', { 
-                  alarmId: currentAlarm.id,
-                  settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
-                });
-                
-                router.replace({
-                  pathname: '/final-cookiejam',
-                  params: { 
-                    alarmId: currentAlarm.id,
-                    settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
-                  }
-                });
-              })
-              .catch(error => {
-                console.error('Error starting Cookie Jam mission:', error);
-                hasMissionStarted.current = false;
-              });
-            break;
-            
-          case 'wordle':
-            console.log('Starting Wordle mission');
-            // Use Promise chain instead of await
-            AsyncStorage.setItem('missionInProgress', 'true')
-              .then(() => {
-                // Set the current alarm ID for the mission
-                if (currentAlarm.id) {
-                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
-                }
-                return Promise.resolve();
-              })
-              .then(() => {
-                // Navigate to the final-wordle screen
-                router.replace({
-                  pathname: '/final-wordle',
-                  params: {
-                    alarmId: currentAlarm.id,
-                    sound: currentAlarm.sound,
-                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                  }
-                });
-              })
-              .catch(error => {
-                console.error('Error starting Wordle mission:', error);
-                hasMissionStarted.current = false;
-              });
-            break;
-            
-          case 'tetris':
-            console.log('Starting Tetris mission');
-            // Use Promise chain instead of await
-            AsyncStorage.setItem('missionInProgress', 'true')
-              .then(() => {
-                // Set the current alarm ID for the mission
-                if (currentAlarm.id) {
-                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
-                }
-                return Promise.resolve();
-              })
-              .then(() => {
-                // Navigate to the Tetris game
-                router.replace({
-                  pathname: '/final-tetris',
-                  params: {
-                    alarmId: currentAlarm.id,
-                    sound: currentAlarm.sound,
-                    soundVolume: currentAlarm.soundVolume?.toString() || '1'
-                  }
-                });
-              })
-              .catch(error => {
-                console.error('Error starting Tetris mission:', error);
-                hasMissionStarted.current = false;
-              });
-            break;
-            
-          case 'Steps':
-          case 'steps':
-            console.log('Starting Steps mission');
-            // Use Promise chain instead of await
-            AsyncStorage.setItem('missionInProgress', 'true')
-              .then(() => {
-                // Set the current alarm ID for the mission
-                if (currentAlarm.id) {
-                  return AsyncStorage.setItem('currentAlarmId', currentAlarm.id);
-                }
-                return Promise.resolve();
-              })
-              .then(() => {
-                // Navigate to the Steps game
-                console.log('Navigating to step counter with params:', { 
-                  alarmId: currentAlarm.id,
-                  settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
-                });
-                
-                router.replace({
-                  pathname: '/final-step-counter',
-                  params: { 
-                    alarmId: currentAlarm.id,
-                    settings: currentAlarm.mission ? JSON.stringify(currentAlarm.mission.settings) : null
-                  }
-                });
-              })
-              .catch(error => {
-                console.error('Error starting Steps mission:', error);
-                hasMissionStarted.current = false;
-              });
-            break;
-            
-          default:
-            console.error('Unknown mission type:', missionType);
-            // Default to math mission
-            router.replace({
-              pathname: '/final-math',
-              params: {
-                alarmId: currentAlarm.id,
-                difficulty: 'medium',
-                times: '1',
-                timeLimit: '30',
-                sound: currentAlarm.sound,
-                soundVolume: currentAlarm.soundVolume?.toString() || '1'
-              }
-            });
-            break;
-        }
-      }, 100);
     } catch (error) {
       console.error('Error starting mission:', error);
-      hasMissionStarted.current = false;
     }
   };
 

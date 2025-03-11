@@ -251,6 +251,185 @@ const getMissionEmoji = (missionType: string): string => {
   return '🔔';
 };
 
+// Update the createTestAlarm function with complete settings
+const createTestAlarm = async () => {
+  try {
+    console.log('Creating test alarm for 10 seconds from now');
+    
+    // Create a date 10 seconds from now
+    const alarmTime = new Date();
+    alarmTime.setSeconds(alarmTime.getSeconds() + 10);
+    
+    // Format the time as HH:MM
+    const hours = alarmTime.getHours().toString().padStart(2, '0');
+    const minutes = alarmTime.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+    
+    // Create a test alarm object with complete settings
+    const testAlarm = {
+      id: `test_alarm_${Date.now()}`,
+      time: timeString,
+      days: [],
+      label: 'Test Alarm',
+      sound: 'Beacon',
+      soundVolume: 1,
+      vibration: true,
+      enabled: true,
+      snooze: {
+        enabled: true,
+        interval: 5,
+        maxSnoozes: 3
+      },
+      mission: {
+        id: `mission_${Date.now()}`,
+        name: 'Tetris',
+        icon: 'calculator',
+        settings: null
+      }
+    };
+    
+    console.log('Test alarm details:', testAlarm);
+    
+    // Save the test alarm to storage so alarm-ring can find it
+    const alarmsJson = await AsyncStorage.getItem('alarms');
+    let alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
+    alarms.push(testAlarm);
+    await AsyncStorage.setItem('alarms', JSON.stringify(alarms));
+    
+    // Schedule the notification
+    const notificationId = await scheduleAlarmNotification(testAlarm);
+    
+    // Show feedback to the user
+    if (notificationId) {
+      alert(`Test alarm scheduled for ${timeString} (in 10 seconds)`);
+    } else {
+      alert('Failed to schedule test alarm');
+    }
+  } catch (error: any) {
+    console.error('Error creating test alarm:', error);
+    alert(`Error: ${error.message}`);
+  }
+};
+
+// Update the getNextAlarmText function to properly check upcoming alarms
+
+const getNextAlarmText = (alarms: Alarm[]): string => {
+  // Filter to only enabled alarms
+  const enabledAlarms = alarms.filter(alarm => alarm.enabled);
+  
+  if (enabledAlarms.length === 0) {
+    return 'No upcoming alarms';
+  }
+  
+  // Get current date and time
+  const now = new Date();
+  const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+  const currentHour = now.getHours();
+  const currentMinute = now.getMinutes();
+  
+  // Map day strings to numbers
+  const dayMap: Record<string, number> = {
+    'sunday': 0,
+    'monday': 1,
+    'tuesday': 2,
+    'wednesday': 3,
+    'thursday': 4,
+    'friday': 5,
+    'saturday': 6
+  };
+  
+  // Calculate the next occurrence for each alarm
+  const nextOccurrences = enabledAlarms.map(alarm => {
+    const [hours, minutes] = alarm.time.split(':').map(Number);
+    
+    // If the alarm has no days set, it's a one-time alarm
+    if (!alarm.days || alarm.days.length === 0) {
+      // Check if the alarm is for today but later
+      if (hours > currentHour || (hours === currentHour && minutes > currentMinute)) {
+        // Alarm is later today
+        return {
+          alarm,
+          days: 0,
+          hours: hours - currentHour,
+          minutes: minutes - currentMinute
+        };
+      } else {
+        // Alarm is for tomorrow
+        return {
+          alarm,
+          days: 1,
+          hours: (24 + hours) - currentHour,
+          minutes: minutes - currentMinute
+        };
+      }
+    }
+    
+    // For repeating alarms, find the next occurrence
+    let nextDay = 7; // Start with a value larger than any possible day
+    let daysUntilNext = 7; // Maximum days until next alarm
+    
+    // Check each day the alarm is set for
+    alarm.days.forEach(day => {
+      const alarmDay = typeof day === 'string' ? dayMap[day.toLowerCase()] : day;
+      
+      if (alarmDay === undefined) return; // Skip invalid days
+      
+      // Calculate days until this occurrence
+      let daysUntil = alarmDay - currentDay;
+      if (daysUntil < 0) daysUntil += 7; // Wrap around to next week
+      
+      // If it's today, check the time
+      if (daysUntil === 0) {
+        // If the alarm time has already passed today, it will occur next week
+        if (hours < currentHour || (hours === currentHour && minutes <= currentMinute)) {
+          daysUntil = 7;
+        }
+      }
+      
+      // Update if this is sooner than our current soonest
+      if (daysUntil < daysUntilNext) {
+        daysUntilNext = daysUntil;
+        nextDay = alarmDay;
+      }
+    });
+    
+    // Calculate total hours and minutes until the alarm
+    let totalHours = (daysUntilNext * 24) + hours - currentHour;
+    let totalMinutes = minutes - currentMinute;
+    
+    // Adjust for negative minutes
+    if (totalMinutes < 0) {
+      totalHours -= 1;
+      totalMinutes += 60;
+    }
+    
+    return {
+      alarm,
+      days: Math.floor(totalHours / 24),
+      hours: totalHours % 24,
+      minutes: totalMinutes
+    };
+  });
+  
+  // Sort by soonest
+  nextOccurrences.sort((a, b) => {
+    const aTime = a.days * 24 * 60 + a.hours * 60 + a.minutes;
+    const bTime = b.days * 24 * 60 + b.hours * 60 + b.minutes;
+    return aTime - bTime;
+  });
+  
+  const next = nextOccurrences[0];
+  
+  // Format the time until next alarm
+  if (next.days > 0) {
+    return `Next alarm in ${next.days} day${next.days > 1 ? 's' : ''}, ${next.hours} hr${next.hours !== 1 ? 's' : ''}, ${next.minutes} min${next.minutes !== 1 ? 's' : ''}`;
+  } else if (next.hours > 0) {
+    return `Next alarm in ${next.hours} hr${next.hours !== 1 ? 's' : ''}, ${next.minutes} min${next.minutes !== 1 ? 's' : ''}`;
+  } else {
+    return `Next alarm in ${next.minutes} minute${next.minutes !== 1 ? 's' : ''}`;
+  }
+};
+
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const router = useRouter();
@@ -462,7 +641,7 @@ export default function TabOneScreen() {
 
       <View style={styles.nextAlarmContainer}>
         <Text style={styles.nextAlarmText}>
-          {calculateTimeUntilAlarm(getNextClosestAlarm(alarms))}
+          {getNextAlarmText(alarms)}
         </Text>
       </View>
 

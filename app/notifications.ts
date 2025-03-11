@@ -594,7 +594,7 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
   }
 }
 
-// Update the handleNotification function to ensure navigation works
+// Update the handleNotification function to remove navigation to alarm-ring
 export function handleNotification(notification: Notifications.Notification) {
   const data = notification.request.content.data;
   console.log('Handling notification with data:', data);
@@ -618,42 +618,18 @@ export function handleNotification(notification: Notifications.Notification) {
   // Start playing the sound immediately
   playAlarmSound(data.sound || 'Beacon', data.soundVolume || 1);
   
-  // Use a more reliable navigation approach with a delay
-  setTimeout(() => {
-    try {
-      // Store the navigation data in AsyncStorage as a fallback
-      AsyncStorage.setItem('pendingAlarmNavigation', JSON.stringify({
-        screen: data.hasMission ? 'mission-alarm' : 'alarm-ring',
-        params: {
-          alarmId: data.alarmId,
-          sound: data.sound,
-          soundVolume: data.soundVolume,
-          mission: data.mission
-        },
-        timestamp: Date.now()
-      })).catch(err => console.error('Error storing navigation data:', err));
-      
-      // Try direct navigation first
-      if (data.hasMission) {
-        router.replace('/mission-alarm');
-      } else {
-        router.replace('/alarm-ring');
-      }
-    } catch (error) {
-      console.error('Navigation error:', error);
-      
-      // Try alternative navigation
-      try {
-        if (data.hasMission) {
-          router.push('/mission-alarm');
-        } else {
-          router.push('/alarm-ring');
-        }
-      } catch (fallbackError) {
-        console.error('Fallback navigation failed:', fallbackError);
-      }
-    }
-  }, 1000); // Give the app 1 second to initialize
+  // Store the alarm data in AsyncStorage for recovery
+  AsyncStorage.setItem('currentAlarmData', JSON.stringify({
+    alarmId: data.alarmId,
+    sound: data.sound,
+    soundVolume: data.soundVolume,
+    hasMission: data.hasMission,
+    mission: data.mission,
+    timestamp: Date.now()
+  })).catch(err => console.error('Error storing alarm data:', err));
+  
+  // DO NOT navigate to alarm-ring - let the app's layout handle this
+  console.log('Alarm is active but not navigating from notification handler');
 }
 
 // Update the cancelAlarmNotification function to be simpler
