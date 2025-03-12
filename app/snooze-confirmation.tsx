@@ -50,8 +50,34 @@ export default function SnoozeConfirmationScreen() {
           const diff = snoozeTime.getTime() - now.getTime();
           
           if (diff <= 0) {
-            // Time's up, navigate back to home
-            router.replace('/');
+            // Time's up, navigate back to alarm-ring instead of home
+            console.log('Snooze time expired, returning to alarm-ring');
+            
+            // Get the alarm data from storage
+            AsyncStorage.getItem('snoozedAlarm').then(snoozeDataJson => {
+              if (snoozeDataJson) {
+                const snoozeData = JSON.parse(snoozeDataJson);
+                
+                // Navigate back to alarm-ring with the alarm data
+                router.replace({
+                  pathname: '/alarm-ring',
+                  params: {
+                    alarmId: snoozeData.alarmId,
+                    sound: snoozeData.sound,
+                    soundVolume: snoozeData.soundVolume,
+                    hasMission: snoozeData.hasMission,
+                    fromSnooze: 'true'
+                  }
+                });
+              } else {
+                // Fallback if no data is found
+                router.replace('/alarm-ring');
+              }
+            }).catch(error => {
+              console.error('Error getting snoozed alarm data:', error);
+              router.replace('/alarm-ring');
+            });
+            
             return;
           }
           

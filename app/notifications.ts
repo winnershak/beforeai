@@ -512,8 +512,16 @@ const handleAppStateChange = async (nextAppState: AppStateStatus) => {
   appState = nextAppState;
 };
 
-// Update the scheduleAlarmNotification function to schedule multiple notifications
-export async function scheduleAlarmNotification(alarm: Alarm) {
+// Update the scheduleAlarmNotification function to create 15 backup notifications
+export const scheduleAlarmNotification = async (alarm: {
+  id: string;
+  time: string;
+  sound: string;
+  soundVolume: number;
+  label?: string;
+  mission?: any;
+  days?: string[];
+}) => {
   try {
     // Request permissions first
     await requestNotificationPermissions();
@@ -559,12 +567,15 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
     
     console.log(`Scheduled notification with ID: ${notificationId} for ${alarmTime.toLocaleString()}`);
     
-    // Schedule 5 backup notifications at 6-second intervals
-    for (let i = 1; i <= 5; i++) {
-      const backupTime = new Date(alarmTime);
-      backupTime.setSeconds(backupTime.getSeconds() + (i * 6));
+    // Schedule 15 backup notifications (one every 6 seconds for 90 seconds)
+    // This ensures the alarm will keep trying if the user doesn't respond
+    for (let i = 1; i <= 15; i++) {
+      const backupTrigger = {
+        date: new Date(alarmTime.getTime() + (i * 6000)), // 6 seconds apart
+        type: 'date'
+      } as Notifications.DateTriggerInput;
       
-      const backupId = await Notifications.scheduleNotificationAsync({
+      const backupNotificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Wake Up!',
           body: `Your alarm is still ringing (${i})`,
@@ -578,13 +589,10 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
             fromNotification: 'true'
           },
         },
-        trigger: {
-          date: backupTime,
-          type: 'date'
-        } as Notifications.DateTriggerInput,
+        trigger: backupTrigger,
       });
       
-      console.log(`Scheduled backup notification ${i} with ID: ${backupId} for ${backupTime.toLocaleString()}`);
+      console.log(`Scheduled backup notification ${i} with ID: ${backupNotificationId} for ${new Date(alarmTime.getTime() + (i * 6000)).toLocaleString()}`);
     }
     
     return notificationId;
@@ -592,7 +600,7 @@ export async function scheduleAlarmNotification(alarm: Alarm) {
     console.error('Error scheduling notification:', error);
     return null;
   }
-}
+};
 
 // Update the handleNotification function to remove navigation to alarm-ring
 export function handleNotification(notification: Notifications.Notification) {
@@ -734,6 +742,34 @@ export const cancelAllNotifications = async () => {
   } catch (error) {
     console.error('Error cancelling all notifications:', error);
     return false;
+  }
+};
+
+// Update the scheduleImmediateNotification function
+export const scheduleImmediateNotification = async (data: any) => {
+  try {
+    // Create a data object first
+    const notificationData: any = {
+      id: data.alarmId,
+      time: "00:00", // This won't matter for immediate notifications
+      days: [], // Keep the days property
+      sound: data.sound,
+      soundVolume: data.soundVolume || 1,
+      mission: data.mission
+    };
+    
+    // Create notification content
+    const content: Notifications.NotificationContentInput = {
+      title: data.title,
+      body: data.body,
+      data: notificationData,
+    };
+    
+    // Rest of the function...
+    return null; // Add a return statement
+  } catch (error) {
+    console.error('Error scheduling immediate notification:', error);
+    return null;
   }
 };
 

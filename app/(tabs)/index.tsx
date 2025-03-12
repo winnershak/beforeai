@@ -618,10 +618,6 @@ export default function TabOneScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Alarms</Text>
-      </View>
-      
       {/* Notification Permission Banner */}
       {!notificationsEnabled && (
         <TouchableOpacity 
@@ -638,12 +634,6 @@ export default function TabOneScreen() {
           <Ionicons name="chevron-forward" size={20} color="#999" />
         </TouchableOpacity>
       )}
-
-      <View style={styles.nextAlarmContainer}>
-        <Text style={styles.nextAlarmText}>
-          {getNextAlarmText(alarms)}
-        </Text>
-      </View>
 
       {alarms && alarms.length > 0 ? (
         <FlatList

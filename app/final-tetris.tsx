@@ -704,32 +704,32 @@ export default function FinalTetrisGame() {
     // Load sounds when component mounts
     const loadSounds = async () => {
       try {
-        console.log('Loading Tetris sounds...');
+        console.log('Loading tetris sounds...');
         
-        // Load tetris background music
-        const { sound: musicSound } = await Audio.Sound.createAsync(
+        // Load tetris music with correct path
+        const { sound: music } = await Audio.Sound.createAsync(
           require('../assets/sounds/tetris.caf'),
-          { isLooping: true, volume: 0.5 }
+          { volume: 0.5, isLooping: true }
         );
-        setTetrisMusic(musicSound);
+        setTetrisMusic(music);
         
-        // Load piece movement sound
-        const { sound: sliceSound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/slice.caf'),
+        // Load move sound
+        const { sound: move } = await Audio.Sound.createAsync(
+          require('../assets/sounds/move.caf'),
+          { volume: 0.5 }
+        );
+        setMoveSound(move);
+        
+        // Load complete sound
+        const { sound: complete } = await Audio.Sound.createAsync(
+          require('../assets/sounds/completeword.caf'),
           { volume: 0.7 }
         );
-        setMoveSound(sliceSound);
+        setCompleteSound(complete);
         
-        // Load completion sound
-        const { sound: wordSound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/completeword.caf'),
-          { volume: 1.0 }
-        );
-        setCompleteSound(wordSound);
-        
-        console.log('Tetris sounds loaded successfully');
+        console.log('All tetris sounds loaded successfully');
       } catch (error) {
-        console.error('Error loading sounds:', error);
+        console.error('Error loading tetris sounds:', error);
       }
     };
     

@@ -100,7 +100,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#2196F3',
+        tabBarActiveTintColor: '#FF9500',
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
           backgroundColor: '#1C1C1E',
@@ -110,9 +110,11 @@ export default function TabLayout() {
           fontSize: 12,
         },
         headerStyle: {
-          backgroundColor: '#1C1C1E',
+          backgroundColor: '#000',
         },
-        headerTintColor: '#fff',
+        headerTitleStyle: {
+          color: '#fff',
+        },
       }}
     >
       <Tabs.Screen
@@ -120,15 +122,15 @@ export default function TabLayout() {
         options={{
           title: 'Alarms',
           tabBarIcon: ({ color }) => <Ionicons name="alarm" size={28} color={color} />,
-          headerTitle: 'Alarms',
+          headerShown: false,
         }}
       />
       <Tabs.Screen
-        name="trophies"
+        name="sounds"
         options={{
-          title: 'Stats',
-          tabBarIcon: ({ color }) => <Ionicons name="trophy" size={28} color={color} />,
-          headerTitle: 'Stats',
+          title: 'Sounds',
+          tabBarIcon: ({ color }) => <Ionicons name="musical-notes" size={28} color={color} />,
+          headerShown: true,
         }}
       />
       <Tabs.Screen
@@ -136,7 +138,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color }) => <Ionicons name="settings" size={28} color={color} />,
-          headerTitle: 'Settings',
+          headerShown: false,
         }}
       />
     </Tabs>

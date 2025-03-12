@@ -348,22 +348,73 @@ export default function NewAlarmScreen() {
   useEffect(() => {
     const loadAlarm = async () => {
       if (params.alarmId) {
-        console.log('Loading existing alarm:', params.alarmId);
-        const existingAlarms = await AsyncStorage.getItem('alarms');
-        if (existingAlarms) {
-          const alarms = JSON.parse(existingAlarms);
-          const currentAlarm = alarms.find((a: Alarm) => a.id === params.alarmId);
-          if (currentAlarm) {
-            console.log('Found current alarm:', currentAlarm);
-            setDate(new Date());
-            setSelectedDays(currentAlarm.days);
-            setLabel(currentAlarm.label);
-            setMission(currentAlarm.mission);
-            setSound(currentAlarm.sound);
-            setSoundVolume(currentAlarm.soundVolume);
-            setVibrationEnabled(currentAlarm.vibration);
-            setHasMission(!!currentAlarm.mission);
+        const alarmId = params.alarmId as string;
+        console.log('Loading existing alarm:', alarmId);
+        
+        try {
+          const existingAlarms = await AsyncStorage.getItem('alarms');
+          if (existingAlarms) {
+            const alarms = JSON.parse(existingAlarms);
+            const currentAlarm = alarms.find((a: any) => a.id === alarmId);
+            
+            if (currentAlarm) {
+              console.log('Found current alarm:', currentAlarm);
+              
+              // Set time from the alarm's time string
+              if (currentAlarm.time) {
+                const [hours, minutes] = currentAlarm.time.split(':');
+                const newDate = new Date();
+                newDate.setHours(parseInt(hours, 10));
+                newDate.setMinutes(parseInt(minutes, 10));
+                setDate(newDate);
+              }
+              
+              // Handle days array properly
+              setSelectedDays(Array.isArray(currentAlarm.days) ? currentAlarm.days : []);
+              
+              // Handle other properties with proper type checking
+              setLabel(currentAlarm.label || '');
+              
+              // Handle mission data
+              if (currentAlarm.mission) {
+                setHasMission(true);
+                if (typeof currentAlarm.mission === 'object') {
+                  setMission(currentAlarm.mission);
+                  setMissionType(currentAlarm.mission.name || '');
+                } else {
+                  // Create a complete Mission object with all required properties
+                  setMission({ 
+                    id: `mission_${Date.now()}`, 
+                    name: currentAlarm.mission,
+                    icon: getMissionIcon(currentAlarm.mission)
+                  });
+                  setMissionType(currentAlarm.mission);
+                }
+              } else {
+                setHasMission(false);
+                setMission(null);
+                setMissionType('');
+              }
+              
+              // Handle sound settings
+              setSound(currentAlarm.sound || 'Beacon');
+              setSoundVolume(typeof currentAlarm.soundVolume === 'number' ? currentAlarm.soundVolume : 1);
+              
+              // Handle vibration
+              setVibrationEnabled(currentAlarm.vibration !== false);
+              
+              // Handle snooze settings if they exist
+              if (currentAlarm.snooze) {
+                setSnoozeEnabled(currentAlarm.snooze.enabled !== false);
+                setSnoozeInterval(currentAlarm.snooze.interval || 5);
+                setMaxSnoozes(currentAlarm.snooze.maxSnoozes || 3);
+              }
+            } else {
+              console.log('Alarm not found with ID:', alarmId);
+            }
           }
+        } catch (error) {
+          console.error('Error loading alarm:', error);
         }
       }
     };
@@ -889,6 +940,51 @@ export default function NewAlarmScreen() {
     };
     
     loadMissionType();
+  }, []);
+
+  // Helper function to get an icon based on mission type
+  const getMissionIcon = (missionType: string): string => {
+    switch(missionType.toLowerCase()) {
+      case 'math': return 'calculator';
+      case 'typing': return 'keyboard';
+      case 'wordle': return 'game-controller';
+      case 'qr': return 'qr-code';
+      case 'steps': return 'walk';
+      case 'cookiejam': return 'grid';
+      default: return 'alarm';
+    }
+  };
+
+  // Add this at the beginning of the component
+  useEffect(() => {
+    // Reset all state when component mounts
+    const resetState = () => {
+      console.log('Resetting alarm state, editMode:', params.editMode);
+      
+      // Only reset if we're not in edit mode
+      if (params.editMode !== 'true') {
+        // Set default values for a new alarm
+        const now = new Date();
+        setDate(now);
+        setSelectedDays([]);
+        setLabel('');
+        setMission(null);
+        setMissionType('');
+        setHasMission(false);
+        setSound('Beacon');
+        setSoundVolume(1);
+        setVibrationEnabled(true);
+        setSnoozeEnabled(true);
+        setSnoozeInterval(5);
+        setMaxSnoozes(3);
+        
+        console.log('State reset for new alarm');
+      } else {
+        console.log('Not resetting state because we are in edit mode');
+      }
+    };
+    
+    resetState();
   }, []);
 
   return (

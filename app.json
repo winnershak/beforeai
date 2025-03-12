@@ -57,7 +57,18 @@
             "./assets/sounds/tetris.caf",
             "./assets/sounds/frenchcomplete.caf",
             "./assets/sounds/mount.caf",
-            "./assets/sounds/achieve.caf"
+            "./assets/sounds/achieve.caf",
+            "./assets/sounds/beach.caf",
+            "./assets/sounds/calm-rain.caf",
+            "./assets/sounds/fire.caf",
+            "./assets/sounds/forest.caf",
+            "./assets/sounds/piano.caf",
+            "./assets/sounds/white-noise.caf",
+            "./assets/sounds/pink-noise.caf",
+            "./assets/sounds/rain.caf",
+            "./assets/sounds/space.caf",
+            "./assets/sounds/thunder.caf",
+            "./assets/sounds/waterfall.caf"
           ]
         }
       ],
