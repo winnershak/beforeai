@@ -72,17 +72,49 @@ export default function YesScreen() {
     preloadImage();
   }, []);
 
+  // Add this function to format the prices
+  const getPackageDetails = (packageType: string) => {
+    // Find by product ID directly
+    const productId = packageType === 'monthly' ? 'blissmonth' : 'blissyear';
+    const pkg = packages.find(p => p.identifier === productId);
+    
+    if (!pkg) {
+      console.log(`Package not found for ${productId}. Available packages:`, JSON.stringify(packages, null, 2));
+      return { 
+        price: packageType === 'monthly' ? '$12.99' : '$79.99' 
+      };
+    }
+    
+    return {
+      price: pkg.product.priceString
+    };
+  };
+
   // Function to handle subscription
   const handleSubscription = async () => {
     try {
       setLoading(true);
       
-      // Find the selected package
-      const packageType = selectedPlan === 'yearly' ? 'annual' : 'monthly';
-      const selectedPackage = packages.find(pkg => pkg.packageType === packageType);
+      // If no packages loaded, try loading them again
+      if (packages.length === 0) {
+        const availablePackages = await RevenueCatService.getSubscriptionPackages();
+        setPackages(availablePackages);
+        console.log('Available packages:', JSON.stringify(availablePackages, null, 2));
+        
+        if (availablePackages.length === 0) {
+          Alert.alert("Error", "Unable to load subscription options. Please try again later.");
+          return;
+        }
+      }
+      
+      // Find the selected package by product ID directly
+      const productId = selectedPlan === 'yearly' ? 'blissyear' : 'blissmonth';
+      console.log(`Looking for product ID: ${productId} in packages:`, JSON.stringify(packages, null, 2));
+      
+      const selectedPackage = packages.find(pkg => pkg.identifier === productId);
       
       if (!selectedPackage) {
-        Alert.alert("Error", "Selected subscription package not available.");
+        Alert.alert("Error", `Selected subscription package (${productId}) not available.`);
         return;
       }
       
@@ -112,7 +144,7 @@ export default function YesScreen() {
       }
     } catch (error) {
       console.error('Error during subscription:', error);
-      Alert.alert("Error", "An unexpected error occurred.");
+      Alert.alert("Error", `An unexpected error occurred: ${(error as Error).message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -199,7 +231,7 @@ export default function YesScreen() {
                 disabled={loading}
               >
                 <Text style={styles.subscriptionTitle}>Monthly</Text>
-                <Text style={styles.subscriptionPrice}>$12.99/month</Text>
+                <Text style={styles.subscriptionPrice}>{getPackageDetails('monthly').price}/month</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -211,8 +243,8 @@ export default function YesScreen() {
                 disabled={loading}
               >
                 <Text style={styles.subscriptionTitle}>Yearly</Text>
-                <Text style={styles.subscriptionPrice}>$4.99/month</Text>
-                <Text style={styles.savingsText}>Save 61%</Text>
+                <Text style={styles.subscriptionPrice}>{getPackageDetails('yearly').price}/year</Text>
+                <Text style={styles.savingsText}>Save 50%</Text>
               </TouchableOpacity>
             </View>
             

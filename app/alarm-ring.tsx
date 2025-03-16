@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration } fro
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
-import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, resetAlarmState } from './notifications';
+import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, resetAlarmState, playAlarmSound } from './notifications';
 import * as Notifications from 'expo-notifications';
 import soundAssets from './sounds';
 
@@ -42,6 +42,23 @@ const stopVibration = () => {
   console.log('Vibration stopped');
 };
 
+// Add this function near the top of your file, before the component
+const getSoundSource = (soundName: string | string[]) => {
+  // If soundName is an array, use the first element
+  const name = Array.isArray(soundName) ? soundName[0] : soundName;
+  
+  const soundMap: {[key: string]: any} = {
+    'Beacon': require('../assets/sounds/beacon.caf'),
+    'Chimes': require('../assets/sounds/chimes.caf'),
+    'Circuit': require('../assets/sounds/circuit.caf'),
+    'Radar': require('../assets/sounds/radar.caf'),
+    'Reflection': require('../assets/sounds/reflection.caf'),
+    'Orkney': require('../assets/sounds/orkney.caf'),
+  };
+  
+  return soundMap[name] || soundMap['Beacon']; // Default to Beacon if sound not found
+};
+
 export default function AlarmRingScreen() {
   const params = useLocalSearchParams();
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -58,416 +75,152 @@ export default function AlarmRingScreen() {
   const [hasMission, setHasMission] = useState(false);
   const [missionType, setMissionType] = useState('');
   const loadAlarmRef = useRef<(() => Promise<void>) | null>(null);
+  const [isSoundPlaying, setIsSoundPlaying] = useState(false);
 
   console.log('AlarmRingScreen params:', params);
 
   // Update the useEffect that runs when the component mounts
   useEffect(() => {
-    console.log('AlarmRingScreen mounted');
+    // Only log once when component mounts
+    console.log('AlarmRingScreen mounted with params:', params);
     
     // Start vibration
     if (params.vibration !== 'false') {
       startVibration();
     }
     
-    // Load alarm data - use the ref function instead of direct call
-    if (loadAlarmRef.current) {
-      loadAlarmRef.current();
-    }
+    // Load alarm data
+    loadAlarmData();
     
     // Cancel ALL notifications when alarm screen is opened
-    // This ensures no more notifications will appear
     cancelAllNotifications();
+    
+    // Set the flag that alarm-ring screen is active
+    AsyncStorage.setItem('alarmRingActive', 'true');
     
     return () => {
       // Clean up when component unmounts
       stopVibration();
-      stopSound();
+      stopAlarmSound();
+      AsyncStorage.removeItem('alarmRingActive');
     };
-  }, []);
+  }, []); // Empty dependency array to run only once
 
-  // Play alarm sound only once
+  // Replace the entire sound playback useEffect with this simpler version
   useEffect(() => {
-    // Prevent multiple initializations
-    if (hasInitialized.current) return;
-    hasInitialized.current = true;
+    console.log('Setting up alarm sound playback');
+    let soundObject: Audio.Sound | null = null;
     
-    // Cancel all scheduled notifications since we're now showing the alarm screen
-    Notifications.cancelAllScheduledNotificationsAsync().then(() => {
-      console.log('Cancelled all scheduled notifications when alarm screen opened');
-    }).catch(error => {
-      console.error('Error cancelling notifications:', error);
-    });
-    
-    let soundInstance: Audio.Sound | null = null;
-    
-    const playSound = async () => {
+    const setupAndPlaySound = async () => {
       try {
-        // Check if sound should be disabled (for testing)
-        if (params.disableSound === 'true') {
-          console.log('Sound disabled per request');
-          return;
-        }
-        
-        console.log('Loading sound with params:', params);
-        
-        // Use a default sound if none is specified
-        const soundName = params.sound as string || 'Beacon';
-        console.log('Using sound:', soundName);
-        
-        // Configure audio session first
+        // Configure audio mode first
         await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          interruptionModeIOS: 1, // DuckOthers = 1
           playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
           shouldDuckAndroid: true,
-          interruptionModeAndroid: 1, // DuckOthers = 1
-          playThroughEarpieceAndroid: false
+          playThroughEarpieceAndroid: false,
         });
         
-        console.log('Audio mode configured for alarm');
+        // Get sound name from params
+        const soundName = params.sound ? 
+          (Array.isArray(params.sound) ? params.sound[0] : params.sound as string) : 
+          'Beacon';
         
-        // Map sound names to their files
-        let soundFile;
-        switch(soundName) {
-          case 'Beacon':
-            soundFile = require('../assets/sounds/beacon.caf');
-            break;
-          case 'Chimes':
-            soundFile = require('../assets/sounds/chimes.caf');
-            break;
-          case 'Circuit':
-            soundFile = require('../assets/sounds/circuit.caf');
-            break;
-          case 'Orkney':
-            soundFile = require('../assets/sounds/orkney.caf');
-            break;
-          case 'Radar':
-            soundFile = require('../assets/sounds/radar.caf');
-            break;
-          case 'Reflection':
-            soundFile = require('../assets/sounds/reflection.caf');
-            break;
-          default:
-            // Use Beacon as default if no valid sound is specified
-            console.log('No valid sound specified, using default Beacon sound');
-            soundFile = require('../assets/sounds/beacon.caf');
-            break;
+        console.log('Loading sound:', soundName);
+        
+        // Create sound object with direct require
+        let soundSource;
+        if (soundName === 'Beacon') {
+          soundSource = require('../assets/sounds/beacon.caf');
+        } else if (soundName === 'Chimes') {
+          soundSource = require('../assets/sounds/chimes.caf');
+        } else if (soundName === 'Circuit') {
+          soundSource = require('../assets/sounds/circuit.caf');
+        } else if (soundName === 'Radar') {
+          soundSource = require('../assets/sounds/radar.caf');
+        } else if (soundName === 'Reflection') {
+          soundSource = require('../assets/sounds/reflection.caf');
+        } else if (soundName === 'Orkney') {
+          soundSource = require('../assets/sounds/orkney.caf');
+        } else {
+          // Default sound
+          soundSource = require('../assets/sounds/beacon.caf');
         }
         
-        console.log('Using sound file:', soundFile);
+        console.log('Creating sound with source');
         
-        // Get the volume from params or use default
-        const volume = parseFloat(params.soundVolume as string) || 1.0;
-        console.log('Using volume:', volume);
-        
-        // Load and play the sound
+        // Create and play the sound
         const { sound } = await Audio.Sound.createAsync(
-          soundFile,
-          {
-            shouldPlay: true,
+          soundSource,
+          { 
             isLooping: true,
-            volume: volume
+            volume: parseFloat(params.soundVolume as string || '1'),
+            shouldPlay: true 
           }
         );
         
-        soundInstance = sound;
+        soundObject = sound;
         setSound(sound);
         setIsPlaying(true);
         
-        // Set up a status update listener
-        sound.setOnPlaybackStatusUpdate(status => {
-          if (status.isLoaded) {
-            if (!status.isPlaying && status.shouldPlay && isPlaying) {
-              console.log('Sound stopped playing but alarm is still active, restarting...');
-              // Check if sound is still loaded before trying to restart
-              sound.getStatusAsync().then(currentStatus => {
-                if (currentStatus.isLoaded) {
-                  sound.playAsync().catch(err => {
-                    console.log('Could not restart sound, loading a new instance');
-                    // Instead of showing an error, just reload the sound
-                    playSound();
-                  });
-                } else {
-                  console.log('Sound is no longer loaded, loading a new instance');
-                  // Reload the sound instead of just updating state
-                  playSound();
-                }
-              }).catch(() => {
-                console.log('Could not get sound status, loading a new instance');
-                // Reload the sound
-                playSound();
-              });
-            }
-          } else {
-            // Sound is no longer loaded
-            console.log('Sound is no longer loaded, loading a new instance');
-            // Reload the sound instead of just updating state
-            playSound();
-          }
-        });
-        
-        // Start playing the sound
-        await sound.playAsync();
-        console.log('Alarm sound started playing with sound:', soundName, 'at volume:', volume);
-        
+        console.log('Sound created and playing');
       } catch (error) {
-        console.error('Error playing alarm sound:', error);
+        console.error('Error setting up sound:', error);
       }
     };
     
-    // Load the alarm data
-    const loadAlarm = async () => {
-      try {
-        if (params.alarmId) {
-          console.log('Loading alarm with ID:', params.alarmId);
-          
-          // Get alarms from storage
-          const alarmsJson = await AsyncStorage.getItem('alarms');
-          if (alarmsJson) {
-            const alarms = JSON.parse(alarmsJson);
-            console.log('Found alarms:', alarms.length);
-            
-            // Find the alarm with the matching ID
-            const alarm = alarms.find((a: Alarm) => a.id === params.alarmId);
-            
-            if (alarm) {
-              console.log('Found alarm:', alarm);
-              setCurrentAlarm(alarm);
-              
-              // Check if the alarm has a mission
-              if (alarm.mission) {
-                console.log('Alarm has mission:', alarm.mission);
-                setHasMission(true);
-                
-                // Handle both string and object mission types
-                if (typeof alarm.mission === 'string') {
-                  setMissionType(alarm.mission);
-                } else if (typeof alarm.mission === 'object') {
-                  // Extract mission type from the mission object
-                  setMissionType(alarm.mission.name || '');
-                }
-              } else if (params.hasMission === 'true' && params.mission) {
-                // If mission is in params but not in alarm, use that
-                console.log('Using mission from params:', params.mission);
-                setHasMission(true);
-                
-                try {
-                  // Try to parse the mission from params
-                  const missionData = JSON.parse(params.mission as string);
-                  console.log('Parsed mission data:', missionData);
-                  setMissionType(missionData.name || '');
-                } catch (error) {
-                  // If parsing fails, use the mission string directly
-                  console.log('Using mission string directly:', params.mission);
-                  setMissionType(params.mission as string);
-                }
-              }
-              
-              // Check snooze settings
-              if (alarm.snooze) {
-                setSnoozeEnabled(alarm.snooze.enabled !== false);
-                setSnoozeDuration(alarm.snooze.interval || 5);
-                setSnoozeLimit(alarm.snooze.maxSnoozes || 3);
-                setSnoozeRemaining(alarm.snooze.maxSnoozes || 3);
-              }
-              
-              // Disable the alarm after it has triggered
-              if (alarm.enabled) {
-                // Create a copy of the alarm with enabled set to false
-                const updatedAlarm = { ...alarm, enabled: false };
-                
-                // Update the alarm in the alarms array
-                const updatedAlarms = alarms.map((a: Alarm) => 
-                  a.id === updatedAlarm.id ? updatedAlarm : a
-                );
-                
-                // Save the updated alarms
-                await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
-                console.log('Disabled alarm after triggering');
-              }
-            } else {
-              console.log('Alarm not found with ID:', params.alarmId);
-              
-              // If we can't find the alarm but have mission data in params, use that
-              if (params.hasMission === 'true' && params.mission) {
-                console.log('Using mission from params as fallback:', params.mission);
-                setHasMission(true);
-                
-                try {
-                  // Try to parse the mission from params
-                  const missionData = JSON.parse(params.mission as string);
-                  console.log('Parsed mission data:', missionData);
-                  setMissionType(missionData.name || '');
-                } catch (error) {
-                  // If parsing fails, use the mission string directly
-                  console.log('Using mission string directly:', params.mission);
-                  setMissionType(params.mission as string);
-                }
-              }
-            }
-          } else {
-            console.log('No alarms found in storage');
-            
-            // If we have mission data in params, use that
-            if (params.hasMission === 'true' && params.mission) {
-              console.log('Using mission from params (no alarms in storage):', params.mission);
-              setHasMission(true);
-              
-              try {
-                // Try to parse the mission from params
-                const missionData = JSON.parse(params.mission as string);
-                console.log('Parsed mission data:', missionData);
-                setMissionType(missionData.name || '');
-              } catch (error) {
-                // If parsing fails, use the mission string directly
-                console.log('Using mission string directly:', params.mission);
-                setMissionType(params.mission as string);
-              }
-            }
-          }
-        } else if (params.hasMission === 'true' && params.mission) {
-          // Handle case where we have mission data but no alarm ID
-          console.log('No alarm ID but has mission data:', params.mission);
-          setHasMission(true);
-          
-          try {
-            // Try to parse the mission from params
-            const missionData = JSON.parse(params.mission as string);
-            console.log('Parsed mission data:', missionData);
-            setMissionType(missionData.name || '');
-          } catch (error) {
-            // If parsing fails, use the mission string directly
-            console.log('Using mission string directly:', params.mission);
-            setMissionType(params.mission as string);
-          }
-        }
-        
-        // Play the alarm sound
-        playSound();
-        
-      } catch (error) {
-        console.error('Error loading alarm:', error);
-        // Play default sound anyway
-        playSound();
-      }
-    };
+    setupAndPlaySound();
     
-    // Store the function in the ref so it can be used elsewhere
-    loadAlarmRef.current = loadAlarm;
-    
-    // Call loadAlarm when the component mounts
-    loadAlarm();
-    
-    // Cleanup function
     return () => {
-      if (soundInstance) {
-        console.log('Cleaning up sound in useEffect');
+      if (soundObject) {
+        console.log('Cleaning up sound');
         try {
-          // Check if the sound is loaded before trying to stop it
-          soundInstance.getStatusAsync().then(status => {
-            if (status.isLoaded) {
-              if (status.isLoaded && soundInstance) {
-                soundInstance.stopAsync().then(() => {
-                  if (soundInstance) {
-                    soundInstance.unloadAsync().catch(() => {});
-                  }
-                }).catch(() => {});
-              }
-            }
-          }).catch(() => {
-            // If we can't get the status, just try to unload directly
-            if (soundInstance) {
-              soundInstance.unloadAsync().catch(() => {});
-            }
-          });
+          soundObject.stopAsync();
         } catch (e) {
-          console.log('Error during sound cleanup (non-critical):', e);
+          // Ignore errors during cleanup
         }
       }
     };
-  }, [params]);
+  }, []);
 
+  // Simplify the stopSound function
   const stopSound = async () => {
-    try {
-      console.log('Stopping alarm sound');
-      
-      // First try to stop the sound using the local sound instance
-      if (sound) {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded) {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-          console.log('Sound stopped and unloaded');
-        }
+    if (sound) {
+      try {
+        await sound.stopAsync();
+        await sound.unloadAsync();
         setSound(null);
+        setIsPlaying(false);
+        console.log('Sound stopped successfully');
+      } catch (error) {
+        console.error('Error stopping sound:', error);
       }
-      
-      // Also call the global stopAlarmSound function to ensure all sounds are stopped
-      if (typeof stopAlarmSound === 'function') {
-        await stopAlarmSound();
-      }
-      
-      // Reset the global sound variable as well
-      if (global.currentAlarmSound) {
-        try {
-          const status = await global.currentAlarmSound.getStatusAsync();
-          if (status.isLoaded) {
-            await global.currentAlarmSound.stopAsync();
-            await global.currentAlarmSound.unloadAsync();
-          }
-        } catch (error) {
-          console.log('Error stopping global sound:', error);
-        }
-        global.currentAlarmSound = null;
-      }
-      
-      // Reset audio mode to default
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        interruptionModeIOS: 1, // Use numeric value instead of constant
-        playsInSilentModeIOS: false,
-        shouldDuckAndroid: false,
-        interruptionModeAndroid: 1, // Use numeric value instead of constant
-        playThroughEarpieceAndroid: false
-      });
-      
-      console.log('Audio mode reset to default');
-      setIsPlaying(false);
-    } catch (error) {
-      console.error('Error stopping sound:', error);
     }
   };
 
+  // Fix the handleStopAlarm function
   const handleStopAlarm = async () => {
     try {
-      console.log('Stopping alarm sound from handleStopAlarm');
+      // Stop sound first
+      if (sound) {
+        try {
+          await sound.stopAsync();
+        } catch (error) {
+          // Ignore errors, just continue
+        }
+      }
       
       // Stop vibration
       stopVibration();
       
-      // Stop sound
-      await stopSound();
-      
-      // Cancel all notifications
-      await cancelAllNotifications();
-      
-      // Reset alarm state in notifications.ts
-      resetAlarmState();
-      
-      // Clear current alarm data
-      await AsyncStorage.removeItem('currentAlarmData');
+      // Clear active alarm flags
+      await AsyncStorage.removeItem('alarmRingActive');
       await AsyncStorage.removeItem('activeAlarm');
-      console.log('Cleared current alarm data from storage');
       
       // Navigate back to home screen
       router.replace('/');
     } catch (error) {
       console.error('Error stopping alarm:', error);
-      // Try to navigate anyway
-      router.replace('/');
     }
   };
 
@@ -681,6 +434,70 @@ export default function AlarmRingScreen() {
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
       console.error('Error cancelling notifications:', error);
+    }
+  };
+
+  // Fix the loadAlarmData function
+  const loadAlarmData = async () => {
+    try {
+      // First try to get alarm ID from params
+      let alarmId = params.alarmId as string;
+      
+      // If no alarm ID in params, check active alarm in storage
+      if (!alarmId) {
+        const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
+        if (activeAlarmJson) {
+          const activeAlarm = JSON.parse(activeAlarmJson);
+          alarmId = activeAlarm.alarmId;
+        }
+      }
+      
+      if (!alarmId) {
+        console.error('No alarm ID found in params or storage');
+        return;
+      }
+      
+      // Load the full alarm data
+      const alarmsJson = await AsyncStorage.getItem('alarms');
+      if (!alarmsJson) {
+        console.error('No alarms found in storage');
+        return;
+      }
+      
+      const alarms = JSON.parse(alarmsJson);
+      const alarm = alarms.find((a: any) => a.id === alarmId);
+      
+      if (!alarm) {
+        console.error(`Alarm with ID ${alarmId} not found`);
+        return;
+      }
+      
+      // Only log once
+      console.log('Loaded alarm data:', alarm);
+      
+      // Set all state at once to reduce re-renders
+      setCurrentAlarm(alarm);
+      
+      // Set up mission if present
+      if (alarm.mission) {
+        setHasMission(true);
+        setMissionType(alarm.mission.name || '');
+      }
+      
+      // Set up snooze settings
+      if (alarm.snooze) {
+        setSnoozeEnabled(alarm.snooze.enabled);
+        if (alarm.snooze.interval) setSnoozeDuration(alarm.snooze.interval);
+        if (alarm.snooze.maxSnoozes) {
+          setSnoozeLimit(alarm.snooze.maxSnoozes);
+          setSnoozeRemaining(alarm.snooze.maxSnoozes);
+        }
+      }
+      
+      // Set the active alarm flag to prevent stopping
+      await AsyncStorage.setItem('alarmRingActive', 'true');
+    } catch (error) {
+      console.error('Error loading alarm data:', error);
     }
   };
 

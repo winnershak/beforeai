@@ -138,65 +138,25 @@ export const cleanupSound = async (sound: Audio.Sound | null) => {
 };
 
 // Update the playAlarmSound function to properly handle custom sounds
-export const playAlarmSound = async (soundName: string, volume = 1.0) => {
+export const playAlarmSound = async (soundName: string, volume: number) => {
   try {
-    console.log(`Starting to play alarm sound: ${soundName} at volume ${volume}`);
-    
-    // Only stop current sound if we're changing volume significantly
-    // This prevents interruptions during gentle wake-up
-    if (global.currentAlarmSound) {
-      const status = await global.currentAlarmSound.getStatusAsync();
-      if (status.isLoaded) {
-        // If volume change is small, just adjust volume instead of recreating
-        if (Math.abs((status.volume || 0) - volume) < 0.2) {
-          await global.currentAlarmSound.setVolumeAsync(volume);
-          console.log(`Adjusted volume of existing sound to ${volume}`);
-          return global.currentAlarmSound;
-        } else {
-          // Otherwise stop and recreate with new volume
-          await stopAlarmSound();
-        }
-      }
-    }
-    
-    // Configure audio mode first to ensure sound plays properly
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      interruptionModeIOS: INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      interruptionModeAndroid: INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-      shouldDuckAndroid: false,
-      playThroughEarpieceAndroid: false,
-    });
-    
-    // Create the sound directly without caching for alarm sounds
-    // This ensures we always get a fresh sound instance
+    // Load and play the sound
     const soundSource = soundName in soundAssets 
       ? soundAssets[soundName as keyof typeof soundAssets] 
       : require('../assets/sounds/default.mp3');
-      
-    console.log('Loading sound from source:', soundSource);
-    
     const { sound } = await Audio.Sound.createAsync(
       soundSource,
       { 
-        shouldPlay: true,
-        volume: Math.max(0, Math.min(1, volume)),
-        isLooping: true
+        isLooping: true,
+        volume: volume,
+        shouldPlay: true
       }
     );
     
-    // Store reference to current alarm sound
+    // Store the sound reference
     global.currentAlarmSound = sound;
-    console.log('Alarm sound started playing at volume:', volume);
     
-    // Add a listener to restart the sound if it stops for any reason
-    sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-      if (status.isLoaded && !status.isPlaying && isAlarmActive) {
-        console.log('Sound stopped playing but alarm is still active, restarting...');
-        sound.playAsync().catch(err => console.error('Error restarting sound:', err));
-      }
-    });
+    // Don't set up any status monitoring or restart logic
     
     return sound;
   } catch (error) {
@@ -518,44 +478,81 @@ export const scheduleAlarmNotification = async (alarm: {
   time: string;
   sound: string;
   soundVolume: number;
-  label?: string;
+  days: string[];
   mission?: any;
-  days?: string[];
-}) => {
+  vibration?: boolean;
+}): Promise<string | null> => {
   try {
-    // Request permissions first
-    await requestNotificationPermissions();
-    
     // Parse the time
-    const [hours, minutes] = alarm.time.split(':');
+    const [hours, minutes] = alarm.time.split(':').map(Number);
     const alarmTime = new Date();
-    alarmTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+    alarmTime.setHours(hours, minutes, 0, 0);
+    
+    // Get current day of week (0-6, where 0 is Sunday)
+    const currentDay = alarmTime.getDay();
+    
+    // If days are specified, check if today is included
+    if (alarm.days && alarm.days.length > 0) {
+      // Convert day strings to numbers (0-6)
+      const selectedDays = alarm.days.map(day => {
+        switch(day) {
+          case 'Sunday': return 0;
+          case 'Monday': return 1;
+          case 'Tuesday': return 2;
+          case 'Wednesday': return 3;
+          case 'Thursday': return 4;
+          case 'Friday': return 5;
+          case 'Saturday': return 6;
+          default: return parseInt(day); // If it's already a number string
+        }
+      });
+      
+      console.log(`Current day: ${currentDay}, Selected days: ${selectedDays}`);
+      
+      // If today is not in selected days, find the next matching day
+      if (!selectedDays.includes(currentDay)) {
+        console.log('Today is not in selected days, finding next matching day');
+        
+        // Find the next day that matches
+        let daysToAdd = 1;
+        let nextDay = (currentDay + daysToAdd) % 7;
+        
+        while (!selectedDays.includes(nextDay) && daysToAdd < 7) {
+          daysToAdd++;
+          nextDay = (currentDay + daysToAdd) % 7;
+        }
+        
+        // Add days to the alarm time
+        alarmTime.setDate(alarmTime.getDate() + daysToAdd);
+        console.log(`Scheduling notification for next matching day: ${nextDay}, ${daysToAdd} days from now`);
+      }
+    }
     
     // If the time has already passed today, set it for tomorrow
+    // (only if we're still scheduling for today)
     const now = new Date();
-    if (alarmTime <= now) {
+    if (alarmTime < now) {
       alarmTime.setDate(alarmTime.getDate() + 1);
     }
     
     console.log(`Scheduling notification for: ${alarmTime.toLocaleString()}`);
     
     // Cancel any existing notifications for this alarm
-    if (alarm.id) {
-      await cancelAlarmNotification(alarm.id);
-    }
+    await cancelAlarmNotification(alarm.id);
     
     // Schedule the main notification
     const notificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: alarm.label || 'Wake Up!',
+        title: 'Alarm',
         body: 'Time to wake up!',
-        sound: `${alarm.sound.toLowerCase()}.caf`,
+        sound: true,
+        vibrate: alarm.vibration !== false ? [0, 500, 500, 500] : undefined,
         data: {
           alarmId: alarm.id,
           sound: alarm.sound,
           soundVolume: alarm.soundVolume,
-          mission: alarm.mission,
           hasMission: Boolean(alarm.mission),
+          mission: alarm.mission,
           fromNotification: 'true'
         },
       },
@@ -565,34 +562,31 @@ export const scheduleAlarmNotification = async (alarm: {
       } as Notifications.DateTriggerInput,
     });
     
-    console.log(`Scheduled notification with ID: ${notificationId} for ${alarmTime.toLocaleString()}`);
-    
-    // Schedule 15 backup notifications (one every 6 seconds for 90 seconds)
-    // This ensures the alarm will keep trying if the user doesn't respond
+    // Schedule backup notifications (every 6 seconds for 15 notifications)
+    const backupTime = new Date(alarmTime);
     for (let i = 1; i <= 15; i++) {
-      const backupTrigger = {
-        date: new Date(alarmTime.getTime() + (i * 6000)), // 6 seconds apart
-        type: 'date'
-      } as Notifications.DateTriggerInput;
-      
-      const backupNotificationId = await Notifications.scheduleNotificationAsync({
+      backupTime.setSeconds(backupTime.getSeconds() + 6);
+      const backupId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Wake Up!',
-          body: `Your alarm is still ringing (${i})`,
-          sound: `${alarm.sound.toLowerCase()}.caf`,
+          title: 'Alarm',
+          body: 'Time to wake up!',
+          sound: true,
+          vibrate: alarm.vibration !== false ? [0, 500, 500, 500] : undefined,
           data: {
             alarmId: alarm.id,
             sound: alarm.sound,
             soundVolume: alarm.soundVolume,
-            mission: alarm.mission,
             hasMission: Boolean(alarm.mission),
+            mission: alarm.mission,
             fromNotification: 'true'
           },
         },
-        trigger: backupTrigger,
+        trigger: {
+          date: backupTime,
+          type: 'date'
+        } as Notifications.DateTriggerInput,
       });
-      
-      console.log(`Scheduled backup notification ${i} with ID: ${backupNotificationId} for ${new Date(alarmTime.getTime() + (i * 6000)).toLocaleString()}`);
+      console.log(`Scheduled backup notification ${i} with ID: ${backupId} for ${backupTime.toLocaleString()}`);
     }
     
     return notificationId;
@@ -770,6 +764,58 @@ export const scheduleImmediateNotification = async (data: any) => {
   } catch (error) {
     console.error('Error scheduling immediate notification:', error);
     return null;
+  }
+};
+
+// Update the handleNotificationResponse function to only cancel notifications when user opens the app
+export const handleNotificationResponse = async (response: Notifications.NotificationResponse) => {
+  try {
+    const data = response.notification.request.content.data;
+    console.log('Handling notification with data:', data);
+    
+    if (data && data.alarmId) {
+      console.log('Handling legitimate alarm notification');
+      
+      // IMPORTANT: Set the active alarm BEFORE playing sound
+      const activeAlarmData = {
+        alarmId: data.alarmId,
+        timestamp: new Date().getTime(),
+        sound: data.sound || 'Beacon',
+        soundVolume: data.soundVolume || 1,
+        hasMission: data.hasMission || false
+      };
+      
+      // Save active alarm data FIRST
+      await AsyncStorage.setItem('activeAlarm', JSON.stringify(activeAlarmData));
+      console.log('Set active alarm in AsyncStorage:', activeAlarmData);
+      
+      // THEN play the sound
+      if (data.sound) {
+        await playAlarmSound(data.sound, data.soundVolume);
+      }
+      
+      // Navigate to alarm-ring screen
+      if (data.fromNotification === 'true') {
+        console.log('Navigating to alarm-ring from notification handler');
+        
+        // NOW we can cancel other notifications since the user has opened the app
+        console.log('User opened the app, cancelling other notifications');
+        await cancelAlarmNotification(data.alarmId);
+        
+        // Navigate to the alarm-ring screen
+        router.replace({
+          pathname: '/alarm-ring',
+          params: {
+            alarmId: data.alarmId,
+            sound: data.sound || 'Beacon',
+            soundVolume: data.soundVolume || 1,
+            hasMission: data.hasMission ? 'true' : 'false'
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.error('Error handling notification response:', error);
   }
 };
 

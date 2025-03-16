@@ -18,11 +18,15 @@ import {
 import { AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import ErrorBoundary from './components/ErrorBoundary';
+import * as Linking from 'expo-linking';
+import * as BackgroundFetch from 'expo-background-fetch';
+import * as TaskManager from 'expo-task-manager';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
 import { setupAlarms, scheduleAlarmNotification as setupAlarmsScheduleAlarmNotification } from './notifications';
 import './utils/expo-sensors-patch';
+import RevenueCatService from './services/RevenueCatService';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -34,6 +38,39 @@ const handleError = (error: Error) => {
   console.log('Caught error:', error);
   // Log to analytics or handle gracefully
 };
+
+// Define the task handler
+TaskManager.defineTask('ALARM_TASK', async ({ data, error }) => {
+  if (error) {
+    console.error('Background task error:', error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+  
+  try {
+    // Get the alarm data
+    const { alarmId, sound, soundVolume, hasMission } = data as any;
+    
+    // Set active alarm data
+    const activeAlarmData = {
+      alarmId,
+      timestamp: new Date().getTime(),
+      sound: sound || 'Beacon',
+      soundVolume: soundVolume || 1,
+      hasMission: hasMission || false
+    };
+    
+    // Save active alarm data
+    await AsyncStorage.setItem('activeAlarm', JSON.stringify(activeAlarmData));
+    
+    // Launch the app and navigate to alarm-ring screen
+    await Linking.openURL(`exp://alarm-ring?alarmId=${alarmId}&sound=${sound}&soundVolume=${soundVolume}&hasMission=${hasMission}`);
+    
+    return BackgroundFetch.BackgroundFetchResult.NewData;
+  } catch (error) {
+    console.error('Error in background task:', error);
+    return BackgroundFetch.BackgroundFetchResult.Failed;
+  }
+});
 
 export default function AppLayout() {
   const colorScheme = useColorScheme();
@@ -48,6 +85,9 @@ export default function AppLayout() {
   const [isAppReady, setIsAppReady] = useState(false);
   const notificationHandlersSetup = useRef(false);
   const [hasNavigatedToAlarm, setHasNavigatedToAlarm] = useState(false);
+  const alarmTimers = useRef<{[key: string]: NodeJS.Timeout}>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
     if (loaded) {
@@ -228,270 +268,117 @@ export default function AppLayout() {
   }, [isReady, initialRoute]);
 
   useEffect(() => {
-    // This will run when the app comes to the foreground
-    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
-        console.log('App has come to the foreground, stopping any alarm sounds');
+        // Check if there's a completed alarm flag for the active alarm
+        const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
+        if (activeAlarmJson) {
+          const activeAlarm = JSON.parse(activeAlarmJson);
+          const completedAlarmsJson = await AsyncStorage.getItem('completedAlarms');
+          const completedAlarms = completedAlarmsJson ? JSON.parse(completedAlarmsJson) : {};
+          
+          // If this alarm has been completed, clear the active alarm
+          if (completedAlarms[activeAlarm.alarmId]) {
+            console.log(`Alarm ${activeAlarm.alarmId} has been completed, clearing active alarm`);
+            await AsyncStorage.removeItem('activeAlarm');
+            await AsyncStorage.removeItem('alarmRingActive');
+          }
+        }
+        
+        // Just stop any sounds and continue normal app flow
         stopAlarmSound();
       }
-    };
-
-    // Subscribe to app state changes
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-
-    // Also stop sounds when the component mounts (app starts)
-    stopAlarmSound();
-
-    // Clean up the subscription
+    });
+    
     return () => {
       subscription.remove();
     };
   }, []);
 
   useEffect(() => {
-    // Update the checkForActiveAlarms function in _layout.tsx
-    async function checkForActiveAlarms() {
+    const registerBackgroundTasks = async () => {
       try {
-        console.log('Checking for active alarms on app open...');
+        await BackgroundFetch.registerTaskAsync('ALARM_TASK', {
+          minimumInterval: 60, // 1 minute minimum
+          stopOnTerminate: false,
+          startOnBoot: true,
+        });
         
-        // Get all alarms
-        const alarmsJson = await AsyncStorage.getItem('alarms');
-        if (!alarmsJson) return;
+        console.log('Background tasks registered successfully');
+      } catch (error) {
+        console.error('Error registering background tasks:', error);
+      }
+    };
+    
+    registerBackgroundTasks();
+  }, []);
+
+  useEffect(() => {
+    const handleDeepLink = async (event: { url: string }) => {
+      const url = event.url;
+      console.log('Deep link received:', url);
+      
+      // Parse the URL
+      const { path, queryParams } = Linking.parse(url);
+      
+      // If this is an alarm-ring deep link, handle it
+      if (path === 'alarm-ring') {
+        console.log('Handling alarm-ring deep link with params:', queryParams);
         
-        const alarms = JSON.parse(alarmsJson);
-        const now = new Date();
+        // Navigate to alarm-ring screen with type safety
+        router.replace({
+          pathname: '/alarm-ring',
+          params: queryParams || {} // Add fallback to empty object if queryParams is null
+        });
+      }
+    };
+    
+    // Add the event listener
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+    
+    // Check for initial URL
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        handleDeepLink({ url });
+      }
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
+  useEffect(() => {
+    const checkPremiumAccess = async () => {
+      try {
+        // Check premium status from AsyncStorage only
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
-        // Check if there's already an active alarm being displayed
-        const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
-        if (activeAlarmJson) {
-          console.log('Active alarm found, navigating to alarm-ring screen');
-          const activeAlarm = JSON.parse(activeAlarmJson);
-          
-          // Navigate to alarm ring screen with the active alarm data
-          router.replace({
-            pathname: '/alarm-ring',
-            params: {
-              alarmId: activeAlarm.alarmId,
-              sound: activeAlarm.sound || 'Beacon',
-              soundVolume: activeAlarm.soundVolume || 1,
-              hasMission: activeAlarm.hasMission ? 'true' : 'false'
-            }
-          });
-          return;
-        }
+        // Set state first
+        setIsPremium(isPremium === 'true');
+        setIsLoading(false);
         
-        // Check each alarm to see if it should be ringing now
-        for (const alarm of alarms) {
-          if (!alarm.enabled) continue;
-          
-          // Parse alarm time
-          const [hours, minutes] = alarm.time.split(':').map(Number);
-          
-          // Get current day of week (0-6, where 0 is Sunday)
-          const currentDay = now.getDay();
-          // Convert to 1-7 format where 1 is Monday and 7 is Sunday
-          const currentDayAdjusted = currentDay === 0 ? 7 : currentDay;
-          
-          // Check if alarm is scheduled for today
-          if (alarm.days.length > 0 && !alarm.days.includes(currentDayAdjusted.toString())) {
-            continue;
-          }
-          
-          // Create date objects for alarm time today
-          const alarmTime = new Date(now);
-          alarmTime.setHours(hours, minutes, 0, 0);
-          
-          // Check if alarm should be ringing now (within the last 5 minutes)
-          const fiveMinutesAgo = new Date(now.getTime() - 5 * 60 * 1000);
-          
-          if (alarmTime >= fiveMinutesAgo && alarmTime <= now) {
-            console.log(`Alarm ${alarm.id} should be ringing now!`);
-            
-            // Save as active alarm
-            const activeAlarmData = {
-              alarmId: alarm.id,
-              timestamp: now.getTime(),
-              sound: alarm.sound || 'Beacon',
-              soundVolume: alarm.soundVolume || 1,
-              hasMission: alarm.mission ? true : false
-            };
-            
-            await AsyncStorage.setItem('activeAlarm', JSON.stringify(activeAlarmData));
-            
-            // Navigate to alarm ring screen
-            router.replace({
-              pathname: '/alarm-ring',
-              params: {
-                alarmId: alarm.id,
-                sound: alarm.sound || 'Beacon',
-                soundVolume: alarm.soundVolume || 1,
-                hasMission: alarm.mission ? 'true' : 'false'
-              }
-            });
-            
-            // Only trigger one alarm at a time
-            break;
-          }
+        // Store the navigation target, but don't navigate yet
+        if (quizCompleted !== 'true' && isPremium !== 'true') {
+          setInitialRoute('/quiz');
         }
       } catch (error) {
-        console.error('Error checking for active alarms:', error);
+        console.error('Error in premium access check:', error);
+        setIsLoading(false);
       }
-    }
+    };
 
-    // Run the check immediately when the app is ready
-    if (isAppReady) {
-      // Run the check immediately
-      checkForActiveAlarms();
-      
-      // Also check when app state changes to active
-      const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-        if (nextAppState === 'active') {
-          console.log('App came to foreground, checking for active alarms');
-          checkForActiveAlarms();
-        }
-      });
-      
-      return () => {
-        subscription.remove();
-      };
-    }
-    
-    return undefined;
-  }, [isAppReady]);
+    checkPremiumAccess();
+  }, []);
 
-  // Add this function to check for alarms that should be triggered now
-  async function checkCurrentAlarms() {
-    try {
-      console.log('Checking for alarms that should be triggered now...');
-      const alarmsJson = await AsyncStorage.getItem('alarms');
-      if (!alarmsJson) return;
-      
-      const alarms = JSON.parse(alarmsJson);
-      const now = new Date();
-      
-      // Check if there's already an active alarm
-      const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
-      if (activeAlarmJson) {
-        console.log('There is already an active alarm, not triggering another one');
-        return;
-      }
-      
-      // Find alarms that should be triggered
-      for (const alarm of alarms) {
-        if (!alarm.enabled) continue;
-        
-        // Check if this alarm should ring now
-        const shouldRing = await shouldAlarmRingNow(alarm, now, 0);
-        
-        if (shouldRing) {
-          console.log(`Alarm ${alarm.id} should ring now`);
-          
-          // Cancel all notifications since we're showing the alarm screen
-          await Notifications.cancelAllScheduledNotificationsAsync();
-          
-          // Navigate to alarm ring screen
-          router.replace({
-            pathname: '/alarm-ring',
-            params: {
-              alarmId: alarm.id,
-              sound: alarm.sound || 'Beacon',
-              soundVolume: alarm.soundVolume || 1,
-              hasMission: alarm.mission ? 'true' : 'false'
-            }
-          });
-          
-          // Only trigger one alarm at a time
-          break;
-        }
-      }
-    } catch (error) {
-      console.error('Error checking for current alarms:', error);
-    }
-  }
-
-  // Helper function to determine if an alarm should ring now
-  const shouldAlarmRingNow = async (alarm: {
-    id: string;
-    time: string;
-    enabled: boolean;
-    days: string[];
-    sound?: string;
-    soundVolume?: number;
-    mission?: any;
-  }, now: Date, lastCheckTime: number): Promise<boolean> => {
-    try {
-      // Parse alarm time
-      const [hours, minutes] = alarm.time.split(':').map(Number);
-      
-      // Get current day of week (0-6, where 0 is Sunday)
-      const currentDay = now.getDay();
-      // Convert to 1-7 format where 1 is Monday and 7 is Sunday
-      const currentDayAdjusted = currentDay === 0 ? 7 : currentDay;
-      
-      // Check if alarm is scheduled for today
-      if (!alarm.days.includes(currentDayAdjusted.toString())) {
-        return false;
-      }
-      
-      // Create date objects for alarm time today
-      const alarmTime = new Date(now);
-      alarmTime.setHours(hours, minutes, 0, 0);
-      
-      // Get alarm timestamp
-      const alarmTimestamp = alarmTime.getTime();
-      
-      // Check if alarm time is between last check and now
-      // This ensures we only trigger alarms that have just become due
-      if (alarmTimestamp > lastCheckTime && alarmTimestamp <= now.getTime()) {
-        // Check if this alarm has already been triggered recently
-        const triggeredAlarmsJson = await AsyncStorage.getItem('triggeredAlarms');
-        const triggeredAlarms = triggeredAlarmsJson ? JSON.parse(triggeredAlarmsJson) : {};
-        
-        // If this alarm was triggered in the last hour, don't trigger again
-        if (triggeredAlarms[alarm.id]) {
-          const lastTriggered = triggeredAlarms[alarm.id];
-          const oneHourAgo = now.getTime() - (60 * 60 * 1000);
-          
-          if (lastTriggered > oneHourAgo) {
-            return false;
-          }
-        }
-        
-        // Mark this alarm as triggered
-        triggeredAlarms[alarm.id] = now.getTime();
-        await AsyncStorage.setItem('triggeredAlarms', JSON.stringify(triggeredAlarms));
-        
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error checking if alarm should ring:', error);
-      return false;
-    }
-  };
-
-  // Update the interval setup
+  // Add this effect to handle navigation after the component is mounted
   useEffect(() => {
-    if (isAppReady) {
-      // Check immediately when app is ready
-      checkCurrentAlarms();
-      
-      // Then check every minute
-      const interval = setInterval(() => {
-        // Only check if there's no active alarm
-        AsyncStorage.getItem('activeAlarm').then(activeAlarmJson => {
-          if (!activeAlarmJson) {
-            checkCurrentAlarms();
-          }
-        }).catch(error => {
-          console.error('Error checking active alarm:', error);
-        });
-      }, 60000); // Check every minute
-      
-      return () => clearInterval(interval);
+    if (!isLoading && initialRoute && isAppReady) {
+      // Now it's safe to navigate
+      router.replace(initialRoute);
     }
-  }, [isAppReady]);
+  }, [isLoading, initialRoute, isAppReady]);
 
   if (!loaded || loading || !isReady) {
     return null;

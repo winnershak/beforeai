@@ -20,35 +20,15 @@ export default function TabLayout() {
   const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
-    // Check if user has premium access
     const checkPremiumAccess = async () => {
       try {
         setIsLoading(true);
         
-        // Initialize RevenueCat with error handling
-        try {
-          await RevenueCatService.initialize();
-        } catch (error) {
-          console.error('RevenueCat initialization failed:', error);
-          // Continue anyway - we'll use mock mode
-        }
+        const isPremium = await RevenueCatService.checkLocalSubscriptionStatus();
         
-        // Check if user has premium access
-        let isPremium = false;
-        try {
-          isPremium = await RevenueCatService.checkSubscriptionStatus();
-        } catch (error) {
-          console.error('Error checking premium status:', error);
-          // Fall back to AsyncStorage
-          const premiumStatus = await AsyncStorage.getItem('isPremium');
-          isPremium = premiumStatus === 'true';
-        }
-        
-        // Check if user completed quiz
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
         if (quizCompleted !== 'true' && !isPremium) {
-          // Redirect to quiz if not completed and not premium
           router.replace('/quiz');
           return;
         }
@@ -100,7 +80,7 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#FF9500',
+        tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#8E8E93',
         tabBarStyle: {
           backgroundColor: '#1C1C1E',

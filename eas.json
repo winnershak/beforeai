@@ -14,7 +14,30 @@
     "preview": {
       "distribution": "internal"
     },
-    "production": {}
+    "production": {
+      "ios": {
+        "buildConfiguration": "Release",
+        "image": "latest",
+        "credentialsSource": "remote",
+        "distribution": "store",
+        "autoIncrement": true,
+        "entitlements": {
+          "com.apple.developer.usernotifications.time-sensitive": true,
+          "com.apple.developer.usernotifications.critical-alerts": true
+        }
+      }
+    },
+    "production-new": {
+      "ios": {
+        "buildConfiguration": "Release",
+        "image": "latest",
+        "credentialsSource": "remote",
+        "distribution": "store"
+      },
+      "env": {
+        "APP_BUILD_NUMBER": "3"
+      }
+    }
   },
   "submit": {
     "production": {

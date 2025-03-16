@@ -10,6 +10,13 @@ import { scheduleAlarmNotification, cancelAlarmNotification } from './notificati
 import { useFocusEffect } from '@react-navigation/native';
 import { Audio } from 'expo-av';
 
+// Add this at the top of your file, after imports
+declare global {
+  var alarmTimers: {
+    [key: string]: NodeJS.Timeout;
+  };
+}
+
 interface Mission {
   id: string;
   name: string;
@@ -40,6 +47,111 @@ const getDayNumber = (day: string): string => {
   const dayStr = day.toString();
   // Return the day as is - we're using 1-7 where 1=Monday, 7=Sunday
   return dayStr;
+};
+
+// Update the scheduleAlarmRingScreen function to respect selected days
+const scheduleAlarmRingScreen = (alarm: {
+  id: string;
+  time: string;
+  sound: string;
+  soundVolume: number;
+  days: string[];  // Add days parameter
+  mission?: any;
+}) => {
+  try {
+    // Parse the time
+    const [hours, minutes] = alarm.time.split(':').map(Number);
+    const alarmTime = new Date();
+    alarmTime.setHours(hours, minutes, 0, 0);
+    
+    // Get current day of week (0-6, where 0 is Sunday)
+    const currentDay = alarmTime.getDay();
+    
+    // If days are specified, check if today is included
+    if (alarm.days && alarm.days.length > 0) {
+      // Convert day strings to numbers (0-6)
+      const selectedDays = alarm.days.map(day => {
+        switch(day) {
+          case 'Sunday': return 0;
+          case 'Monday': return 1;
+          case 'Tuesday': return 2;
+          case 'Wednesday': return 3;
+          case 'Thursday': return 4;
+          case 'Friday': return 5;
+          case 'Saturday': return 6;
+          default: return parseInt(day); // If it's already a number string
+        }
+      });
+      
+      console.log(`Current day: ${currentDay}, Selected days: ${selectedDays}`);
+      
+      // If today is not in selected days, find the next matching day
+      if (!selectedDays.includes(currentDay)) {
+        console.log('Today is not in selected days, finding next matching day');
+        
+        // Find the next day that matches
+        let daysToAdd = 1;
+        let nextDay = (currentDay + daysToAdd) % 7;
+        
+        while (!selectedDays.includes(nextDay) && daysToAdd < 7) {
+          daysToAdd++;
+          nextDay = (currentDay + daysToAdd) % 7;
+        }
+        
+        // Add days to the alarm time
+        alarmTime.setDate(alarmTime.getDate() + daysToAdd);
+        console.log(`Scheduling for next matching day: ${nextDay}, ${daysToAdd} days from now`);
+      }
+    }
+    
+    // If the time has already passed today, set it for tomorrow
+    // (only if we're still scheduling for today)
+    const now = new Date();
+    if (alarmTime < now) {
+      alarmTime.setDate(alarmTime.getDate() + 1);
+    }
+    
+    console.log(`Scheduling alarm-ring screen for: ${alarmTime.toLocaleString()}`);
+    
+    // Calculate milliseconds until alarm time
+    const msUntilAlarm = alarmTime.getTime() - now.getTime();
+    
+    // Schedule a timer to open the alarm-ring screen at the exact time
+    const timerId = setTimeout(() => {
+      // When the timer fires, set the active alarm and navigate
+      AsyncStorage.setItem('activeAlarm', JSON.stringify({
+        alarmId: alarm.id,
+        timestamp: new Date().getTime(),
+        sound: alarm.sound,
+        soundVolume: alarm.soundVolume,
+        hasMission: Boolean(alarm.mission)
+      })).then(() => {
+        // Navigate to the alarm-ring screen
+        router.replace({
+          pathname: '/alarm-ring',
+          params: {
+            alarmId: alarm.id,
+            sound: alarm.sound,
+            soundVolume: alarm.soundVolume.toString(),
+            hasMission: Boolean(alarm.mission).toString()
+          }
+        });
+      });
+    }, msUntilAlarm);
+    
+    // Store the timer ID in a global object so we can clear it if needed
+    if (!global.alarmTimers) {
+      global.alarmTimers = {};
+    }
+    global.alarmTimers[alarm.id] = timerId;
+    
+    console.log(`Scheduled alarm-ring screen for alarm: ${alarm.id} at ${alarmTime.toLocaleString()}`);
+    
+    return timerId;
+  } catch (error) {
+    console.error('Error scheduling alarm-ring screen:', error);
+    return null;
+  }
 };
 
 export default function NewAlarmScreen() {
@@ -321,6 +433,9 @@ export default function NewAlarmScreen() {
       
       // Clear temp state after successful save
       await AsyncStorage.removeItem('tempAlarmState');
+      
+      // Also schedule the alarm-ring screen
+      scheduleAlarmRingScreen(newAlarm);
       
       router.push('/');
     } catch (error) {

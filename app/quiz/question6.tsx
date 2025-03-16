@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, Dimensions } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -46,7 +46,7 @@ export default function QuizQuestion6() {
             </View>
             
             <View style={styles.content}>
-              <Text style={styles.question}>How noticeable to others do you think your sleep problem is in terms of impairing the quality of your life?</Text>
+              <Text style={styles.question}>How much does your sleep problem affect your daily life?</Text>
               
               {[
                 'Not at all Noticeable',

@@ -28,14 +28,14 @@ const slides = [
   },
   {
     id: '2',
-    title: 'Sleep Ruins Your Social Life',
+    title: 'Bad Sleep Ruins Your Social Life',
     content: 'Tired? You are less patient, less confident, and harder to connect with. Conversations feel forced. Social events feel exhausting. Bad sleep even makes you look less approachable. People notice.',
     backgroundColor: '#FF3B30', // Red background
     image: require('../../assets/images/e2.webp'),
   },
   {
     id: '3',
-    title: 'Sleep Wrecks Your Body & Appearance',
+    title: 'Bad Sleep Wrecks Your Body & Appearance',
     content: 'Sleep deprivation slows metabolism, weakens immunity, and causes weight gain. Worse? It ages your skin—causing dark circles, puffiness, dullness, and breakouts. No skincare can undo chronic bad sleep.',
     backgroundColor: '#FF3B30', // Red background
     image: require('../../assets/images/e3.webp'),
@@ -49,7 +49,7 @@ const slides = [
   },
   {
     id: '5',
-    title: 'Great Sleep = A Better Life',
+    title: 'Road to Healing',
     content: 'Fixing your sleep changes everything—more energy, clearer skin, better focus, and real confidence. You wake up refreshed, feel motivated, and actually enjoy your day. The best part? It is possible. Small changes lead to huge results. Ready to take control?',
     backgroundColor: '#34C759', // Green background
     image: require('../../assets/images/e5.webp'),

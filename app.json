@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "Bliss Alarm Clock",
+    "name": "Bliss Alarm",
     "slug": "bliss-alarm-clock",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
@@ -36,7 +36,8 @@
         "NSPhotoLibraryUsageDescription": "This app uses the photo library for...",
         "UIViewControllerBasedStatusBarAppearance": false,
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "3"
     },
     "plugins": [
       [
