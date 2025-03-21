@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform, Switch } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { scheduleAlarmNotification, cancelAlarmNotification } from '../notifications';
 import * as Notifications from 'expo-notifications';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 // Define the Alarm type
 interface Alarm {
@@ -617,7 +618,7 @@ export default function TabOneScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top']}>
       {/* Notification Permission Banner */}
       {!notificationsEnabled && (
         <TouchableOpacity 
@@ -706,7 +707,7 @@ export default function TabOneScreen() {
       >
         <Ionicons name="add" size={30} color="#fff" />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -8,11 +8,23 @@
       "developmentClient": true,
       "distribution": "internal",
       "ios": {
-        "simulator": true
-      }
+        "simulator": true,
+        "image": "latest"
+      },
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_NO_ANDROID_PREBUILD": "1"
+      },
+      "prebuildCommand": "node ./fix-yoga.js"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "ios": {},
+      "env": {
+        "EXPO_NO_ANDROID_PREBUILD": "1"
+      }
     },
     "production": {
       "ios": {
@@ -20,11 +32,10 @@
         "image": "latest",
         "credentialsSource": "remote",
         "distribution": "store",
-        "autoIncrement": true,
-        "entitlements": {
-          "com.apple.developer.usernotifications.time-sensitive": true,
-          "com.apple.developer.usernotifications.critical-alerts": true
-        }
+        "autoIncrement": true
+      },
+      "env": {
+        "EXPO_NO_ANDROID_PREBUILD": "1"
       }
     },
     "production-new": {

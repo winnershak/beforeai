@@ -102,6 +102,39 @@ export default function SoundsScreen() {
     };
   }, [isPlaying, timerEnabled, timeRemaining]);
 
+  useEffect(() => {
+    // Configure audio session once at startup
+    const setupAudio = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+        });
+        console.log("Audio mode configured successfully");
+        
+        // Start background loading the last played sound first
+        const lastSound = await AsyncStorage.getItem('lastPlayedSound');
+        if (lastSound) {
+          // Preload the last used sound in the background
+          console.log(`Background loading last used sound: ${lastSound}`);
+          Audio.Sound.createAsync(
+            soundAssets[lastSound],
+            { shouldPlay: false },
+          ).then(({ sound }) => {
+            sound.unloadAsync(); // Just prime the cache
+          }).catch(err => {
+            console.log("Error preloading last sound:", err);
+          });
+        }
+      } catch (error) {
+        console.error("Error configuring audio:", error);
+      }
+    };
+    
+    setupAudio();
+  }, []);
+
   const loadLastPlayedSound = async () => {
     try {
       const lastSound = await AsyncStorage.getItem('lastPlayedSound');
@@ -145,20 +178,32 @@ export default function SoundsScreen() {
         return;
       }
       
-      // Load and play the sound
+      // Load and play the sound with optimized settings
+      console.log(`Creating sound from asset: ${soundName}`);
       const { sound: newSound } = await Audio.Sound.createAsync(
         soundAsset,
-        { shouldPlay: true, isLooping: true, volume }
+        { 
+          shouldPlay: true, 
+          isLooping: true, 
+          volume,
+          progressUpdateIntervalMillis: 500, // Less frequent updates
+          positionMillis: 0,
+          rate: 1.0,
+          shouldCorrectPitch: false, // Faster loading
+        },
+        (status) => {
+          if (status.isLoaded) {
+            // Only log initial playback state to reduce console spam
+            if (status.didJustFinish || status.positionMillis === 0) {
+              console.log(`Sound ${soundName} playing state: ${status.isPlaying}`);
+            }
+          } else if (status.error) {
+            console.error(`Sound playback error: ${status.error}`);
+          }
+        }
       );
       
       console.log(`Sound loaded successfully: ${soundName}`);
-      
-      // Set up audio mode for background playback
-      await Audio.setAudioModeAsync({
-        playsInSilentModeIOS: true,
-        staysActiveInBackground: true,
-        shouldDuckAndroid: true,
-      });
       
       setSound(newSound);
       setIsPlaying(true);

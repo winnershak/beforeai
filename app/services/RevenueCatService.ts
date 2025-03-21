@@ -40,22 +40,30 @@ class RevenueCatService {
   }
 
   async getSubscriptionDetails() {
-    // Mock subscription details since IAPService doesn't provide this
-    const isPremium = await IAPService.checkSubscriptionStatus();
-    
-    if (!isPremium) {
+    try {
+      // Check if user is subscribed
+      const isSubscribed = await this.isSubscribed();
+      
+      if (!isSubscribed) {
+        return null;
+      }
+      
+      // Create default dates
+      const expirationDate = new Date();
+      expirationDate.setFullYear(expirationDate.getFullYear() + 1);
+      
+      const subscriptionType = await this.getSubscriptionType();
+      
+      return {
+        expirationDate,
+        latestPurchaseDate: new Date(),
+        productIdentifier: subscriptionType === 'yearly' ? 'blissyear' : 'blissmonth',
+        isYearly: subscriptionType === 'yearly'
+      };
+    } catch (error) {
+      console.error('Error getting subscription details:', error);
       return null;
     }
-    
-    const expirationDate = new Date();
-    expirationDate.setFullYear(expirationDate.getFullYear() + 1);
-    
-    return {
-      expirationDate,
-      latestPurchaseDate: new Date(),
-      productIdentifier: 'blissyear',
-      isYearly: true
-    };
   }
 
   async safelyGetSubscriptionDetails() {
@@ -79,6 +87,48 @@ class RevenueCatService {
   async checkLocalSubscriptionStatus(): Promise<boolean> {
     const storedPremium = await AsyncStorage.getItem('isPremium');
     return storedPremium === 'true';
+  }
+
+  async isSubscribed(): Promise<boolean> {
+    try {
+      // For development builds, check the premium flag
+      if (__DEV__) {
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        return isPremium === 'true';
+      }
+      
+      // For production, check actual subscription status and handle undefined
+      const status = await IAPService.checkSubscriptionStatus();
+      return status === true;
+    } catch (error) {
+      console.error('Error checking subscription status:', error);
+      return false;
+    }
+  }
+
+  async getSubscriptionType(): Promise<'monthly' | 'yearly' | null> {
+    try {
+      // For development builds, just return a default
+      if (__DEV__) {
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        if (isPremium === 'true') {
+          const subscriptionType = await AsyncStorage.getItem('subscriptionType') || 'monthly';
+          return subscriptionType as 'monthly' | 'yearly';
+        }
+        return null;
+      }
+      
+      // For production, use the existing method
+      const isSubscribed = await IAPService.checkSubscriptionStatus();
+      if (!isSubscribed) return null;
+      
+      // You'll need to implement a way to determine subscription type
+      // For now, default to monthly if subscribed
+      return 'monthly';
+    } catch (error) {
+      console.error('Error getting subscription type:', error);
+      return null;
+    }
   }
 }
 

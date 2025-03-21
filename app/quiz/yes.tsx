@@ -122,9 +122,12 @@ export default function YesScreen() {
       const success = await RevenueCatService.purchasePackage(selectedPackage);
       
       if (success) {
-        // Mark quiz as completed
+        // Save both premium status and subscription type
         await AsyncStorage.setItem('quizCompleted', 'true');
         await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('subscriptionType', selectedPlan);
+        
+        console.log(`Subscription successful: ${selectedPlan}`);
         
         // Request notification permissions
         await requestNotificationPermissions();
@@ -135,7 +138,10 @@ export default function YesScreen() {
           [
             {
               text: "Continue",
-              onPress: () => router.push('/(tabs)')
+              onPress: () => {
+                // Force navigation to tabs
+                router.replace('/(tabs)');
+              }
             }
           ]
         );
@@ -197,6 +203,22 @@ export default function YesScreen() {
       }
     } catch (error) {
       console.error('Error requesting notification permissions:', error);
+    }
+  };
+
+  const handlePurchase = async () => {
+    try {
+      // In a real app, you would integrate with in-app purchases here
+      
+      console.log('Purchase successful, marking as premium');
+      
+      // Mark user as premium
+      await AsyncStorage.setItem('isPremium', 'true');
+      
+      // Navigate to main app
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Error processing purchase:', error);
     }
   };
 

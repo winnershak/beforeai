@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, Dimensions, Platform } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -84,17 +84,27 @@ export default function QuizQuestion9() {
                 <Text style={styles.timeText}>{formatTime(weekendBedtime)}</Text>
               </View>
               
-              {(showPicker || Platform.OS === 'ios') && (
+              {showPicker && (
                 <View style={styles.pickerContainer}>
-                  <DateTimePicker
-                    value={weekendBedtime}
-                    mode="time"
-                    is24Hour={false}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onTimeChange}
-                    textColor="#fff"
-                    style={styles.timePicker}
-                  />
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker
+                      value={weekendBedtime}
+                      mode="time"
+                      is24Hour={false}
+                      display="spinner"
+                      onChange={onTimeChange}
+                      style={styles.timePicker}
+                      textColor="white"
+                    />
+                  ) : (
+                    <DateTimePicker
+                      value={weekendBedtime}
+                      mode="time"
+                      is24Hour={false}
+                      display="default"
+                      onChange={onTimeChange}
+                    />
+                  )}
                 </View>
               )}
               

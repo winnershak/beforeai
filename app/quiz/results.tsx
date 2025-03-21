@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'react-native';
 import { CacheManager } from "react-native-expo-image-cache";
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Get screen dimensions for responsive layout
 const { width, height } = Dimensions.get('window');
@@ -17,6 +18,29 @@ export default function QuizResults() {
   const navigateToSymptoms = () => {
     // Navigate to the symptoms page instead of tabs
     router.push('/quiz/symptoms');
+  };
+
+  const finishQuiz = async () => {
+    try {
+      // Mark quiz as completed
+      await AsyncStorage.setItem('quizCompleted', 'true');
+      
+      // Check if user is premium
+      const isPremium = await AsyncStorage.getItem('isPremium');
+      
+      if (isPremium === 'true') {
+        // If already premium, go to main app
+        console.log('User completed quiz and is premium, going to tabs');
+        router.replace('/(tabs)');
+      } else {
+        // If not premium, go to YES screen
+        console.log('User completed quiz but not premium, going to yes screen');
+        router.replace('/quiz/yes');
+      }
+    } catch (error) {
+      console.error('Error finishing quiz:', error);
+      router.replace('/quiz/yes');
+    }
   };
 
   return (

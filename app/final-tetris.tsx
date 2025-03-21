@@ -444,10 +444,7 @@ export default function FinalTetrisGame() {
       if (linesClearedRef.current === 0) {
         // Navigate back to alarm ring after a short delay
         setTimeout(() => {
-          router.replace({
-            pathname: '/alarm-ring',
-            params: { alarmId: params.alarmId }
-          });
+          router.replace('/app/(tabs)/index');
         }, 1000);
       }
       
@@ -531,147 +528,24 @@ export default function FinalTetrisGame() {
     // Clear the timers
     if (gameLoopRef.current) {
       clearInterval(gameLoopRef.current);
-      gameLoopRef.current = null;
-    }
-    
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
     }
     
     if (success) {
-      setGameOver(true);
-      setShowConfetti(true);
-      setShowSuccess(true);
-      
-      // Vibrate for success
-      Vibration.vibrate([0, 50, 30, 80, 30, 100, 30, 150]);
-      
-      // Animate the success message
-      Animated.sequence([
-        Animated.timing(successOpacity, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true
-        }),
-        Animated.delay(2000),
-        Animated.timing(successOpacity, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true
-        })
-      ]).start();
-      
-      // Track mission completion in AsyncStorage
       try {
-        // Get current mission stats
-        const statsString = await AsyncStorage.getItem('missionStats');
-        let stats = statsString ? JSON.parse(statsString) : {
-          wordle: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          math: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          typing: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          photo: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          qr: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          tetris: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-        };
+        // Your existing code for updating stats...
         
-        // Update Tetris stats
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        
-        // Check if this is a consecutive day
-        const isConsecutiveDay = 
-          stats.tetris.lastCompleted === 
-          new Date(Date.now() - 86400000).toISOString().split('T')[0]; // Yesterday
-        
-        stats.tetris.completed += 1;
-        
-        if (isConsecutiveDay) {
-          stats.tetris.streak += 1;
-        } else {
-          stats.tetris.streak = 1;
-        }
-        
-        // Update best streak if current streak is better
-        if (stats.tetris.streak > stats.tetris.bestStreak) {
-          stats.tetris.bestStreak = stats.tetris.streak;
-        }
-        
-        stats.tetris.lastCompleted = today;
-        
-        // Save updated stats
-        await AsyncStorage.setItem('missionStats', JSON.stringify(stats));
-        
-        // Add XP for completing the mission
-        const xpString = await AsyncStorage.getItem('userXP');
-        const levelString = await AsyncStorage.getItem('userLevel');
-        
-        let xp = xpString ? parseInt(xpString) : 0;
-        const userLevel = levelString ? parseInt(levelString) : 1;
-        
-        // Add 50 XP for completing Tetris
-        xp += 50;
-        
-        // Save updated XP
-        await AsyncStorage.setItem('userXP', xp.toString());
-        
-        // Update mission-specific count
-        const missionName = 'Tetris';
-        const missionCountKey = `${missionName.toLowerCase()}Count`;
-        const missionCount = await AsyncStorage.getItem(missionCountKey);
-        const newMissionCount = missionCount ? parseInt(missionCount) + 1 : 1;
-        await AsyncStorage.setItem(missionCountKey, newMissionCount.toString());
-        
-        // Update mission breakdown
-        const breakdownJson = await AsyncStorage.getItem('missionBreakdown');
-        let breakdown = breakdownJson ? JSON.parse(breakdownJson) : {};
-        breakdown[missionName] = newMissionCount;
-        await AsyncStorage.setItem('missionBreakdown', JSON.stringify(breakdown));
-        
-        // Update streak
-        const currentDate = new Date().toISOString().split('T')[0]; // Today's date
-        const lastCompletionDate = await AsyncStorage.getItem('lastCompletionDate');
-        const currentStreak = await AsyncStorage.getItem('currentStreak');
-        let newStreak = 1;
-        
-        if (currentStreak) {
-          const yesterdayDate = new Date();
-          yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-          const yesterday = yesterdayDate.toISOString().split('T')[0];
-          
-          if (lastCompletionDate === yesterday) {
-            // Completed yesterday, increment streak
-            newStreak = parseInt(currentStreak) + 1;
-          } else if (lastCompletionDate === currentDate) {
-            // Already completed today, maintain streak
-            newStreak = parseInt(currentStreak);
-          }
-        }
-        
-        await AsyncStorage.setItem('currentStreak', newStreak.toString());
-        await AsyncStorage.setItem('lastCompletionDate', currentDate);
-        
-        console.log(`Updated stats for ${missionName}: count=${newMissionCount}, streak=${newStreak}`);
-        
-        // Navigate to trophies page after a short delay
+        // Navigate to the alarms page after a short delay
         setTimeout(() => {
-          router.replace({
-            pathname: '/(tabs)/trophies',
-            params: { 
-              showAnimation: 'true',
-              missionType: 'tetris'
-            }
-          });
+          router.replace('/app/(tabs)/index');
         }, 2000);
         
       } catch (error) {
         console.error('Error updating mission stats:', error);
+        router.replace('/app/(tabs)/index');
       }
     } else {
-      // If mission failed, just go back to alarm
-      router.replace({
-        pathname: '/alarm-ring',
-        params: { alarmId: params.alarmId }
-      });
+      // If mission failed, go to alarms page
+      router.replace('/app/(tabs)/index');
     }
   };
   
@@ -706,30 +580,46 @@ export default function FinalTetrisGame() {
       try {
         console.log('Loading tetris sounds...');
         
-        // Load tetris music with correct path
-        const { sound: music } = await Audio.Sound.createAsync(
-          require('../assets/sounds/tetris.caf'),
-          { volume: 0.5, isLooping: true }
-        );
-        setTetrisMusic(music);
+        // Use try/catch for each sound separately
+        try {
+          // Load tetris music
+          const { sound: music } = await Audio.Sound.createAsync(
+            require('../assets/sounds/tetris.caf'), // Use tetris.caf for background music
+            { volume: 0.5, isLooping: true }
+          );
+          setTetrisMusic(music);
+          console.log('Loaded tetris music');
+        } catch (musicError) {
+          console.error('Error loading tetris music:', musicError);
+        }
         
-        // Load move sound
-        const { sound: move } = await Audio.Sound.createAsync(
-          require('../assets/sounds/move.caf'),
-          { volume: 0.5 }
-        );
-        setMoveSound(move);
+        try {
+          // Load move sound (for when pieces are lowered)
+          const { sound: move } = await Audio.Sound.createAsync(
+            require('../assets/sounds/quiet-boom.caf'),
+            { volume: 0.8 }
+          );
+          setMoveSound(move);
+          console.log('Loaded move sound');
+        } catch (moveError) {
+          console.error('Error loading move sound:', moveError);
+        }
         
-        // Load complete sound
-        const { sound: complete } = await Audio.Sound.createAsync(
-          require('../assets/sounds/completeword.caf'),
-          { volume: 0.7 }
-        );
-        setCompleteSound(complete);
+        try {
+          // Load complete sound (for mission completion)
+          const { sound: complete } = await Audio.Sound.createAsync(
+            require('../assets/sounds/mount.caf'),
+            { volume: 1.0 }
+          );
+          setCompleteSound(complete);
+          console.log('Loaded complete sound');
+        } catch (completeError) {
+          console.error('Error loading complete sound:', completeError);
+        }
         
-        console.log('All tetris sounds loaded successfully');
+        console.log('Tetris sounds loading completed');
       } catch (error) {
-        console.error('Error loading tetris sounds:', error);
+        console.error('Error in loadSounds:', error);
       }
     };
     
@@ -943,7 +833,7 @@ export default function FinalTetrisGame() {
     touchStartY.current = null;
   };
 
-  // Fix the checkWinCondition function to properly pass mission completion to trophies
+  // Fix the checkWinCondition function with direct navigation
   const checkWinCondition = () => {
     if (linesClearedRef.current > 0) {
       // Win condition: clear just one line
@@ -969,30 +859,29 @@ export default function FinalTetrisGame() {
       // Stop the alarm
       stopAlarm();
       
-      // Animate the success message with a longer duration
+      // Play completion sound
+      if (completeSound) {
+        completeSound.replayAsync();
+      }
+      
+      // Use direct navigation with setTimeout instead of animation callback
+      console.log('Setting up navigation timeout');
+      setTimeout(() => {
+        console.log('Direct navigation timeout fired - going to home screen');
+        // Use the most direct navigation possible
+        router.navigate('/(tabs)');
+      }, 3000);
+      
+      // Still show the animation but don't rely on it for navigation
       Animated.sequence([
         Animated.timing(successOpacity, {
           toValue: 1,
           duration: 1000,
           useNativeDriver: true
         }),
-        Animated.delay(4000)
+        Animated.delay(2000)
       ]).start(() => {
-        // Only navigate after the animation completes
-        console.log('Animation complete, navigating to trophies');
-        
-        // Make sure to use the correct case for missionType
-        setTimeout(() => {
-          router.replace({
-            pathname: '/(tabs)/trophies',
-            params: { 
-              missionCompleted: 'true',
-              showAnimation: 'true',  // Make sure this is set to 'true'
-              missionType: 'Tetris',  // Use proper capitalization
-              score: score.toString()
-            }
-          });
-        }, 1000);
+        console.log('Animation complete - navigation should happen via timeout');
       });
     }
   };

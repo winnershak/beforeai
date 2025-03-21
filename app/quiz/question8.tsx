@@ -86,17 +86,27 @@ export default function QuizQuestion8() {
                 <Text style={styles.timeText}>{formatTime(weekdayBedtime)}</Text>
               </View>
               
-              {(showPicker || Platform.OS === 'ios') && (
+              {showPicker && (
                 <View style={styles.pickerContainer}>
-                  <DateTimePicker
-                    value={weekdayBedtime}
-                    mode="time"
-                    is24Hour={false}
-                    display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-                    onChange={onTimeChange}
-                    textColor="#fff"
-                    style={styles.timePicker}
-                  />
+                  {Platform.OS === 'ios' ? (
+                    <DateTimePicker
+                      value={weekdayBedtime}
+                      mode="time"
+                      is24Hour={false}
+                      display="spinner"
+                      onChange={onTimeChange}
+                      style={styles.timePicker}
+                      textColor="white"
+                    />
+                  ) : (
+                    <DateTimePicker
+                      value={weekdayBedtime}
+                      mode="time"
+                      is24Hour={false}
+                      display="default"
+                      onChange={onTimeChange}
+                    />
+                  )}
                 </View>
               )}
               

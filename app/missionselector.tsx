@@ -39,13 +39,6 @@ const missions = [
     emoji: '🧩',
     description: 'Clear lines in Tetris to turn off the alarm',
     needsConfig: true
-  },
-  {
-    id: 'cookiejam',
-    name: 'Cookie Jam',
-    emoji: '🔔',
-    description: 'Match food to turn off the alarm',
-    needsConfig: false
   }
 ];
 
@@ -109,7 +102,7 @@ export default function MissionSelector() {
           break;
         
         default:
-          // For other missions (Wordle, Cookie Jam), go directly back to new-alarm
+          // For other missions (Wordle), go directly back to new-alarm
           router.push('/new-alarm');
           break;
       }

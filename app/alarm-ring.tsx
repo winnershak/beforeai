@@ -113,12 +113,14 @@ export default function AlarmRingScreen() {
     
     const setupAndPlaySound = async () => {
       try {
-        // Configure audio mode first
+        // Set audio mode first - this is critical for background audio
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
           shouldDuckAndroid: true,
-          playThroughEarpieceAndroid: false,
+          interruptionModeIOS: 1,
+          interruptionModeAndroid: 1,
+          playThroughEarpieceAndroid: false
         });
         
         // Get sound name from params
@@ -347,8 +349,6 @@ export default function AlarmRingScreen() {
         router.replace('/final-qr');
       } else if (missionType.toLowerCase() === 'wordle') {
         router.replace('/final-wordle');
-      } else if (missionType.toLowerCase() === 'cookiejam') {
-        router.replace('/final-cookiejam');
       } else {
         // Default to math if mission type is unknown
         console.warn('Unknown mission type:', missionType);
@@ -376,8 +376,6 @@ export default function AlarmRingScreen() {
       return 'QR';
     } else if (missionName === 'steps' || missionType === 'steps') {
       return 'Steps';
-    } else if (missionName === 'cookie jam' || missionType === 'cookiejam') {
-      return 'CookieJam';
     }
     
     return '';

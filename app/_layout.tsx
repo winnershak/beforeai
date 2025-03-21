@@ -188,20 +188,27 @@ export default function AppLayout() {
     const checkFirstLaunch = async () => {
       try {
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-        const isPremium = await AsyncStorage.getItem('isPremium');
         
-        // If quiz is completed or user is premium, go to main app
-        // Otherwise, show the quiz
-        if (quizCompleted === 'true' || isPremium === 'true') {
+        // Check subscription status instead of premium flag
+        const isSubscribed = await RevenueCatService.isSubscribed();
+        
+        console.log('Initial check - Quiz completed:', quizCompleted, 'Subscribed:', isSubscribed);
+        
+        if (isSubscribed) {
+          console.log('User is subscribed, going to tabs');
           setInitialRoute('(tabs)');
-        } else {
+        } else if (quizCompleted !== 'true') {
+          console.log('Quiz not completed and not subscribed, showing quiz');
           setInitialRoute('quiz');
+        } else {
+          console.log('Quiz completed but not subscribed, showing yes screen');
+          setInitialRoute('quiz/yes');
         }
         
         setLoading(false);
       } catch (error) {
         console.error('Error checking first launch:', error);
-        setInitialRoute('(tabs)'); // Default to main app on error
+        setInitialRoute('quiz');
         setLoading(false);
       }
     };
@@ -433,7 +440,7 @@ export default function AppLayout() {
             <Stack.Screen name="quiz/question3" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/question4" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
-            <Stack.Screen name="quiz/payment" options={{ headerShown: false }} />
+            <Stack.Screen name="quiz/yes" options={{ headerShown: false }} />
             <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="mission-alarm" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen 

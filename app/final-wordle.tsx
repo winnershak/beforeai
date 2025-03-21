@@ -216,120 +216,47 @@ export default function FinalWordleGame() {
     if (timerRef.current) clearInterval(timerRef.current);
     
     if (success) {
-      // Track mission completion in AsyncStorage
       try {
-        // Get current mission stats
-        const statsString = await AsyncStorage.getItem('missionStats');
-        let stats = statsString ? JSON.parse(statsString) : {
-          wordle: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          math: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          typing: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          photo: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-          qr: { completed: 0, streak: 0, bestStreak: 0, lastCompleted: null },
-        };
-        
-        // Update Wordle stats
-        const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-        
-        // Check if this is a consecutive day
-        const isConsecutiveDay = 
-          stats.wordle.lastCompleted === 
-          new Date(Date.now() - 86400000).toISOString().split('T')[0]; // Yesterday
-        
-        stats.wordle.completed += 1;
-        
-        if (isConsecutiveDay) {
-          stats.wordle.streak += 1;
-        } else {
-          stats.wordle.streak = 1;
+        // Play success sound if available
+        if (completeSound) {
+          await completeSound.playAsync();
         }
         
-        // Update best streak if current streak is better
-        if (stats.wordle.streak > stats.wordle.bestStreak) {
-          stats.wordle.bestStreak = stats.wordle.streak;
-        }
+        // Show success message and confetti
+        setShowSuccess(true);
+        setShowConfetti(true);
         
-        stats.wordle.lastCompleted = today;
+        // Animate success message
+        Animated.sequence([
+          Animated.timing(successOpacity, {
+            toValue: 1,
+            duration: 500,
+            useNativeDriver: true
+          }),
+          Animated.delay(1500),
+          Animated.timing(successOpacity, {
+            toValue: 0,
+            duration: 500,
+            useNativeDriver: true
+          })
+        ]).start();
         
-        // Save updated stats
-        await AsyncStorage.setItem('missionStats', JSON.stringify(stats));
-        
-        // Add XP for completing the mission
-        const xpString = await AsyncStorage.getItem('userXP');
-        const levelString = await AsyncStorage.getItem('userLevel');
-        
-        let xp = xpString ? parseInt(xpString) : 0;
-        const level = levelString ? parseInt(levelString) : 1;
-        
-        // Add 50 XP for completing Wordle
-        xp += 50;
-        
-        // Save updated XP
-        await AsyncStorage.setItem('userXP', xp.toString());
-        
-        // Check if any achievements were unlocked
-        // This will be handled by the trophies screen
-        
-        // Navigate to trophies page after a short delay
+        // Use direct navigation with setTimeout instead of animation callback
+        console.log('Setting up navigation timeout for Wordle');
         setTimeout(() => {
-          router.replace({
-            pathname: '/(tabs)/trophies',
-            params: { 
-              missionCompleted: 'true',
-              showAnimation: 'true',
-              missionType: 'Wordle',
-              score: guesses.length.toString()
-            }
-          });
-        }, 2000); // Wait 2 seconds after the confetti and success message
-        
-        // Update mission-specific count
-        const missionName = 'Wordle';
-        const missionCountKey = `${missionName.toLowerCase()}Count`;
-        const missionCount = await AsyncStorage.getItem(missionCountKey);
-        const newMissionCount = missionCount ? parseInt(missionCount) + 1 : 1;
-        await AsyncStorage.setItem(missionCountKey, newMissionCount.toString());
-        
-        // Update mission breakdown
-        const breakdownJson = await AsyncStorage.getItem('missionBreakdown');
-        let breakdown = breakdownJson ? JSON.parse(breakdownJson) : {};
-        breakdown[missionName] = newMissionCount;
-        await AsyncStorage.setItem('missionBreakdown', JSON.stringify(breakdown));
-        
-        // Update streak
-        const currentDate = new Date().toISOString().split('T')[0]; // Today's date
-        const lastCompletionDate = await AsyncStorage.getItem('lastCompletionDate');
-        const currentStreak = await AsyncStorage.getItem('currentStreak');
-        let newStreak = 1;
-        
-        if (currentStreak) {
-          const yesterdayDate = new Date();
-          yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-          const yesterday = yesterdayDate.toISOString().split('T')[0];
-          
-          if (lastCompletionDate === yesterday) {
-            // Completed yesterday, increment streak
-            newStreak = parseInt(currentStreak) + 1;
-          } else if (lastCompletionDate === currentDate) {
-            // Already completed today, maintain streak
-            newStreak = parseInt(currentStreak);
-          }
-        }
-        
-        await AsyncStorage.setItem('currentStreak', newStreak.toString());
-        await AsyncStorage.setItem('lastCompletionDate', currentDate);
-        
-        console.log(`Updated stats for ${missionName}: count=${newMissionCount}, streak=${newStreak}`);
+          console.log('Direct navigation timeout fired - going to home screen from Wordle');
+          // Use the same navigation method as Tetris
+          router.navigate('/(tabs)');
+        }, 3000);
         
       } catch (error) {
-        console.error('Error updating mission stats:', error);
+        console.error('Error in completeGame:', error);
+        // Use the same navigation method as Tetris for error case
+        router.navigate('/(tabs)');
       }
     } else {
-      // If mission failed, just go back to alarm
-      router.replace({
-        pathname: '/alarm-ring',
-        params: { alarmId: params.alarmId }
-      });
+      // If mission failed, use the same navigation method as Tetris
+      router.navigate('/(tabs)');
     }
   };
   

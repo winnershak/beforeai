@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Platform, Linking, Alert } from 'react-native';
-import { router } from 'expo-router';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Linking, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import RevenueCatService from '../services/RevenueCatService';
+import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import RevenueCatService from '../services/RevenueCatService';
+import Constants from 'expo-constants';
 
 export default function SettingsScreen() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<{
@@ -12,12 +14,25 @@ export default function SettingsScreen() {
     productIdentifier: string;
     isYearly: boolean;
   } | null>(null);
+  
+  // Check if we're in development mode
+  const isDevelopment = process.env.NODE_ENV === 'development' || 
+                        Constants.expoConfig?.extra?.eas?.buildType === 'development';
 
   useEffect(() => {
     const getSubscriptionInfo = async () => {
       try {
-        const details = await RevenueCatService.safelyGetSubscriptionDetails();
-        setSubscriptionDetails(details);
+        // Get subscription type
+        const subscriptionType = await RevenueCatService.getSubscriptionType();
+        
+        if (subscriptionType) {
+          // Use subscription type to display appropriate info
+          const details = await RevenueCatService.getSubscriptionDetails();
+          setSubscriptionDetails({
+            ...details,
+            isYearly: subscriptionType === 'yearly'
+          });
+        }
       } catch (error) {
         console.log('Error getting subscription info:', error);
       }
@@ -61,9 +76,27 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
+          
+          {/* Only show reset button in development mode */}
+          {isDevelopment && (
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={async () => {
+                await AsyncStorage.removeItem('isPremium');
+                await AsyncStorage.removeItem('quizCompleted');
+                Alert.alert("Reset Complete", "App status reset to non-premium. Please restart the app.");
+              }}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="refresh-circle-outline" size={24} color="#FF3B30" style={styles.settingIcon} />
+                <Text style={styles.settingText}>Reset Premium Status (Testing)</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          )}
         </View>
 
-        {subscriptionDetails && (
+        {subscriptionDetails && subscriptionDetails.expirationDate && (
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Subscription</Text>
             <View style={styles.subscriptionInfo}>
@@ -87,6 +120,51 @@ export default function SettingsScreen() {
               </TouchableOpacity>
             </View>
           </View>
+        )}
+
+        {/* Add these buttons for development testing */}
+        {isDevelopment && (
+          <>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={async () => {
+                const isSubscribed = await RevenueCatService.isSubscribed();
+                const subscriptionType = await RevenueCatService.getSubscriptionType();
+                const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+                
+                Alert.alert(
+                  "Subscription Status", 
+                  `Subscribed: ${isSubscribed}\nType: ${subscriptionType || 'None'}\nQuiz Completed: ${quizCompleted}`
+                );
+              }}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="information-circle-outline" size={24} color="#5AC8FA" style={styles.settingIcon} />
+                <Text style={styles.settingText}>Check Subscription</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={async () => {
+                await AsyncStorage.setItem('isPremium', 'true');
+                await AsyncStorage.setItem('subscriptionType', 'monthly');
+                
+                Alert.alert(
+                  "Subscription Set", 
+                  "Monthly subscription has been set.",
+                  [{ text: "OK", onPress: () => router.replace('/') }]
+                );
+              }}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="star" size={24} color="#FFD700" style={styles.settingIcon} />
+                <Text style={styles.settingText}>Set Monthly Subscription</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          </>
         )}
       </ScrollView>
     </SafeAreaView>

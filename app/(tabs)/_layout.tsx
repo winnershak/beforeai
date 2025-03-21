@@ -121,6 +121,13 @@ export default function TabLayout() {
           headerShown: false,
         }}
       />
+      <Tabs.Screen
+        name="appblock"
+        options={{
+          title: 'App Block',
+          tabBarIcon: ({ color }) => <Ionicons name="timer-outline" size={28} color={color} />,
+        }}
+      />
     </Tabs>
   );
 }
