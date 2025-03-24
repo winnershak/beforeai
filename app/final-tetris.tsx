@@ -578,7 +578,17 @@ export default function FinalTetrisGame() {
     // Load sounds when component mounts
     const loadSounds = async () => {
       try {
-        console.log('Loading tetris sounds...');
+        console.log('Loading Tetris sounds...');
+        // Make sure audio mode is set correctly
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          interruptionModeIOS: 1, // DoNotMix = 1
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          interruptionModeAndroid: 1, // DoNotMix = 1
+          playThroughEarpieceAndroid: false,
+        });
         
         // Use try/catch for each sound separately
         try {

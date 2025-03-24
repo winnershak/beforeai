@@ -291,26 +291,33 @@ export default function FinalWordleGame() {
   
   // Add a function to load the sound
   useEffect(() => {
-    const loadSounds = async () => {
+    const loadSound = async () => {
       try {
         console.log('Loading Wordle completion sound...');
+        // Make sure audio mode is set correctly
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          interruptionModeIOS: 1, // DoNotMix = 1
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: true,
+          interruptionModeAndroid: 1, // DoNotMix = 1
+          playThroughEarpieceAndroid: false,
+        });
         
-        // Load completion sound
         const { sound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/mount.caf'),
+          require('../assets/sounds/success.mp3'),
           { volume: 1.0 }
         );
         setCompleteSound(sound);
-        
         console.log('Wordle sound loaded successfully');
       } catch (error) {
         console.error('Error loading sound:', error);
       }
     };
     
-    loadSounds();
+    loadSound();
     
-    // Clean up when component unmounts
     return () => {
       if (completeSound) {
         completeSound.unloadAsync();

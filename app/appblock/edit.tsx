@@ -31,6 +31,60 @@ interface AppBlockSchedule {
   blockedWebDomains: string[];
 }
 
+const BlockedItemsCount = ({ 
+  apps, 
+  categories, 
+  webDomains 
+}: { 
+  apps: string[] | undefined, 
+  categories: string[] | undefined, 
+  webDomains: string[] | undefined 
+}) => {
+  // Add null checks with default empty arrays
+  const safeApps = apps || [];
+  const safeCategories = categories || [];
+  const safeWebDomains = webDomains || [];
+  
+  // Estimate apps in categories (average 10 apps per category)
+  const estimatedAppsInCategories = safeCategories.length > 0 ? safeCategories.length * 10 : 0;
+  
+  // Count total apps (direct + from categories)
+  const totalApps = safeApps.length + estimatedAppsInCategories;
+  
+  // Count total items
+  const totalItems = totalApps + safeWebDomains.length;
+  
+  if (totalItems === 0) {
+    return null;
+  }
+  
+  return (
+    <View style={styles.countContainer}>
+      <Text style={styles.countText}>
+        {totalItems} {totalItems === 1 ? 'item' : 'items'} blocked
+      </Text>
+      {(safeApps.length > 0 || estimatedAppsInCategories > 0) && (
+        <View style={styles.countBadge}>
+          <Ionicons name="apps" size={14} color="#fff" />
+          <Text style={styles.countBadgeText}>{totalApps}</Text>
+        </View>
+      )}
+      {safeWebDomains.length > 0 && (
+        <View style={styles.countBadge}>
+          <Ionicons name="globe" size={14} color="#fff" />
+          <Text style={styles.countBadgeText}>{safeWebDomains.length}</Text>
+        </View>
+      )}
+      {safeCategories.length > 0 && (
+        <View style={styles.countBadge}>
+          <Ionicons name="folder" size={14} color="#fff" />
+          <Text style={styles.countBadgeText}>{safeCategories.length}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 export default function EditScheduleScreen() {
   const params = useLocalSearchParams();
   const scheduleId = params.id as string;
@@ -302,6 +356,12 @@ export default function EditScheduleScreen() {
           </TouchableOpacity>
         </View>
         
+        <BlockedItemsCount 
+          apps={schedule.blockedApps} 
+          categories={schedule.blockedCategories} 
+          webDomains={schedule.blockedWebDomains} 
+        />
+        
         <View style={styles.spacer} />
       </ScrollView>
       
@@ -499,5 +559,33 @@ const styles = StyleSheet.create({
   timePicker: {
     height: 200,
     width: '100%',
+  },
+  countContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    marginBottom: 16,
+    flexWrap: 'wrap',
+  },
+  countText: {
+    color: '#8E8E93',
+    fontSize: 14,
+    marginRight: 10,
+  },
+  countBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginRight: 8,
+    marginBottom: 4,
+  },
+  countBadgeText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
   },
 }); 

@@ -24,9 +24,10 @@ class AppBlockMonitor: DeviceActivityMonitor {
       
       if !selection.categoryTokens.isEmpty {
         if #available(iOS 16.0, *) {
+          // For iOS 16+, use .all() when categories are selected
           store.shield.applicationCategories = .all()
         } else {
-          // iOS 15 fallback
+          // For iOS 15, use .specific
           store.shield.applicationCategories = .specific(selection.categoryTokens)
         }
       }
@@ -62,6 +63,9 @@ class ScreenTimeBridge: NSObject {
   private var pickerHostingController: UIViewController?
   private var currentResolve: RCTPromiseResolveBlock?
   private var monitors: [String: AppBlockMonitor] = [:]
+  private var savedApplicationTokens = Set<ManagedSettings.ApplicationToken>()
+  private var savedCategoryTokens = Set<ManagedSettings.ActivityCategoryToken>()
+  private var savedWebDomainTokens = Set<ManagedSettings.WebDomainToken>()
   
   // Method to get the activity selection for the monitor
   func getActivitySelection() -> FamilyActivitySelection? {
@@ -171,11 +175,28 @@ class ScreenTimeBridge: NSObject {
         
         // Create the wrapper view controller
         let wrapper = PickerWrapperViewController()
+        
+        // Initialize with previously saved selections
+        if !self.savedApplicationTokens.isEmpty {
+          wrapper.selection.applicationTokens = self.savedApplicationTokens
+        }
+        if !self.savedCategoryTokens.isEmpty {
+          wrapper.selection.categoryTokens = self.savedCategoryTokens
+        }
+        if !self.savedWebDomainTokens.isEmpty {
+          wrapper.selection.webDomainTokens = self.savedWebDomainTokens
+        }
+        
         wrapper.onDone = { [weak self] selection in
           guard let self = self else { return }
           
           // Store the selection
           self.activitySelection = selection
+          
+          // Save the tokens for future use
+          self.savedApplicationTokens = selection.applicationTokens
+          self.savedCategoryTokens = selection.categoryTokens
+          self.savedWebDomainTokens = selection.webDomainTokens
           
           // Process the selection
           var selectedApps: [String] = []
@@ -285,9 +306,23 @@ class ScreenTimeBridge: NSObject {
         repeats: true
       )
       
+      // Get the blocked items from the schedule data
+      let blockedApps = scheduleData["blockedApps"] as? [String] ?? []
+      let blockedCategories = scheduleData["blockedCategories"] as? [String] ?? []
+      let blockedWebDomains = scheduleData["blockedWebDomains"] as? [String] ?? []
+      
+      print("📊 Schedule data contains: \(blockedApps.count) apps, \(blockedCategories.count) categories, \(blockedWebDomains.count) domains")
+      
+      // Print the counts for debugging
+      print("📱 Blocked apps count: \(blockedApps.count)")
+      print("📱 Blocked categories count: \(blockedCategories.count)")
+      print("📱 Blocked web domains count: \(blockedWebDomains.count)")
+      
+      // We'll use the stored selection from the picker instead of trying to recreate it
+      
       // Check if we have a stored selection
       if let storedSelection = self.activitySelection {
-        print("✅ Found stored selection with \(storedSelection.applicationTokens.count) apps")
+        print("✅ Using selection with \(storedSelection.applicationTokens.count) apps, \(storedSelection.categoryTokens.count) categories, \(storedSelection.webDomainTokens.count) domains")
         
         // Create a monitor for this schedule
         let activityName = DeviceActivityName(id)
@@ -297,27 +332,13 @@ class ScreenTimeBridge: NSObject {
         let monitor = AppBlockMonitor(scheduleId: id)
         monitors[id] = monitor
         
-        // Get the blocked items from the schedule data
-        let blockedApps = scheduleData["blockedApps"] as? [String] ?? []
-        let blockedCategories = scheduleData["blockedCategories"] as? [String] ?? []
-        let blockedWebDomains = scheduleData["blockedWebDomains"] as? [String] ?? []
-        
-        print("📊 Schedule data contains: \(blockedApps.count) apps, \(blockedCategories.count) categories, \(blockedWebDomains.count) domains")
-        
-        if blockedApps.isEmpty && blockedCategories.isEmpty && blockedWebDomains.isEmpty {
-          print("⚠️ No apps, categories, or web domains selected to block")
-          
-          // Check if we have a stored selection we can use instead
-          if storedSelection.applicationTokens.isEmpty && storedSelection.categoryTokens.isEmpty && storedSelection.webDomainTokens.isEmpty {
-            print("⚠️ Stored selection is also empty")
-            resolve([
-              "success": false,
-              "error": "No apps selected to block. Please select apps first."
-            ])
-            return
-          } else {
-            print("✅ Using stored selection instead of empty schedule data")
-          }
+        if storedSelection.applicationTokens.isEmpty && storedSelection.categoryTokens.isEmpty && storedSelection.webDomainTokens.isEmpty {
+          print("⚠️ Selection is empty")
+          resolve([
+            "success": false,
+            "error": "No apps or categories selected to block. Please select apps first."
+          ])
+          return
         }
         
         do {
@@ -344,7 +365,8 @@ class ScreenTimeBridge: NSObject {
             let store = ManagedSettingsStore()
             
             if !storedSelection.categoryTokens.isEmpty {
-              store.shield.applicationCategories = .all()
+              // Always use .specific with the category tokens
+              store.shield.applicationCategories = .specific(storedSelection.categoryTokens)
             }
             
             if !storedSelection.applicationTokens.isEmpty {
@@ -375,6 +397,11 @@ class ScreenTimeBridge: NSObject {
         reject("invalid_data", "Invalid schedule data provided", nil)
         return
       }
+      
+      // Get the blocked items from the schedule data
+      let blockedApps = scheduleData["blockedApps"] as? [String] ?? []
+      let blockedCategories = scheduleData["blockedCategories"] as? [String] ?? []
+      let blockedWebDomains = scheduleData["blockedWebDomains"] as? [String] ?? []
       
       // For iOS 15, we can only do basic functionality
       if let storedSelection = self.activitySelection {

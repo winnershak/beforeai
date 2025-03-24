@@ -13,7 +13,8 @@ import {
   requestNotificationPermissions, 
   setupNotificationHandlers, 
   stopAlarmSound,
-  scheduleAlarmNotification
+  scheduleAlarmNotification,
+  cancelAllNotifications
 } from './notifications';
 import { AppState, AppStateStatus } from 'react-native';
 import * as Notifications from 'expo-notifications';
@@ -27,6 +28,7 @@ import { useAlarmManager } from './hooks/useAlarmManager';
 import { setupAlarms, scheduleAlarmNotification as setupAlarmsScheduleAlarmNotification } from './notifications';
 import './utils/expo-sensors-patch';
 import RevenueCatService from './services/RevenueCatService';
+import { handleNotification } from './notifications';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -386,6 +388,35 @@ export default function AppLayout() {
       router.replace(initialRoute);
     }
   }, [isLoading, initialRoute, isAppReady]);
+
+  useEffect(() => {
+    async function setupNotifications() {
+      // Add notification handler for when app is in background/closed
+      const subscription = Notifications.addNotificationReceivedListener((notification) => {
+        handleNotification(notification);
+      });
+
+      return () => {
+        subscription.remove();
+      };
+    }
+    
+    setupNotifications();
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        // App has come to the foreground
+        cancelAllNotifications();
+        console.log('App active - cancelled all notifications');
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   if (!loaded || loading || !isReady) {
     return null;

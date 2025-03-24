@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Linking, Alert, NativeModules } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -7,11 +7,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import RevenueCatService from '../services/RevenueCatService';
 import Constants from 'expo-constants';
 
+const { AudioBackgroundModule } = NativeModules;
+
 export default function SettingsScreen() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<{
-    expirationDate: Date;
-    latestPurchaseDate: Date;
-    productIdentifier: string;
+    expirationDate?: Date;
+    latestPurchaseDate?: Date;
+    productIdentifier?: string;
     isYearly: boolean;
   } | null>(null);
   
@@ -43,6 +45,30 @@ export default function SettingsScreen() {
 
   const navigateTo = (route: string) => {
     router.push(route);
+  };
+
+  const testMP3Sound = async () => {
+    try {
+      console.log('Testing MP3 playback...');
+      await AudioBackgroundModule.playTestMP3();
+      Alert.alert('Success', 'Test MP3 is playing!');
+      console.log('Test MP3 is playing!');
+    } catch (error: any) {
+      Alert.alert('Error', `Test MP3 failed: ${error.message}`);
+      console.error('Test MP3 failed:', error);
+    }
+  };
+
+  const checkAudioSession = async () => {
+    try {
+      console.log('Checking audio session status...');
+      const status = await AudioBackgroundModule.checkAudioSessionStatus();
+      Alert.alert('Audio Session Status', JSON.stringify(status, null, 2));
+      console.log('Audio session status:', status);
+    } catch (error: any) {
+      Alert.alert('Error', `Failed to check audio session: ${error.message}`);
+      console.error('Audio session check failed:', error);
+    }
   };
 
   return (
@@ -165,6 +191,34 @@ export default function SettingsScreen() {
               <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
           </>
+        )}
+
+        {/* Add this new section for sound testing */}
+        {isDevelopment && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Sound Testing</Text>
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={testMP3Sound}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="musical-note" size={24} color="#FF9500" style={styles.settingIcon} />
+                <Text style={styles.settingText}>Test MP3 Sound</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={checkAudioSession}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="volume-high" size={24} color="#FF2D55" style={styles.settingIcon} />
+                <Text style={styles.settingText}>Check Audio Session</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>

@@ -7,8 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		03D99F08CAB74411A8DC4510 /* reflection.caf in Resources */ = {isa = PBXBuildFile; fileRef = E30BFB7C684A4C17B99857F1 /* reflection.caf */; };
-		0838CB2BCFF141F0BAA3B36A /* chimes.caf in Resources */ = {isa = PBXBuildFile; fileRef = A93BAD7553EF4863A220D1A0 /* chimes.caf */; };
 		12FD97B2A442A279CC9B43FE /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = EBA1CDC2681E15139C38180F /* PrivacyInfo.xcprivacy */; };
 		13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */ = {isa = PBXBuildFile; fileRef = 13B07FB01A68108700A75B9A /* AppDelegate.mm */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
@@ -16,7 +14,6 @@
 		2754F5C619EE4F3499BC96CB /* quiet-boom.caf in Resources */ = {isa = PBXBuildFile; fileRef = 29B1B10C87F84BC5A963CDFE /* quiet-boom.caf */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
 		40B8EEF7B0444E96B09BBBC7 /* noop-file.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F3AB85BF0C449E93D12073 /* noop-file.swift */; };
-		467FBB9E2A304E638C1F12AC /* orkney.caf in Resources */ = {isa = PBXBuildFile; fileRef = A3771864E3C1497A98B2A9E7 /* orkney.caf */; };
 		4ACD71D2BBEC48638069E955 /* calm-rain.caf in Resources */ = {isa = PBXBuildFile; fileRef = 62A7D23D28A343AEB535468E /* calm-rain.caf */; };
 		5A58D40690764BC7B780F3AA /* waterfall.caf in Resources */ = {isa = PBXBuildFile; fileRef = AB71AA175AB544EEB2D1D0E3 /* waterfall.caf */; };
 		5B0773957CCD442FB18139DD /* rain.caf in Resources */ = {isa = PBXBuildFile; fileRef = 07B9F98317C942DDA779807A /* rain.caf */; };
@@ -25,7 +22,6 @@
 		7915E0095D084731B42483CF /* pink-noise.caf in Resources */ = {isa = PBXBuildFile; fileRef = 90EFB3BFEF4641889E4F4AFD /* pink-noise.caf */; };
 		81746E1AA27742A9994BAD89 /* completeword.caf in Resources */ = {isa = PBXBuildFile; fileRef = 9B991EBDDCFC4EDFBF1F61BF /* completeword.caf */; };
 		88ED184076A142A0910A1E6D /* piano.caf in Resources */ = {isa = PBXBuildFile; fileRef = 97A669EA9248464BA1826B00 /* piano.caf */; };
-		943867D62FB3432EAD4C6598 /* radar.caf in Resources */ = {isa = PBXBuildFile; fileRef = 804CE3613B7B484DA1075510 /* radar.caf */; };
 		96905EF65AED1B983A6B3ABC /* libPods-BlissAlarm.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-BlissAlarm.a */; };
 		A97BC69DC97D4B91BEE39A1B /* white-noise.caf in Resources */ = {isa = PBXBuildFile; fileRef = 99BD2482E7A1436AB92B130F /* white-noise.caf */; };
 		AD51C2B934184F64BF54A61C /* thunder.caf in Resources */ = {isa = PBXBuildFile; fileRef = F942075DCE9245888C0B1A69 /* thunder.caf */; };
@@ -33,17 +29,28 @@
 		B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		D05E2E919481468CA1F98AB4 /* forest.caf in Resources */ = {isa = PBXBuildFile; fileRef = E260FC58298541FC9560442A /* forest.caf */; };
-		D211A6470F49452B9EF69686 /* circuit.caf in Resources */ = {isa = PBXBuildFile; fileRef = BFFD656B029041B1ACFAAF2F /* circuit.caf */; };
 		D2475B4CC6584F719B293947 /* achieve.caf in Resources */ = {isa = PBXBuildFile; fileRef = 7CA00F5B154E417288EB01F6 /* achieve.caf */; };
 		DC07F55C2D8BB29E005F15FF /* ScreenTimeBridge.m in Sources */ = {isa = PBXBuildFile; fileRef = DC07F55A2D8BB29E005F15FF /* ScreenTimeBridge.m */; };
 		DC07F55D2D8BB29E005F15FF /* ScreenTimeBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC07F55B2D8BB29E005F15FF /* ScreenTimeBridge.swift */; };
 		DC07F5602D8BB363005F15FF /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F55F2D8BB363005F15FF /* FamilyControls.framework */; };
 		DC07F5612D8BB36D005F15FF /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5582D8BB0F9005F15FF /* ManagedSettings.framework */; };
 		DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5622D8BB373005F15FF /* DeviceActivity.framework */; };
+		DCACC2A42D8F7FC0004DD610 /* test.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2A32D8F7FC0004DD610 /* test.mp3 */; };
+		DCACC2C72D8FCCE2004DD610 /* chimes.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C22D8FCCE2004DD610 /* chimes.caf */; };
+		DCACC2C82D8FCCE2004DD610 /* circuit.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C32D8FCCE2004DD610 /* circuit.caf */; };
+		DCACC2C92D8FCCE2004DD610 /* orkney.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C42D8FCCE2004DD610 /* orkney.caf */; };
+		DCACC2CA2D8FCCE2004DD610 /* beacon.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C12D8FCCE2004DD610 /* beacon.caf */; };
+		DCACC2CB2D8FCCE2004DD610 /* radar.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C52D8FCCE2004DD610 /* radar.caf */; };
+		DCACC2CC2D8FCCE2004DD610 /* reflection.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C62D8FCCE2004DD610 /* reflection.caf */; };
+		DCEDACFD2D8FD909002223D7 /* orkney.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACFA2D8FD909002223D7 /* orkney.mp3 */; };
+		DCEDACFE2D8FD909002223D7 /* circuit.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACF92D8FD909002223D7 /* circuit.mp3 */; };
+		DCEDACFF2D8FD909002223D7 /* reflection.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACFC2D8FD909002223D7 /* reflection.mp3 */; };
+		DCEDAD012D8FD909002223D7 /* chimes.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACF82D8FD909002223D7 /* chimes.mp3 */; };
+		DCEDAD022D8FD909002223D7 /* radar.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACFB2D8FD909002223D7 /* radar.mp3 */; };
+		DCEDAD042D8FD92C002223D7 /* beacon.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDAD032D8FD92C002223D7 /* beacon.mp3 */; };
 		DECF121BAEFA49ABB7D489F0 /* frenchcomplete.caf in Resources */ = {isa = PBXBuildFile; fileRef = 43B53089B289409294F4A827 /* frenchcomplete.caf */; };
 		E20474CA3D4B421799B33BA1 /* fire.caf in Resources */ = {isa = PBXBuildFile; fileRef = 65615C409B4040D48B566160 /* fire.caf */; };
 		F4BAC288DA144819AB4212E6 /* slice.caf in Resources */ = {isa = PBXBuildFile; fileRef = 2AB49E9FDBF545ABB08D0F11 /* slice.caf */; };
-		FC1C553A978D46E38013453C /* beacon.caf in Resources */ = {isa = PBXBuildFile; fileRef = 8D823540C6004D21A598262D /* beacon.caf */; };
 		FFD19956989E4461BC207D1B /* mount.caf in Resources */ = {isa = PBXBuildFile; fileRef = F8A41AA70B8F4DB693C426B2 /* mount.caf */; };
 /* End PBXBuildFile section */
 
@@ -65,30 +72,37 @@
 		6C2E3173556A471DD304B334 /* Pods-BlissAlarm.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BlissAlarm.debug.xcconfig"; path = "Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm.debug.xcconfig"; sourceTree = "<group>"; };
 		7A4D352CD337FB3A3BF06240 /* Pods-BlissAlarm.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BlissAlarm.release.xcconfig"; path = "Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm.release.xcconfig"; sourceTree = "<group>"; };
 		7CA00F5B154E417288EB01F6 /* achieve.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = achieve.caf; path = BlissAlarm/achieve.caf; sourceTree = "<group>"; };
-		804CE3613B7B484DA1075510 /* radar.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = radar.caf; path = BlissAlarm/radar.caf; sourceTree = "<group>"; };
-		8D823540C6004D21A598262D /* beacon.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = beacon.caf; path = BlissAlarm/beacon.caf; sourceTree = "<group>"; };
 		90EFB3BFEF4641889E4F4AFD /* pink-noise.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "pink-noise.caf"; path = "BlissAlarm/pink-noise.caf"; sourceTree = "<group>"; };
 		91DC36C5ABBB41FFB9703DB7 /* tetris.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = tetris.caf; path = BlissAlarm/tetris.caf; sourceTree = "<group>"; };
 		97A669EA9248464BA1826B00 /* piano.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = piano.caf; path = BlissAlarm/piano.caf; sourceTree = "<group>"; };
 		983EB07A1B56467BA639A151 /* space.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = space.caf; path = BlissAlarm/space.caf; sourceTree = "<group>"; };
 		99BD2482E7A1436AB92B130F /* white-noise.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "white-noise.caf"; path = "BlissAlarm/white-noise.caf"; sourceTree = "<group>"; };
 		9B991EBDDCFC4EDFBF1F61BF /* completeword.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = completeword.caf; path = BlissAlarm/completeword.caf; sourceTree = "<group>"; };
-		A3771864E3C1497A98B2A9E7 /* orkney.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = orkney.caf; path = BlissAlarm/orkney.caf; sourceTree = "<group>"; };
 		A4F3AB85BF0C449E93D12073 /* noop-file.swift */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.swift; name = "noop-file.swift"; path = "BlissAlarm/noop-file.swift"; sourceTree = "<group>"; };
-		A93BAD7553EF4863A220D1A0 /* chimes.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = chimes.caf; path = BlissAlarm/chimes.caf; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = BlissAlarm/SplashScreen.storyboard; sourceTree = "<group>"; };
 		AB71AA175AB544EEB2D1D0E3 /* waterfall.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = waterfall.caf; path = BlissAlarm/waterfall.caf; sourceTree = "<group>"; };
 		BB2F792C24A3F905000567C9 /* Expo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Expo.plist; sourceTree = "<group>"; };
 		BE7BBEAAA2D64C4EA6AC151F /* BlissAlarm-Bridging-Header.h */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = sourcecode.c.h; name = "BlissAlarm-Bridging-Header.h"; path = "BlissAlarm/BlissAlarm-Bridging-Header.h"; sourceTree = "<group>"; };
-		BFFD656B029041B1ACFAAF2F /* circuit.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = circuit.caf; path = BlissAlarm/circuit.caf; sourceTree = "<group>"; };
 		DC07F5582D8BB0F9005F15FF /* ManagedSettings.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ManagedSettings.framework; path = System/Library/Frameworks/ManagedSettings.framework; sourceTree = SDKROOT; };
 		DC07F55A2D8BB29E005F15FF /* ScreenTimeBridge.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ScreenTimeBridge.m; sourceTree = "<group>"; };
 		DC07F55B2D8BB29E005F15FF /* ScreenTimeBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenTimeBridge.swift; sourceTree = "<group>"; };
 		DC07F55E2D8BB2BF005F15FF /* BlissAlarm-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "BlissAlarm-Bridging-Header.h"; sourceTree = "<group>"; };
 		DC07F55F2D8BB363005F15FF /* FamilyControls.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FamilyControls.framework; path = System/Library/Frameworks/FamilyControls.framework; sourceTree = SDKROOT; };
 		DC07F5622D8BB373005F15FF /* DeviceActivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeviceActivity.framework; path = System/Library/Frameworks/DeviceActivity.framework; sourceTree = SDKROOT; };
+		DCACC2A32D8F7FC0004DD610 /* test.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = test.mp3; sourceTree = "<group>"; };
+		DCACC2C12D8FCCE2004DD610 /* beacon.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = beacon.caf; sourceTree = "<group>"; };
+		DCACC2C22D8FCCE2004DD610 /* chimes.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chimes.caf; sourceTree = "<group>"; };
+		DCACC2C32D8FCCE2004DD610 /* circuit.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = circuit.caf; sourceTree = "<group>"; };
+		DCACC2C42D8FCCE2004DD610 /* orkney.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = orkney.caf; sourceTree = "<group>"; };
+		DCACC2C52D8FCCE2004DD610 /* radar.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = radar.caf; sourceTree = "<group>"; };
+		DCACC2C62D8FCCE2004DD610 /* reflection.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = reflection.caf; sourceTree = "<group>"; };
+		DCEDACF82D8FD909002223D7 /* chimes.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = chimes.mp3; sourceTree = "<group>"; };
+		DCEDACF92D8FD909002223D7 /* circuit.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = circuit.mp3; sourceTree = "<group>"; };
+		DCEDACFA2D8FD909002223D7 /* orkney.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = orkney.mp3; sourceTree = "<group>"; };
+		DCEDACFB2D8FD909002223D7 /* radar.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = radar.mp3; sourceTree = "<group>"; };
+		DCEDACFC2D8FD909002223D7 /* reflection.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = reflection.mp3; sourceTree = "<group>"; };
+		DCEDAD032D8FD92C002223D7 /* beacon.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = beacon.mp3; sourceTree = "<group>"; };
 		E260FC58298541FC9560442A /* forest.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = forest.caf; path = BlissAlarm/forest.caf; sourceTree = "<group>"; };
-		E30BFB7C684A4C17B99857F1 /* reflection.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = reflection.caf; path = BlissAlarm/reflection.caf; sourceTree = "<group>"; };
 		EBA1CDC2681E15139C38180F /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = BlissAlarm/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F8A41AA70B8F4DB693C426B2 /* mount.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = mount.caf; path = BlissAlarm/mount.caf; sourceTree = "<group>"; };
@@ -123,13 +137,20 @@
 				AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */,
 				A4F3AB85BF0C449E93D12073 /* noop-file.swift */,
 				BE7BBEAAA2D64C4EA6AC151F /* BlissAlarm-Bridging-Header.h */,
-				A3771864E3C1497A98B2A9E7 /* orkney.caf */,
-				804CE3613B7B484DA1075510 /* radar.caf */,
-				8D823540C6004D21A598262D /* beacon.caf */,
-				A93BAD7553EF4863A220D1A0 /* chimes.caf */,
-				BFFD656B029041B1ACFAAF2F /* circuit.caf */,
-				E30BFB7C684A4C17B99857F1 /* reflection.caf */,
+				DCACC2A32D8F7FC0004DD610 /* test.mp3 */,
 				2AB49E9FDBF545ABB08D0F11 /* slice.caf */,
+				DCACC2C12D8FCCE2004DD610 /* beacon.caf */,
+				DCEDAD032D8FD92C002223D7 /* beacon.mp3 */,
+				DCEDACF82D8FD909002223D7 /* chimes.mp3 */,
+				DCEDACF92D8FD909002223D7 /* circuit.mp3 */,
+				DCEDACFA2D8FD909002223D7 /* orkney.mp3 */,
+				DCEDACFB2D8FD909002223D7 /* radar.mp3 */,
+				DCEDACFC2D8FD909002223D7 /* reflection.mp3 */,
+				DCACC2C22D8FCCE2004DD610 /* chimes.caf */,
+				DCACC2C32D8FCCE2004DD610 /* circuit.caf */,
+				DCACC2C42D8FCCE2004DD610 /* orkney.caf */,
+				DCACC2C52D8FCCE2004DD610 /* radar.caf */,
+				DCACC2C62D8FCCE2004DD610 /* reflection.caf */,
 				29B1B10C87F84BC5A963CDFE /* quiet-boom.caf */,
 				9B991EBDDCFC4EDFBF1F61BF /* completeword.caf */,
 				91DC36C5ABBB41FFB9703DB7 /* tetris.caf */,
@@ -265,7 +286,6 @@
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
-						DevelopmentTeam = 8L789T788W;
 						LastSwiftMigration = 1250;
 						ProvisioningStyle = Automatic;
 					};
@@ -297,18 +317,24 @@
 				BB2F792D24A3F905000567C9 /* Expo.plist in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
-				467FBB9E2A304E638C1F12AC /* orkney.caf in Resources */,
-				943867D62FB3432EAD4C6598 /* radar.caf in Resources */,
-				FC1C553A978D46E38013453C /* beacon.caf in Resources */,
-				0838CB2BCFF141F0BAA3B36A /* chimes.caf in Resources */,
-				D211A6470F49452B9EF69686 /* circuit.caf in Resources */,
-				03D99F08CAB74411A8DC4510 /* reflection.caf in Resources */,
 				F4BAC288DA144819AB4212E6 /* slice.caf in Resources */,
 				2754F5C619EE4F3499BC96CB /* quiet-boom.caf in Resources */,
+				DCEDACFD2D8FD909002223D7 /* orkney.mp3 in Resources */,
+				DCEDACFE2D8FD909002223D7 /* circuit.mp3 in Resources */,
+				DCEDACFF2D8FD909002223D7 /* reflection.mp3 in Resources */,
+				DCEDAD012D8FD909002223D7 /* chimes.mp3 in Resources */,
+				DCEDAD022D8FD909002223D7 /* radar.mp3 in Resources */,
 				81746E1AA27742A9994BAD89 /* completeword.caf in Resources */,
+				DCEDAD042D8FD92C002223D7 /* beacon.mp3 in Resources */,
 				B05D3F5AF4BF40568F8C5F05 /* tetris.caf in Resources */,
 				DECF121BAEFA49ABB7D489F0 /* frenchcomplete.caf in Resources */,
 				FFD19956989E4461BC207D1B /* mount.caf in Resources */,
+				DCACC2C72D8FCCE2004DD610 /* chimes.caf in Resources */,
+				DCACC2C82D8FCCE2004DD610 /* circuit.caf in Resources */,
+				DCACC2C92D8FCCE2004DD610 /* orkney.caf in Resources */,
+				DCACC2CA2D8FCCE2004DD610 /* beacon.caf in Resources */,
+				DCACC2CB2D8FCCE2004DD610 /* radar.caf in Resources */,
+				DCACC2CC2D8FCCE2004DD610 /* reflection.caf in Resources */,
 				D2475B4CC6584F719B293947 /* achieve.caf in Resources */,
 				5D46BDFDF43F49BDAACF6539 /* beach.caf in Resources */,
 				4ACD71D2BBEC48638069E955 /* calm-rain.caf in Resources */,
@@ -319,6 +345,7 @@
 				7915E0095D084731B42483CF /* pink-noise.caf in Resources */,
 				5B0773957CCD442FB18139DD /* rain.caf in Resources */,
 				5C4E5A13A13D4A1B932D68C4 /* space.caf in Resources */,
+				DCACC2A42D8F7FC0004DD610 /* test.mp3 in Resources */,
 				AD51C2B934184F64BF54A61C /* thunder.caf in Resources */,
 				5A58D40690764BC7B780F3AA /* waterfall.caf in Resources */,
 				12FD97B2A442A279CC9B43FE /* PrivacyInfo.xcprivacy in Resources */,

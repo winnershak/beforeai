@@ -15,6 +15,7 @@
   self.initialProps = @{};
 
   RCTBridge *bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
+  self.bridge = bridge;
 
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
@@ -60,6 +61,10 @@
 - (void)application:(UIApplication *)application didReceiveRemoteNotification:(NSDictionary *)userInfo fetchCompletionHandler:(void (^)(UIBackgroundFetchResult))completionHandler
 {
   return [super application:application didReceiveRemoteNotification:userInfo fetchCompletionHandler:completionHandler];
+}
+
+- (NSArray<id<RCTBridgeModule>> *)extraModulesForBridge:(RCTBridge *)bridge {
+  return @[]; // This array should be empty, modules are auto-registered
 }
 
 @end

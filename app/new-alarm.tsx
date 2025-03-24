@@ -403,7 +403,7 @@ export default function NewAlarmScreen() {
         days: daysAsStrings, // Save days as strings
         label: label || '',
         mission: missionObj, // This will be null for new alarms
-        sound: sound,
+        sound: sound.toLowerCase(),
         soundVolume: soundVolume,
         vibration: vibrationEnabled,
         notificationId: notificationId || null,
