@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Linking, Alert, NativeModules } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Linking, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RevenueCatService from '../services/RevenueCatService';
+import AlarmSoundModule from '../native-modules/AlarmSoundModule';
 import Constants from 'expo-constants';
-
-const { AudioBackgroundModule } = NativeModules;
 
 export default function SettingsScreen() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<{
@@ -17,9 +16,38 @@ export default function SettingsScreen() {
     isYearly: boolean;
   } | null>(null);
   
-  // Check if we're in development mode
-  const isDevelopment = process.env.NODE_ENV === 'development' || 
-                        Constants.expoConfig?.extra?.eas?.buildType === 'development';
+  // Function to test the AlarmSound native module
+  const testAlarmSound = () => {
+    console.log('🔊 Testing AlarmSound.configureAudio()...');
+    try {
+      AlarmSoundModule.configureAudio();
+      console.log('✅ Called AlarmSound.configureAudio() successfully');
+      Alert.alert('Success', 'AlarmSound.configureAudio() was called. Check the logs for details.');
+    } catch (error) {
+      console.error('❌ Error calling AlarmSound.configureAudio():', error);
+      Alert.alert('Error', 'Failed to call AlarmSound.configureAudio(). See logs for details.');
+    }
+  };
+
+  // Function to debug sound files
+  const debugSoundFiles = async () => {
+    console.log('🔍 Checking sound files...');
+    try {
+      const result = await AlarmSoundModule.debugSoundFiles();
+      console.log('📊 Sound files debug result:', JSON.stringify(result, null, 2));
+      Alert.alert(
+        'Sound Files Debug',
+        `Total files: ${result.totalFilesCount}\n` + 
+        `Sound files: ${result.soundFilesCount}\n` +
+        `Found files: ${result.soundFiles?.join(', ') || 'None'}\n\n` +
+        `radar.caf: ${result.specificSoundTests?.['radar.caf'] ? '✅' : '❌'}\n` +
+        `beacon.caf: ${result.specificSoundTests?.['beacon.caf'] ? '✅' : '❌'}`
+      );
+    } catch (error) {
+      console.error('❌ Error debugging sound files:', error);
+      Alert.alert('Error', 'Failed to debug sound files. See logs for details.');
+    }
+  };
 
   useEffect(() => {
     const getSubscriptionInfo = async () => {
@@ -47,30 +75,6 @@ export default function SettingsScreen() {
     router.push(route);
   };
 
-  const testMP3Sound = async () => {
-    try {
-      console.log('Testing MP3 playback...');
-      await AudioBackgroundModule.playTestMP3();
-      Alert.alert('Success', 'Test MP3 is playing!');
-      console.log('Test MP3 is playing!');
-    } catch (error: any) {
-      Alert.alert('Error', `Test MP3 failed: ${error.message}`);
-      console.error('Test MP3 failed:', error);
-    }
-  };
-
-  const checkAudioSession = async () => {
-    try {
-      console.log('Checking audio session status...');
-      const status = await AudioBackgroundModule.checkAudioSessionStatus();
-      Alert.alert('Audio Session Status', JSON.stringify(status, null, 2));
-      console.log('Audio session status:', status);
-    } catch (error: any) {
-      Alert.alert('Error', `Failed to check audio session: ${error.message}`);
-      console.error('Audio session check failed:', error);
-    }
-  };
-
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -78,12 +82,38 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        {/* Test section for developers */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Developer Tests</Text>
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={testAlarmSound}
+          >
+            <View style={styles.settingContent}>
+              <Ionicons name="volume-high" size={24} color="#FF9500" style={styles.settingIcon} />
+              <Text style={styles.settingText}>Test AlarmSound Module</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={debugSoundFiles}
+          >
+            <View style={styles.settingContent}>
+              <Ionicons name="search" size={24} color="#4CD964" style={styles.settingIcon} />
+              <Text style={styles.settingText}>Debug Sound Files</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
           
           <TouchableOpacity 
             style={styles.settingItem}
-            onPress={() => navigateTo('/about')}
+            onPress={() => Linking.openURL('https://ringed-lifeboat-16e.notion.site/About-Bliss-Alarm-26cb87683f3e460d9b2165399164a691?pvs=4')}
           >
             <View style={styles.settingContent}>
               <Ionicons name="information-circle-outline" size={24} color="#5AC8FA" style={styles.settingIcon} />
@@ -94,7 +124,7 @@ export default function SettingsScreen() {
           
           <TouchableOpacity 
             style={styles.settingItem}
-            onPress={() => navigateTo('/help')}
+            onPress={() => Linking.openURL('https://ringed-lifeboat-16e.notion.site/Help-Frequently-Asked-Questions-FAQ-770d8543e82845499ea892d00b456b8c?pvs=25')}
           >
             <View style={styles.settingContent}>
               <Ionicons name="help-circle-outline" size={24} color="#4CD964" style={styles.settingIcon} />
@@ -103,23 +133,16 @@ export default function SettingsScreen() {
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
           
-          {/* Only show reset button in development mode */}
-          {isDevelopment && (
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={async () => {
-                await AsyncStorage.removeItem('isPremium');
-                await AsyncStorage.removeItem('quizCompleted');
-                Alert.alert("Reset Complete", "App status reset to non-premium. Please restart the app.");
-              }}
-            >
-              <View style={styles.settingContent}>
-                <Ionicons name="refresh-circle-outline" size={24} color="#FF3B30" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Reset Premium Status (Testing)</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => Linking.openURL('https://ringed-lifeboat-16e.notion.site/Bliss-Alarm-Privacy-Policy-Support-18df35a984814023857f01d66b34afb5')}
+          >
+            <View style={styles.settingContent}>
+              <Ionicons name="shield-outline" size={24} color="#FF9500" style={styles.settingIcon} />
+              <Text style={styles.settingText}>Privacy Policy</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
         </View>
 
         {subscriptionDetails && subscriptionDetails.expirationDate && (
@@ -145,79 +168,6 @@ export default function SettingsScreen() {
                 <Text style={styles.manageButtonText}>Manage Subscription</Text>
               </TouchableOpacity>
             </View>
-          </View>
-        )}
-
-        {/* Add these buttons for development testing */}
-        {isDevelopment && (
-          <>
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={async () => {
-                const isSubscribed = await RevenueCatService.isSubscribed();
-                const subscriptionType = await RevenueCatService.getSubscriptionType();
-                const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-                
-                Alert.alert(
-                  "Subscription Status", 
-                  `Subscribed: ${isSubscribed}\nType: ${subscriptionType || 'None'}\nQuiz Completed: ${quizCompleted}`
-                );
-              }}
-            >
-              <View style={styles.settingContent}>
-                <Ionicons name="information-circle-outline" size={24} color="#5AC8FA" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Check Subscription</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={async () => {
-                await AsyncStorage.setItem('isPremium', 'true');
-                await AsyncStorage.setItem('subscriptionType', 'monthly');
-                
-                Alert.alert(
-                  "Subscription Set", 
-                  "Monthly subscription has been set.",
-                  [{ text: "OK", onPress: () => router.replace('/') }]
-                );
-              }}
-            >
-              <View style={styles.settingContent}>
-                <Ionicons name="star" size={24} color="#FFD700" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Set Monthly Subscription</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-          </>
-        )}
-
-        {/* Add this new section for sound testing */}
-        {isDevelopment && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sound Testing</Text>
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={testMP3Sound}
-            >
-              <View style={styles.settingContent}>
-                <Ionicons name="musical-note" size={24} color="#FF9500" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Test MP3 Sound</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.settingItem}
-              onPress={checkAudioSession}
-            >
-              <View style={styles.settingContent}>
-                <Ionicons name="volume-high" size={24} color="#FF2D55" style={styles.settingIcon} />
-                <Text style={styles.settingText}>Check Audio Session</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#666" />
-            </TouchableOpacity>
           </View>
         )}
       </ScrollView>

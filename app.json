@@ -29,7 +29,8 @@
         "UIBackgroundModes": [
           "audio",
           "fetch",
-          "remote-notification"
+          "remote-notification",
+          "processing"
         ],
         "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for...",
@@ -39,13 +40,19 @@
         "NSUserNotificationUsageDescription": "We need to send you alarm notifications",
         "UIApplicationSupportsIndirectInputEvents": true,
         "AVAudioSessionCategoryOptions": "AVAudioSessionCategoryOptionMixWithOthers",
-        "NSFamilyControlsUsageDescription": "Bliss needs access to Screen Time to help you limit distracting apps during focus time."
+        "NSFamilyControlsUsageDescription": "Bliss needs access to Screen Time to help you limit distracting apps during focus time.",
+        "AVAudioSession": {
+          "Category": "Playback",
+          "Mode": "Default"
+        }
       },
       "buildNumber": "3",
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.developer.usernotifications.time-sensitive": true,
-        "com.apple.developer.usernotifications.critical-alerts": true
+        "com.apple.developer.usernotifications.critical-alerts": true,
+        "com.apple.developer.in-app-purchase": true,
+        "com.apple.security.application-groups": []
       }
     },
     "plugins": [
@@ -106,6 +113,14 @@
         "projectId": "f07e5c10-0728-48d3-b981-ee3955943523"
       }
     },
-    "scheme": "blissalarm"
+    "scheme": "blissalarm",
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.WAKE_LOCK"
+      ],
+      "package": "com.yourusername.blissalarm"
+    }
   }
 }

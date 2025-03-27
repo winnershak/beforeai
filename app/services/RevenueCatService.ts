@@ -19,15 +19,7 @@ class RevenueCatService {
 
   async purchasePackage(selectedPackage: any) {
     try {
-      // For development builds, always succeed
-      if (__DEV__) {
-        console.log('DEV MODE: Simulating successful purchase');
-        await AsyncStorage.setItem('isPremium', 'true');
-        await AsyncStorage.setItem('quizCompleted', 'true');
-        return true;
-      }
-      
-      // For production, use the real purchase flow
+      // Use real purchase flow
       return await IAPService.purchaseProduct(selectedPackage.identifier);
     } catch (error) {
       console.error('Error in purchasePackage:', error);
@@ -57,7 +49,7 @@ class RevenueCatService {
       return {
         expirationDate,
         latestPurchaseDate: new Date(),
-        productIdentifier: subscriptionType === 'yearly' ? 'blissyear' : 'blissmonth',
+        productIdentifier: subscriptionType === 'yearly' ? 'blissyearly' : 'blissmonthly',
         isYearly: subscriptionType === 'yearly'
       };
     } catch (error) {
@@ -78,7 +70,7 @@ class RevenueCatService {
       return {
         expirationDate: expirationDate,
         latestPurchaseDate: new Date(),
-        productIdentifier: 'blissyear',
+        productIdentifier: 'blissyearly',
         isYearly: true
       };
     }

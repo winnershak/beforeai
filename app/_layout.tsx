@@ -22,6 +22,8 @@ import ErrorBoundary from './components/ErrorBoundary';
 import * as Linking from 'expo-linking';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
+import { Platform } from 'react-native';
+import AlarmSoundModule from './native-modules/AlarmSoundModule';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { useAlarmManager } from './hooks/useAlarmManager';
@@ -384,8 +386,10 @@ export default function AppLayout() {
   // Add this effect to handle navigation after the component is mounted
   useEffect(() => {
     if (!isLoading && initialRoute && isAppReady) {
-      // Now it's safe to navigate
-      router.replace(initialRoute);
+      // Delay navigation until after layout mounting
+      setTimeout(() => {
+        router.replace(initialRoute);
+      }, 100);
     }
   }, [isLoading, initialRoute, isAppReady]);
 
@@ -416,6 +420,29 @@ export default function AppLayout() {
     return () => {
       subscription.remove();
     };
+  }, []);
+
+  // This effect probably has some auto-navigation logic
+  useEffect(() => {
+    const checkOnboarding = async () => {
+      // Your existing code...
+      
+      // THIS is likely causing your issue:
+      setTimeout(() => {
+        router.replace('/(tabs)'); // or whatever your navigation is
+      }, 100);
+    };
+    
+    checkOnboarding();
+  }, []);
+
+  // Configure audio session at app start
+  useEffect(() => {
+    if (Platform.OS === 'ios') {
+      // Initialize the audio session properly for silent mode playback
+      AlarmSoundModule.configureAudio();
+      console.log('Configured audio session for silent mode on app startup');
+    }
   }, []);
 
   if (!loaded || loading || !isReady) {

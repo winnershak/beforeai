@@ -10,6 +10,7 @@ import { Asset } from 'expo-asset';
 import Constants from 'expo-constants';
 import { TaskManagerTaskBody } from 'expo-task-manager';
 import { AppState, AppStateStatus } from 'react-native';
+import AlarmSoundModule from './native-modules/AlarmSoundModule';
 
 // Add these variables back at the top level
 let isAlarmActive = false;
@@ -40,7 +41,6 @@ const BACKGROUND_ALARM_TASK = 'BACKGROUND_ALARM_TASK';
 interface Alarm {
   id: string;
   time: string;
-  days: string[];
   label?: string;
   sound: string;
   soundVolume: number;
@@ -52,14 +52,20 @@ let alarmSound: Awaited<ReturnType<typeof Audio.Sound.createAsync>>['sound'] | n
 // Track active sounds by alarm ID
 const activeSounds: Record<string, Audio.Sound> = {};
 
-// Define sound assets statically
+// Define sound assets (for both sleep sounds and alarm sounds)
 const soundAssets = {
-  'Orkney': require('../assets/sounds/orkney.caf'),
+  'beacon': require('../assets/sounds/beacon.caf'),
+  'Beacon': require('../assets/sounds/beacon.caf'), // Add both capitalizations to be safe
+  'radar': require('../assets/sounds/radar.caf'),
   'Radar': require('../assets/sounds/radar.caf'),
-  'Beacon': require('../assets/sounds/beacon.caf'),
+  'chimes': require('../assets/sounds/chimes.caf'),
   'Chimes': require('../assets/sounds/chimes.caf'),
+  'circuit': require('../assets/sounds/circuit.caf'),
   'Circuit': require('../assets/sounds/circuit.caf'),
+  'reflection': require('../assets/sounds/reflection.caf'),
   'Reflection': require('../assets/sounds/reflection.caf'),
+  'orkney': require('../assets/sounds/orkney.caf'),
+  'Orkney': require('../assets/sounds/orkney.caf'),
 };
 
 // First, add a sound cache to prevent repeated loading/unloading
@@ -143,73 +149,104 @@ export const cleanupSound = async (sound: Audio.Sound | null) => {
   }
 };
 
-// Update the playAlarmSound function to properly handle custom sounds
-export const playAlarmSound = async (soundName: string, volume = 1.0) => {
+// Improve the sound loading and playing process
+export const playAlarmSound = async (soundName: string, volume: number) => {
   try {
     console.log(`Starting to play alarm sound: ${soundName} at volume ${volume}`);
     isAlarmActive = true;
     
-    // Only stop current sound if we're changing volume significantly
-    // This prevents interruptions during gentle wake-up
-    if (global.currentAlarmSound) {
-      const status = await global.currentAlarmSound.getStatusAsync();
-      if (status.isLoaded) {
-        // If volume change is small, just adjust volume instead of recreating
-        if (Math.abs((status.volume || 0) - volume) < 0.2) {
-          await global.currentAlarmSound.setVolumeAsync(volume);
-          console.log(`Adjusted volume of existing sound to ${volume}`);
-          return global.currentAlarmSound;
-        } else {
-          // Otherwise stop and recreate with new volume
-          await stopAlarmSound();
-        }
+    // First cancel all other notifications to prevent more sounds
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    
+    // Configure audio session more aggressively
+    try {
+      // First completely deactivate session
+      await Audio.setIsEnabledAsync(false);
+      await Audio.setIsEnabledAsync(true);
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        staysActiveInBackground: true,
+        interruptionModeIOS: 1,
+        playsInSilentModeIOS: true,
+      });
+      
+      console.log('Audio session configured aggressively for alarm');
+    } catch (error) {
+      console.error('Error configuring audio session:', error);
+    }
+    
+    // Look up the sound asset, first exact match, then case insensitive, then fallback
+    let soundAsset;
+    const normalizedSoundName = soundName?.toLowerCase() || '';
+    
+    if (soundName in soundAssets) {
+      soundAsset = soundAssets[soundName as keyof typeof soundAssets];
+    } else {
+      // Find case-insensitive match
+      const matchingKey = Object.keys(soundAssets).find(key => 
+        key.toLowerCase() === normalizedSoundName
+      );
+      
+      if (matchingKey) {
+        soundAsset = soundAssets[matchingKey as keyof typeof soundAssets];
+      } else {
+        // Default to beacon as fallback
+        console.log(`Sound "${soundName}" not found, using Beacon fallback`);
+        soundAsset = soundAssets['beacon'];
       }
     }
     
-    // Configure audio mode first to ensure sound plays properly
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      interruptionModeIOS: INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      interruptionModeAndroid: INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-      shouldDuckAndroid: false,
-      playThroughEarpieceAndroid: false,
-    });
-    
-    // Create the sound directly without caching for alarm sounds
-    // This ensures we always get a fresh sound instance
-    const soundSource = soundName in soundAssets 
-      ? soundAssets[soundName as keyof typeof soundAssets] 
-      : null;
+    // Use safer sound creation with error handling
+    let sound;
+    try {
+      console.log(`Creating sound with asset for: ${soundName}`);
+      const soundResult = await Audio.Sound.createAsync(
+        soundAsset,
+        {
+          shouldPlay: true,
+          volume: volume,
+          isLooping: true,
+        }
+      );
+      sound = soundResult.sound;
+      console.log('Sound created successfully');
+    } catch (firstError) {
+      console.error('Error creating sound, trying fallback:', firstError);
       
-    console.log('Loading sound from source:', soundSource);
+      try {
+        // Try direct beacon sound as fallback
+        const result = await Audio.Sound.createAsync(
+          require('../assets/sounds/beacon.caf'),
+          {
+            shouldPlay: true,
+            volume: volume,
+            isLooping: true,
+          }
+        );
+        sound = result.sound;
+      } catch (secondError) {
+        console.error('Failed to load even fallback sound:', secondError);
+        return null;
+      }
+    }
     
-    // If we couldn't find the requested sound, don't play anything
-    if (!soundSource) {
-      console.log(`Sound "${soundName}" not found, not playing any fallback`);
+    if (!sound) {
+      console.error('Sound could not be created');
       return null;
     }
     
-    const { sound } = await Audio.Sound.createAsync(
-      soundSource,
-      { 
-        shouldPlay: true,
-        volume: Math.max(0, Math.min(1, volume)),
-        isLooping: true
-      }
-    );
-    
-    // Store reference to current alarm sound
+    // Store the sound reference globally
     global.currentAlarmSound = sound;
-    console.log('Alarm sound started playing at volume:', volume);
     
-    // Add a listener to restart the sound if it stops for any reason
-    sound.setOnPlaybackStatusUpdate((status: AVPlaybackStatus) => {
-      if (status.isLoaded && !status.isPlaying && isAlarmActive) {
-        console.log('Sound stopped playing but alarm is still active, restarting...');
-        sound.playAsync().catch(err => console.error('Error restarting sound:', err));
-      }
-    });
+    // Use native module on iOS for silent mode support
+    if (Platform.OS === 'ios') {
+      console.log(`Using native module to play sound: ${soundName} at volume ${volume}`);
+      AlarmSoundModule.playAlarmSound(soundName, volume)
+        .then(success => console.log('Native sound playback initiated:', success))
+        .catch(error => console.error('Error with native sound playback:', error));
+      return;
+    }
     
     return sound;
   } catch (error) {
@@ -264,6 +301,13 @@ export const stopAlarmSound = async () => {
     });
     
     console.log('Audio mode reset to default');
+    
+    // Use native module on iOS
+    if (Platform.OS === 'ios') {
+      AlarmSoundModule.stopAlarmSound()
+        .then(() => console.log('Native sound stopped'))
+        .catch(err => console.error('Error stopping native sound:', err));
+    }
     
     return true;
   } catch (error) {
@@ -506,7 +550,6 @@ const registerBackgroundAlarmTask = async () => {
           await scheduleAlarmNotification({
             id: data.alarmId,
             time: "00:00", // This won't matter for immediate notifications
-            days: [],
             sound: data.sound,
             soundVolume: data.soundVolume || 1,
             mission: data.mission
@@ -558,6 +601,10 @@ const handleAppStateChange = async (nextAppState: AppStateStatus) => {
 // Update the scheduleAlarmNotification function to create 15 backup notifications
 export const scheduleAlarmNotification = async (alarm: Alarm) => {
   try {
+    // Generate a unique notification ID for this alarm if not provided
+    const notificationId = alarm.id ? `notification_${alarm.id}_${Date.now()}` : `notification_${Date.now()}`;
+    console.log(`Creating notification with unique ID: ${notificationId}`);
+    
     // Extract time parts
     const [hours, minutes] = alarm.time.split(':').map(Number);
     
@@ -566,37 +613,7 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
     let scheduledDate = new Date();
     scheduledDate.setHours(hours, minutes, 0, 0);
     
-    // Only filter by days if there are specific days selected
-    if (alarm.days && Array.isArray(alarm.days) && alarm.days.length > 0) {
-      const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      console.log(`Current day: ${currentDay}, Selected days: ${alarm.days.join(',')}`);
-      
-      // Convert days strings to numbers if needed
-      const selectedDays = alarm.days.map((day: string | number) => typeof day === 'string' ? parseInt(day, 10) : day);
-      
-      // If today is not in selected days, find next matching day
-      if (!selectedDays.includes(currentDay)) {
-        console.log('Today is not in selected days, finding next matching day');
-        
-        // Find the next day that matches
-        let daysToAdd = 1;
-        let nextDay = (currentDay + daysToAdd) % 7;
-        
-        while (!selectedDays.includes(nextDay) && daysToAdd <= 7) {
-          daysToAdd++;
-          nextDay = (currentDay + daysToAdd) % 7;
-        }
-        
-        console.log(`Scheduling for next matching day: ${nextDay}, ${daysToAdd} days from now`);
-        
-        // Add days to the scheduled date
-        scheduledDate.setDate(scheduledDate.getDate() + daysToAdd);
-      }
-    } else {
-      console.log('Empty days array or invalid - treating as daily alarm');
-    }
-    
-    // If the scheduled time is still in the past (after day adjustment), add a day
+    // If the scheduled time is in the past, add a day
     if (scheduledDate < now) {
       scheduledDate.setDate(scheduledDate.getDate() + 1);
     }
@@ -608,29 +625,17 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
       await cancelAlarmNotification(alarm.id);
     }
     
-    // Skip scheduling if no valid day was found
-    if (alarm.days && alarm.days.length > 0) {
-      const currentDay = now.getDay();
-      const selectedDays = alarm.days.map((day: string | number) => typeof day === 'string' ? parseInt(day, 10) : day);
-      if (!selectedDays.includes(currentDay) && scheduledDate.getDate() === now.getDate()) {
-        console.log('No valid day found for scheduling today, skipping notification');
-        return null;
-      }
-    }
-    
-    // Schedule the actual notification
-    const notificationId = await Notifications.scheduleNotificationAsync({
+    // Schedule the actual notification with the unique ID
+    const scheduledNotificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: alarm.label || 'Wake Up!',
-        body: 'Time to wake up!',
-        sound: `${alarm.sound.toLowerCase()}.caf`,
+        title: 'Wake Up!',
+        body: alarm.label || 'Time to wake up!',
         data: {
           alarmId: alarm.id,
           sound: alarm.sound,
           soundVolume: alarm.soundVolume,
           mission: alarm.mission,
-          hasMission: Boolean(alarm.mission),
-          fromNotification: 'true'
+          fromNotification: true,
         },
       },
       trigger: {
@@ -639,7 +644,7 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
       } as Notifications.DateTriggerInput,
     });
     
-    console.log(`Scheduled notification with ID: ${notificationId} for ${scheduledDate.toLocaleString()}`);
+    console.log(`Scheduled notification with ID: ${scheduledNotificationId} for ${scheduledDate.toLocaleString()}`);
     
     // Schedule 15 backup notifications (one every 6 seconds for 90 seconds)
     // This ensures the alarm will keep trying if the user doesn't respond
@@ -669,7 +674,7 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
       console.log(`Scheduled backup notification ${i} with ID: ${backupNotificationId} for ${new Date(scheduledDate.getTime() + (i * 6000)).toLocaleString()}`);
     }
     
-    return notificationId;
+    return scheduledNotificationId;
   } catch (error) {
     console.error('Error scheduling notification:', error);
     return null;
@@ -732,14 +737,33 @@ export function handleNotification(notification: Notifications.Notification) {
   }
 }
 
-// Update the cancelAlarmNotification function to be simpler
-export const cancelAlarmNotification = async (notificationId: string) => {
+// Function to cancel notifications for a specific alarm only
+export const cancelAlarmNotification = async (alarmId: string) => {
   try {
-    console.log(`Cancelling notification with ID: ${notificationId}`);
+    console.log(`Cancelling notifications for alarm: ${alarmId}`);
     
-    // Cancel all scheduled notifications to be safe
-    await Notifications.cancelAllScheduledNotificationsAsync();
-    console.log('Cancelled all scheduled notifications');
+    // Get all scheduled notifications
+    const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+    
+    // Filter notifications related to this alarm
+    const alarmNotifications = scheduledNotifications.filter(notification => {
+      try {
+        const data = notification.content.data as any;
+        return data && data.alarmId === alarmId;
+      } catch (e) {
+        return false;
+      }
+    });
+    
+    // Cancel only this alarm's notifications by their identifiers
+    for (const notification of alarmNotifications) {
+      if (notification.identifier) {
+        await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        console.log(`Cancelled notification: ${notification.identifier}`);
+      }
+    }
+    
+    console.log(`Cancelled ${alarmNotifications.length} notifications for alarm: ${alarmId}`);
     
     return true;
   } catch (error) {
@@ -750,14 +774,27 @@ export const cancelAlarmNotification = async (notificationId: string) => {
 
 // Add this function to set up notification handlers
 export const setupNotificationHandlers = async () => {
-  // Set up notification handler
+  // Configure notification handler for maximum prominence
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
       shouldPlaySound: true,
-      shouldSetBadge: false,
+      shouldSetBadge: true,
     }),
   });
+
+  // Add this code to request permissions with sound focus
+  try {
+    await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    });
+  } catch (error) {
+    console.error('Error requesting notification permissions:', error);
+  }
 
   // Add notification received handler
   Notifications.addNotificationReceivedListener((notification) => {
@@ -844,7 +881,6 @@ export const scheduleImmediateNotification = async (data: any) => {
     const notificationData: any = {
       id: data.alarmId,
       time: "00:00", // This won't matter for immediate notifications
-      days: [], // Keep the days property
       sound: data.sound,
       soundVolume: data.soundVolume || 1,
       mission: data.mission
@@ -881,6 +917,45 @@ export const stopNotificationsWhenAppOpens = async () => {
   } catch (error) {
     console.error('Error stopping notifications when app opens:', error);
     return false;
+  }
+};
+
+// Fix the function that responds to notifications
+export const onNotificationResponseReceived = async (response: Notifications.NotificationResponse) => {
+  try {
+    console.log('Notification response received!', response);
+    
+    // Check if alarm is already active before trying to handle it
+    const alarmActive = await AsyncStorage.getItem('alarmScreenShowing');
+    if (alarmActive === 'true') {
+      console.log('Alarm screen already showing, cancelling notifications');
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      return;
+    }
+    
+    // Get the notification data
+    const data = response.notification.request.content.data;
+    console.log('Handling notification with data:', data);
+    
+    // Set flag that alarm screen is showing
+    await AsyncStorage.setItem('alarmScreenShowing', 'true');
+    
+    // Mark that we're handling a legitimate alarm
+    console.log('Handling legitimate alarm notification');
+    
+    // Start alarm UI and sound
+    router.replace({
+      pathname: '/alarm-ring',
+      params: {
+        alarmId: data.alarmId,
+        sound: data.sound,
+        soundVolume: data.soundVolume,
+        vibration: data.vibration === true ? 'true' : 'false',
+        hasMission: data.hasMission === true ? 'true' : 'false'
+      }
+    });
+  } catch (error) {
+    console.error('Error handling notification response:', error);
   }
 };
 

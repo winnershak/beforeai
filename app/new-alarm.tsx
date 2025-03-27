@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Pressable } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, TextInput, Pressable, Platform } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { router, Link, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -27,7 +27,6 @@ interface Alarm {
   id: string;
   time: string;
   enabled: boolean;
-  days: string[];
   label: string;
   sound: string;
   soundVolume: number;
@@ -41,12 +40,39 @@ interface Alarm {
   };
 }
 
-// Add this helper function at the top of your file (outside the component)
-const getDayNumber = (day: string): string => {
-  // Convert day to string if it's not already
-  const dayStr = day.toString();
-  // Return the day as is - we're using 1-7 where 1=Monday, 7=Sunday
-  return dayStr;
+// Silent background audio instance to keep audio session active
+let backgroundAudioInstance: Audio.Sound | null = null;
+
+// Function to activate silent background audio loop
+const activateBackgroundAudio = async () => {
+  try {
+    // Clean up any existing audio
+    if (backgroundAudioInstance) {
+      await backgroundAudioInstance.unloadAsync();
+    }
+    
+    // Configure audio session for background
+    await Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: true,
+      interruptionModeIOS: 1, // DoNotMix
+      shouldDuckAndroid: true,
+      interruptionModeAndroid: 1, // DoNotMix
+    });
+    
+    // Create silent looping audio (using a built-in sound for simplicity)
+    const { sound } = await Audio.Sound.createAsync(
+      require('../assets/sounds/silence.caf'), // Make sure this file exists!
+      { volume: 0.01, isLooping: true }
+    );
+    
+    await sound.playAsync();
+    backgroundAudioInstance = sound;
+    
+    console.log('✅ Silent background audio activated to support alarms in silent mode');
+  } catch (error) {
+    console.error('❌ Failed to activate background audio:', error);
+  }
 };
 
 // Update the scheduleAlarmRingScreen function to respect selected days
@@ -55,7 +81,6 @@ const scheduleAlarmRingScreen = (alarm: {
   time: string;
   sound: string;
   soundVolume: number;
-  days: string[];  // Add days parameter
   mission?: any;
 }) => {
   try {
@@ -63,46 +88,6 @@ const scheduleAlarmRingScreen = (alarm: {
     const [hours, minutes] = alarm.time.split(':').map(Number);
     const alarmTime = new Date();
     alarmTime.setHours(hours, minutes, 0, 0);
-    
-    // Get current day of week (0-6, where 0 is Sunday)
-    const currentDay = alarmTime.getDay();
-    
-    // If days are specified, check if today is included
-    if (alarm.days && alarm.days.length > 0) {
-      // Convert day strings to numbers (0-6)
-      const selectedDays = alarm.days.map(day => {
-        switch(day) {
-          case 'Sunday': return 0;
-          case 'Monday': return 1;
-          case 'Tuesday': return 2;
-          case 'Wednesday': return 3;
-          case 'Thursday': return 4;
-          case 'Friday': return 5;
-          case 'Saturday': return 6;
-          default: return parseInt(day); // If it's already a number string
-        }
-      });
-      
-      console.log(`Current day: ${currentDay}, Selected days: ${selectedDays}`);
-      
-      // If today is not in selected days, find the next matching day
-      if (!selectedDays.includes(currentDay)) {
-        console.log('Today is not in selected days, finding next matching day');
-        
-        // Find the next day that matches
-        let daysToAdd = 1;
-        let nextDay = (currentDay + daysToAdd) % 7;
-        
-        while (!selectedDays.includes(nextDay) && daysToAdd < 7) {
-          daysToAdd++;
-          nextDay = (currentDay + daysToAdd) % 7;
-        }
-        
-        // Add days to the alarm time
-        alarmTime.setDate(alarmTime.getDate() + daysToAdd);
-        console.log(`Scheduling for next matching day: ${nextDay}, ${daysToAdd} days from now`);
-      }
-    }
     
     // If the time has already passed today, set it for tomorrow
     // (only if we're still scheduling for today)
@@ -180,7 +165,6 @@ export default function NewAlarmScreen() {
     }
     return new Date();
   });
-  const [selectedDays, setSelectedDays] = useState<string[]>([]);
   const [selectedMission, setSelectedMission] = useState('gmmmmmm');
   const [volume, setVolume] = useState(0.5);
   const [vibrationEnabled, setVibrationEnabled] = useState(true);
@@ -200,16 +184,6 @@ export default function NewAlarmScreen() {
   const [missionName, setMissionName] = useState('');
   const [missionEmoji, setMissionEmoji] = useState('');
 
-  const days = [
-    { label: 'S', value: 0 },
-    { label: 'M', value: 1 },
-    { label: 'T', value: 2 },
-    { label: 'W', value: 3 },
-    { label: 'T', value: 4 },
-    { label: 'F', value: 5 },
-    { label: 'S', value: 6 },
-  ];
-
   const calculateRingTime = () => {
     const now = new Date();
     const alarmTime = new Date(date);
@@ -224,7 +198,6 @@ export default function NewAlarmScreen() {
     const state = {
       alarmId: currentAlarmId,
       editMode: isEditing,  // Add edit mode to saved state
-      selectedDays,
       mission: missionType
     };
     await AsyncStorage.setItem('tempAlarmState', JSON.stringify(state));
@@ -272,7 +245,6 @@ export default function NewAlarmScreen() {
       console.log('NewAlarm: Starting save process');
       console.log('NewAlarm: isEditing:', isEditing, 'currentAlarmId:', currentAlarmId);
       console.log('NewAlarm: missionType:', missionType);
-      console.log('NewAlarm: selectedDays:', selectedDays);
       
       const alarmsJson = await AsyncStorage.getItem('alarms');
       let alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
@@ -383,7 +355,6 @@ export default function NewAlarmScreen() {
       const notificationId = await scheduleAlarmNotification({
         id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
-        days: selectedDays.map(String),
         mission: missionObj,
         sound: sound,
         soundVolume: soundVolume,
@@ -391,19 +362,17 @@ export default function NewAlarmScreen() {
 
       console.log('NewAlarm: Notification scheduled with ID:', notificationId);
 
-      // Make sure days are properly saved as strings
-      const daysAsStrings = selectedDays.map(String);
-      console.log('NewAlarm: Days as strings for saving:', daysAsStrings);
+      // Normalize sound name to lowercase for consistency
+      const normalizedSound = sound.toLowerCase();
 
       // When creating the new alarm object, ensure mission is properly set
       const newAlarm: Alarm = {
         id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         enabled: true,
-        days: daysAsStrings, // Save days as strings
         label: label || '',
         mission: missionObj, // This will be null for new alarms
-        sound: sound.toLowerCase(),
+        sound: normalizedSound,
         soundVolume: soundVolume,
         vibration: vibrationEnabled,
         notificationId: notificationId || null,
@@ -436,6 +405,11 @@ export default function NewAlarmScreen() {
       
       // Also schedule the alarm-ring screen
       scheduleAlarmRingScreen(newAlarm);
+      
+      // Activate silent background audio if alarm is enabled
+      if (Platform.OS === 'ios') {
+        activateBackgroundAudio();
+      }
       
       router.push('/');
     } catch (error) {
@@ -483,12 +457,6 @@ export default function NewAlarmScreen() {
                 newDate.setMinutes(parseInt(minutes, 10));
                 setDate(newDate);
               }
-              
-              // Handle days array properly
-              setSelectedDays(Array.isArray(currentAlarm.days) ? currentAlarm.days : []);
-              
-              // Handle other properties with proper type checking
-              setLabel(currentAlarm.label || '');
               
               // Handle mission data
               if (currentAlarm.mission) {
@@ -566,9 +534,6 @@ export default function NewAlarmScreen() {
       const state = JSON.parse(savedState);
       setLabel(state.label || '');
       setSound(state.sound || 'Orkney');
-      setSelectedDays(state.selectedDays || []);
-      setSelectedMission(state.selectedMission || '');
-      setVibrationEnabled(state.vibrationEnabled);
       if (state.date) {
         setDate(new Date(state.date));
       }
@@ -579,9 +544,6 @@ export default function NewAlarmScreen() {
     const currentState = {
       label,
       sound,
-      selectedDays,
-      selectedMission,
-      vibrationEnabled,
       date: date.toISOString(),
     };
     await saveAlarmState(currentState);
@@ -607,7 +569,7 @@ export default function NewAlarmScreen() {
         const savedState = await AsyncStorage.getItem('tempAlarmState');
         if (savedState) {
           const state = JSON.parse(savedState);
-          if (state.selectedDays) setSelectedDays(state.selectedDays);
+          if (state.date) setDate(new Date(state.date));
         }
       } catch (error) {
         console.error('Error loading saved state:', error);
@@ -903,91 +865,6 @@ export default function NewAlarmScreen() {
     loadMissionSettings();
   }, []);
 
-  // Fix the days parsing in the useEffect
-  useEffect(() => {
-    if (params.days) {
-      try {
-        console.log('NewAlarm: Raw days param:', params.days);
-        
-        // Handle different possible formats of the days parameter
-        let daysArray;
-        
-        if (typeof params.days === 'string') {
-          // If it's a single day as a string (like "7")
-          if (params.days.includes('[') || params.days.includes(',')) {
-            // It's a JSON string array or comma-separated list
-            try {
-              daysArray = JSON.parse(params.days);
-            } catch (jsonError) {
-              // If JSON parsing fails, try comma-separated string
-              daysArray = params.days.split(',').filter(day => day.trim() !== '');
-            }
-          } else {
-            // It's a single day (like "7")
-            daysArray = [params.days];
-          }
-        } else if (Array.isArray(params.days)) {
-          // Already an array
-          daysArray = params.days;
-        } else {
-          // Default to empty array if format is unknown
-          daysArray = [];
-        }
-        
-        console.log('NewAlarm: Parsed days array:', daysArray);
-        
-        // Ensure all days are strings
-        const daysAsStrings = Array.isArray(daysArray) 
-          ? daysArray.map(day => day.toString())
-          : [daysArray.toString()];
-        
-        console.log('NewAlarm: Final days as strings:', daysAsStrings);
-        setSelectedDays(daysAsStrings);
-      } catch (error) {
-        console.error('NewAlarm: Error parsing days from params:', error);
-        // Set to empty array as fallback
-        setSelectedDays([]);
-      }
-    }
-  }, [params.days]);
-
-  // Inside your component, update the toggleDay function
-  const toggleDay = (day: string) => {
-    setSelectedDays(prev => {
-      // Make sure prev is an array
-      const prevDays = Array.isArray(prev) ? prev : [];
-      const dayNumber = getDayNumber(day);
-      
-      if (prevDays.includes(dayNumber)) {
-        return prevDays.filter(d => d !== dayNumber);
-      } else {
-        return [...prevDays, dayNumber];
-      }
-    });
-  };
-
-  // Add this effect to load days when editing an alarm
-  useEffect(() => {
-    const loadAlarmDays = async () => {
-      if (isEditing && currentAlarmId) {
-        console.log('NewAlarm: Loading days for editing alarm:', currentAlarmId);
-        const alarmsJson = await AsyncStorage.getItem('alarms');
-        if (alarmsJson) {
-          const alarms = JSON.parse(alarmsJson);
-          const currentAlarm = alarms.find((a: Alarm) => a.id === currentAlarmId);
-          if (currentAlarm && currentAlarm.days) {
-            // Convert days from strings to numbers
-            const daysAsNumbers = currentAlarm.days.map(Number);
-            console.log('NewAlarm: Loaded days:', daysAsNumbers);
-            setSelectedDays(daysAsNumbers.map(String));
-          }
-        }
-      }
-    };
-    
-    loadAlarmDays();
-  }, [isEditing, currentAlarmId]);
-
   // Update the useEffect for Wordle mission type
   useEffect(() => {
     // Check for Wordle mission type from params
@@ -1081,7 +958,6 @@ export default function NewAlarmScreen() {
         // Set default values for a new alarm
         const now = new Date();
         setDate(now);
-        setSelectedDays([]);
         setLabel('');
         setMission(null);
         setMissionType('');
@@ -1128,49 +1004,6 @@ export default function NewAlarmScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Days of week section */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Daily</Text>
-            <TouchableOpacity 
-              onPress={() => {
-                if (selectedDays.length === 7) {
-                  setSelectedDays([]);
-                } else {
-                  setSelectedDays(['1', '2', '3', '4', '5', '6', '7']);
-                }
-              }}
-              style={styles.dailyContainer}
-            >
-              <Ionicons 
-                name={selectedDays.length === 7 ? "checkbox" : "square-outline"} 
-                size={20} 
-                color="#00BCD4" 
-              />
-              <Text style={styles.dailyText}>Daily</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.daysContainer}>
-            {['1', '2', '3', '4', '5', '6', '7'].map((day) => (
-              <TouchableOpacity
-                key={day}
-                style={[
-                  styles.dayButton,
-                  selectedDays.includes(day) && styles.selectedDay
-                ]}
-                onPress={() => toggleDay(day)}
-              >
-                <Text style={[
-                  styles.dayText,
-                  selectedDays.includes(day) && styles.selectedDayText
-                ]}>
-                  {getDayLabel(day)}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-
         {/* Mission section */}
         <View style={styles.section}>
           <TouchableOpacity 
@@ -1319,29 +1152,6 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 15,
     marginTop: 4,
-  },
-  daysContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  dayButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#00BCD4',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectedDay: {
-    backgroundColor: '#00BCD4',
-  },
-  dayText: {
-    color: '#00BCD4',
-    fontSize: 17,
-  },
-  selectedDayText: {
-    color: '#fff',
   },
   missionCount: {
     color: '#00BCD4',
@@ -1571,18 +1381,4 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
   },
-});
-
-// Helper function to convert day numbers to labels
-function getDayLabel(day: string) {
-  const labels = {
-    '1': 'M',
-    '2': 'T',
-    '3': 'W',
-    '4': 'T',
-    '5': 'F',
-    '6': 'S',
-    '7': 'S'
-  };
-  return labels[day as keyof typeof labels] || day;
-} 
+}); 

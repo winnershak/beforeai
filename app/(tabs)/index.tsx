@@ -574,23 +574,8 @@ export default function TabOneScreen() {
 
   // Update the formatDays function to ensure proper sorting
   const formatDays = (days: string[]): string => {
-    if (!days || days.length === 0) return 'Once';
-    
-    // Custom sort function to handle both formats (1-7 and 0-6)
-    const sortedDays = [...days].sort((a, b) => {
-      // Convert to numbers for comparison
-      let numA = parseInt(a);
-      let numB = parseInt(b);
-      
-      // If using JavaScript format (0=Sunday), convert to our format (7=Sunday)
-      if (numA === 0) numA = 7;
-      if (numB === 0) numB = 7;
-      
-      return numA - numB;
-    });
-    
-    console.log('Sorted days:', sortedDays);
-    return sortedDays.map(day => getDayName(day)).join(', ');
+    // Return empty string to hide days in UI
+    return '';
   };
 
   // Add this effect to check notification permissions

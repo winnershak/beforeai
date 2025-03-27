@@ -18,8 +18,36 @@ import { CacheManager } from 'react-native-expo-image-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RevenueCatService from '../services/RevenueCatService';
 import * as Notifications from 'expo-notifications';
+import * as InAppPurchases from 'expo-in-app-purchases';
+import * as Network from 'expo-network';
+import * as Application from 'expo-application';
+
+// Product IDs as simple constants - no capitalization to avoid confusion
+const PRODUCT_MONTHLY = 'blissmonthly';
+const PRODUCT_YEARLY = 'blissyearly';
 
 const { width, height } = Dimensions.get('window');
+
+const debugIAP = async () => {
+  console.log('=== IAP DEBUG START ===');
+  console.log('Device ID:', await Application.getIosIdForVendorAsync());
+  console.log('Bundle ID:', await Application.applicationId);
+  // Log StoreKit connection
+  try {
+    await InAppPurchases.connectAsync();
+    console.log('StoreKit connection: SUCCESS');
+    try {
+      console.log('Getting product IDs:', {PRODUCT_MONTHLY, PRODUCT_YEARLY});
+      const products = await InAppPurchases.getProductsAsync([PRODUCT_MONTHLY, PRODUCT_YEARLY]);
+      console.log('PRODUCTS RESPONSE:', JSON.stringify(products, null, 2));
+    } catch (e) {
+      console.log('Product fetch failed:', e);
+    }
+  } catch (e) {
+    console.log('StoreKit connection failed:', e);
+  }
+  console.log('=== IAP DEBUG END ===');
+};
 
 export default function YesScreen() {
   const [personName, setPersonName] = useState("Friend");
@@ -46,6 +74,44 @@ export default function YesScreen() {
     // Initialize the RevenueCat service
     const initializeRevenueCat = async () => {
       try {
+        console.log('Starting IAP initialization...');
+        
+        // Always disconnect first to ensure a clean state
+        try {
+          await InAppPurchases.disconnectAsync();
+          console.log('Disconnected from App Store (cleanup)');
+        } catch (disconnectError) {
+          // Ignore disconnect errors
+        }
+        
+        // Then connect explicitly
+        try {
+          await InAppPurchases.connectAsync();
+          console.log('Successfully connected to App Store');
+        } catch (connectError) {
+          console.error('Failed to connect to App Store:', connectError);
+          // Show error to user
+          Alert.alert(
+            "Store Connection Error",
+            "Unable to connect to the App Store. Please restart the app and try again."
+          );
+          return;
+        }
+        
+        // First test a direct connection to the App Store
+        try {
+          // Test retrieving products directly
+          console.log('ATTEMPTING TO FETCH FROM APP STORE WITH EXACTLY THESE IDs:', 
+            JSON.stringify({PRODUCT_MONTHLY, PRODUCT_YEARLY}));
+          
+          const products = await InAppPurchases.getProductsAsync([
+            PRODUCT_MONTHLY, PRODUCT_YEARLY
+          ]);
+          console.log('DIRECT IAP TEST RESULT:', JSON.stringify(products, null, 2));
+        } catch (e) {
+          console.error('Failed to get products after connection:', e);
+        }
+        
         await RevenueCatService.initialize();
         const availablePackages = await RevenueCatService.getSubscriptionPackages();
         setPackages(availablePackages);
@@ -75,7 +141,7 @@ export default function YesScreen() {
   // Add this function to format the prices
   const getPackageDetails = (packageType: string) => {
     // Find by product ID directly
-    const productId = packageType === 'monthly' ? 'blissmonth' : 'blissyear';
+    const productId = packageType === 'monthly' ? PRODUCT_MONTHLY : PRODUCT_YEARLY;
     const pkg = packages.find(p => p.identifier === productId);
     
     if (!pkg) {
@@ -95,6 +161,51 @@ export default function YesScreen() {
     try {
       setLoading(true);
       
+      // Direct IAP purchase - the most reliable method  
+      try {
+        const productId = selectedPlan === 'yearly' ? PRODUCT_YEARLY : PRODUCT_MONTHLY;
+        
+        // Get products directly from Apple
+        const products = await InAppPurchases.getProductsAsync([productId]);
+        
+        if (products.results && products.results.length > 0) {
+          // Product exists, try purchasing directly
+          console.log('Attempting direct purchase...');
+          
+          // Set up purchase listener
+          InAppPurchases.setPurchaseListener(({ responseCode, results, errorCode }) => {
+            if (responseCode === InAppPurchases.IAPResponseCode.OK) {
+              console.log('Direct purchase successful!');
+              AsyncStorage.setItem('isPremium', 'true');
+              router.replace('/(tabs)');
+            } else {
+              console.log('Purchase failed with code:', responseCode);
+              Alert.alert('Purchase Failed', 'Please try again later.');
+            }
+            setLoading(false);
+          });
+          
+          // Purchase the product
+          await InAppPurchases.purchaseItemAsync(productId);
+          return; // Exit early if direct purchase is initiated
+        }
+      } catch (directError) {
+        console.error('Direct purchase attempt failed:', directError);
+      }
+      
+      // Add detailed debugging
+      console.log('Product IDs we are looking for:', PRODUCT_MONTHLY, PRODUCT_YEARLY);
+      
+      // Force load products directly
+      try {
+        const rawProducts = await InAppPurchases.getProductsAsync([
+          PRODUCT_MONTHLY, PRODUCT_YEARLY
+        ]);
+        console.log('DIRECT PRODUCT TEST:', rawProducts);
+      } catch (productError) {
+        console.error('Failed to get products:', productError);
+      }
+      
       // If no packages loaded, try loading them again
       if (packages.length === 0) {
         const availablePackages = await RevenueCatService.getSubscriptionPackages();
@@ -108,7 +219,7 @@ export default function YesScreen() {
       }
       
       // Find the selected package by product ID directly
-      const productId = selectedPlan === 'yearly' ? 'blissyear' : 'blissmonth';
+      const productId = selectedPlan === 'yearly' ? PRODUCT_YEARLY : PRODUCT_MONTHLY;
       console.log(`Looking for product ID: ${productId} in packages:`, JSON.stringify(packages, null, 2));
       
       const selectedPackage = packages.find(pkg => pkg.identifier === productId);
@@ -206,21 +317,69 @@ export default function YesScreen() {
     }
   };
 
-  const handlePurchase = async () => {
+  const handlePurchase = async (packageId: string) => {
     try {
-      // In a real app, you would integrate with in-app purchases here
+      setLoading(true);
       
-      console.log('Purchase successful, marking as premium');
+      // Attempt to purchase the selected package
+      const purchased = await RevenueCatService.purchasePackage({ identifier: packageId });
       
-      // Mark user as premium
-      await AsyncStorage.setItem('isPremium', 'true');
-      
-      // Navigate to main app
-      router.replace('/(tabs)');
+      if (purchased) {
+        // Mark quiz as completed
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        await AsyncStorage.setItem('isPremium', 'true');
+        
+        // Store subscription type based on packageId
+        if (packageId === 'blissmonthly') {
+          await AsyncStorage.setItem('subscriptionType', 'monthly');
+          console.log('Monthly subscription stored');
+        } else if (packageId === 'blissyearly') {
+          await AsyncStorage.setItem('subscriptionType', 'yearly');
+          console.log('Yearly subscription stored');
+        }
+        
+        console.log('Purchase successful, redirecting to app block');
+        
+        // Force navigation with a slight delay to ensure state is updated
+        setTimeout(() => {
+          console.log('Executing delayed navigation to app block');
+          router.replace('/(tabs)/appblock');
+        }, 500);
+      } else {
+        console.log('Purchase failed or was cancelled');
+        Alert.alert("Purchase Failed", "Your purchase could not be completed. Please try again.");
+      }
     } catch (error) {
       console.error('Error processing purchase:', error);
+      Alert.alert("Purchase Error", "There was an error processing your purchase. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const checkConnection = async () => {
+      try {
+        const networkState = await Network.getNetworkStateAsync();
+        console.log('NETWORK STATE:', networkState);
+        
+        if (!networkState.isConnected || !networkState.isInternetReachable) {
+          Alert.alert(
+            "Internet Connection Error",
+            "Please check your internet connection and try again."
+          );
+        }
+      } catch (e) {
+        console.error('Network check error:', e);
+      }
+    };
+    
+    checkConnection();
+  }, []);
+
+  useEffect(() => {
+    debugIAP();
+  }, []);
 
   return (
     <>

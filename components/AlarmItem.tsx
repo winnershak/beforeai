@@ -40,21 +40,6 @@ export function AlarmItem({ alarm, formattedDays, onToggle, onDelete, onDuplicat
     console.log('Mission in render:', alarm.mission);
   }, [alarm.mission]);
 
-  // Days of the week for display - in Monday to Sunday order
-  const daysOfWeek = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
-  
-  // Convert days from strings to numbers, handling both formats (0-6 and 1-7)
-  const selectedDays = alarm.days.map(day => {
-    const dayNum = parseInt(day, 10);
-    // If using JavaScript day format (0=Sunday), convert to our format (7=Sunday)
-    if (dayNum === 0) return 7;
-    return dayNum;
-  });
-
-  // Log the days to help with debugging
-  console.log('AlarmItem - alarm.days:', alarm.days);
-  console.log('AlarmItem - selectedDays after conversion:', selectedDays);
-
   const renderRightActions = (progress: any, dragX: any) => {
     const trans = dragX.interpolate({
       inputRange: [-100, 0],
@@ -98,23 +83,6 @@ export function AlarmItem({ alarm, formattedDays, onToggle, onDelete, onDuplicat
           <TouchableOpacity style={styles.mainContent} onPress={onEdit}>
             <View style={styles.timeContainer}>
               <Text style={styles.time}>{alarm.time}</Text>
-              <View style={styles.daysContainer}>
-                {daysOfWeek.map((day, index) => {
-                  // index is 0-6, but our days are 1-7 (Monday to Sunday)
-                  const dayNumber = index + 1;
-                  return (
-                    <Text
-                      key={index}
-                      style={[
-                        styles.day,
-                        selectedDays.includes(dayNumber) && styles.selectedDay
-                      ]}
-                    >
-                      {day}
-                    </Text>
-                  );
-                })}
-              </View>
               <View style={styles.infoContainer}>
                 {alarm.label && (
                   <Text style={styles.label}>{alarm.label}</Text>
@@ -223,18 +191,6 @@ const styles = StyleSheet.create({
     fontSize: 40,
     fontWeight: 'bold',
     color: '#fff',
-  },
-  daysContainer: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 8,
-  },
-  day: {
-    color: '#666',
-    fontSize: 12,
-  },
-  selectedDay: {
-    color: '#00BCD4',
   },
   infoContainer: {
     flexDirection: 'row',

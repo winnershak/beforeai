@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration, Platform } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, resetAlarmState, playAlarmSound } from './notifications';
 import * as Notifications from 'expo-notifications';
 import soundAssets from './sounds';
+import AlarmSoundModule from './native-modules/AlarmSoundModule';
 
 // Add this type definition at the top of your file
 interface Alarm {
   id: string;
   time: string;
   enabled: boolean;
-  days: string[];
   label?: string;
   sound?: string;
   soundVolume?: number;
@@ -59,6 +59,7 @@ export default function AlarmRingScreen() {
   const [missionType, setMissionType] = useState('');
   const loadAlarmRef = useRef<(() => Promise<void>) | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const snoozeTimeout = useRef<NodeJS.Timeout | null>(null);
   let soundInstance: Audio.Sound | null = null;
 
   console.log('AlarmRingScreen params:', params);
@@ -67,71 +68,82 @@ export default function AlarmRingScreen() {
   useEffect(() => {
     console.log('AlarmRingScreen mounted');
     
-    // First, check if today is the right day for this alarm
-    const checkAlarmDay = async () => {
+    // Set flag that alarm screen is showing (for notification handling)
+    AsyncStorage.setItem('alarmScreenShowing', 'true');
+    
+    // Ensure audio session is properly configured for silent mode
+    (async () => {
       try {
-        // Get the alarm data
-        const alarmsJson = await AsyncStorage.getItem('alarms');
-        if (alarmsJson) {
-          const alarms = JSON.parse(alarmsJson);
-          const alarm = alarms.find((a: Alarm) => a.id === params.alarmId);
-          
-          if (alarm && alarm.days && alarm.days.length > 0) {
-            // Check if today is in the selected days
-            const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-            const selectedDays = alarm.days.map((day: string | number) => typeof day === 'string' ? parseInt(day, 10) : day);
-            
-            console.log(`Alarm days check: Today is ${today}, alarm days are ${selectedDays.join(',')}`);
-            
-            if (!selectedDays.includes(today)) {
-              console.log('Today is not a selected day for this alarm, closing screen');
-              // Close this screen - alarm shouldn't ring today
-              router.back();
-              return false;
-            }
-          } else {
-            // If no days are selected, the alarm should work every day
-            console.log('No specific days set for this alarm, allowing it to ring');
-          }
-        }
-        return true;
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          interruptionModeIOS: 1,
+          playsInSilentModeIOS: true, // Critical for silent mode
+        });
+        console.log('Audio mode configured for silent mode');
       } catch (error) {
-        console.error('Error checking alarm days:', error);
-        return true; // Continue with alarm if there's an error
+        console.error('Error setting audio mode:', error);
+      }
+    })();
+    
+    // Start vibration
+    if (params.vibration !== 'false') {
+      startVibration();
+    }
+    
+    // Cancel ALL notifications when alarm screen is opened to prevent duplicates
+    console.log('Cancelling all scheduled notifications when alarm screen opened');
+    cancelAllNotifications();
+    
+    // Load alarm data
+    if (loadAlarmRef.current) {
+      // Small delay to prevent race conditions
+      setTimeout(() => {
+        loadAlarmRef.current && loadAlarmRef.current();
+      }, 100);
+    }
+    
+    return () => {
+      // Clean up on unmount
+      stopVibration();
+      // Reset alarm screen flag
+      AsyncStorage.setItem('alarmScreenShowing', 'false');
+    };
+  }, []);
+
+  // Add this new useEffect to handle app state changes
+  useEffect(() => {
+    // Enhance the Audio setup to better handle silent mode
+    const setupAudio = async () => {
+      try {
+        // Configure audio to be as prominent as possible
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          staysActiveInBackground: true,
+          interruptionModeIOS: 1, // DO_NOT_MIX
+          playsInSilentModeIOS: true, // This is essential
+        });
+        
+        // Add this code to set up audio session for alarms
+        if (sound) {
+          await sound.setVolumeAsync(1.0); // Maximum volume
+          
+          // Set additional options before playing
+          await sound.setProgressUpdateIntervalAsync(1000);
+          await sound.setPositionAsync(0);
+          
+          // Now play the sound without parameters
+          await sound.playAsync();
+        }
+        
+        console.log('Audio configured to play in background');
+      } catch (error) {
+        console.error('Error setting up audio:', error);
       }
     };
     
-    // Check the day before proceeding with alarm
-    checkAlarmDay().then(shouldContinue => {
-      if (!shouldContinue) return;
-      
-      // Start vibration
-      if (params.vibration !== 'false') {
-        startVibration();
-      }
-      
-      // Check if we should disable default sound on mount
-      const disableDefaultSound = true;
-      
-      // Load alarm data - use the ref function instead of direct call
-      if (loadAlarmRef.current) {
-        // Add a small delay to prevent double sound playing
-        setTimeout(() => {
-          loadAlarmRef.current && loadAlarmRef.current();
-        }, 100);
-      }
-      
-      // Cancel ALL notifications when alarm screen is opened
-      console.log('Cancelling all scheduled notifications when alarm screen opened');
-      cancelAllNotifications();
-      
-      return () => {
-        // Clean up when component unmounts
-        stopVibration();
-        stopSound();
-      };
-    });
-  }, []);
+    setupAudio();
+  }, [sound]);
 
   // Play alarm sound only once
   useEffect(() => {
@@ -163,49 +175,25 @@ export default function AlarmRingScreen() {
           throw new Error('No sound specified in alarm parameters');
         }
         
-        const soundName = params.sound as string;
-        // Properly capitalize sound name
-        const normalizedSoundName = soundName.charAt(0).toUpperCase() + soundName.slice(1).toLowerCase();
+        // Get sound name and volume from params
+        const soundName = params.sound as string || 'beacon';
+        const volume = Number(params.soundVolume) || 1;
         
-        console.log(`Using sound: ${normalizedSoundName}`);
+        // Use the AlarmSoundModule directly
+        console.log(`Using AlarmSoundModule to play: ${soundName} at volume ${volume}`);
         
-        // Configure audio for alarm
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          interruptionModeIOS: 1, // DoNotMix
-          playsInSilentModeIOS: true,
-        });
-        console.log('Audio mode configured for alarm');
-        
-        // Use the playAlarmSound function with volume
-        const volume = parseFloat(params.soundVolume as string) || 1.0;
-        const sound = await playAlarmSound(normalizedSoundName, volume);
-        
-        // Require sound to be loaded successfully
-        if (!sound) {
-          throw new Error(`Failed to load sound: ${normalizedSoundName}`);
+        try {
+          const success = await AlarmSoundModule.playAlarmSound(soundName.toLowerCase(), volume);
+          console.log('AlarmSoundModule playback started:', success);
+          setIsPlaying(true);
+        } catch (error) {
+          console.error('Error with AlarmSoundModule playback:', error);
+          
+          // Show error state in UI
+          setErrorMessage('Failed to play alarm sound');
+          // Fall back to vibration
+          Vibration.vibrate([500, 500], true);
         }
-        
-        setSound(sound);
-        setIsPlaying(true);
-        console.log(`Alarm sound started playing with sound: ${normalizedSoundName} at volume: ${volume}`);
-        
-        // Set up a status update listener with simpler logic
-        sound.setOnPlaybackStatusUpdate(status => {
-          if (status.isLoaded && !status.isPlaying && isPlaying) {
-            console.log('Sound stopped playing but alarm is still active, restarting...');
-            sound.playAsync().catch(err => {
-              console.error('Error restarting sound:', err);
-              // Only reload if we're still playing and previous sound failed
-              if (isPlaying) playSound();
-            });
-          }
-        });
-        
-        // Start playing the sound
-        await sound.playAsync();
-        soundInstance = sound;
       } catch (error) {
         console.error('Error loading and playing alarm sound:', error);
         
@@ -392,81 +380,25 @@ export default function AlarmRingScreen() {
     try {
       console.log('Stopping alarm sound');
       
-      // First try to stop the sound using the local sound instance
-      if (sound) {
-        const status = await sound.getStatusAsync();
-        if (status.isLoaded) {
-          await sound.stopAsync();
-          await sound.unloadAsync();
-          console.log('Sound stopped and unloaded');
-        }
-        setSound(null);
+      // Stop sound using AlarmSoundModule
+      try {
+        await AlarmSoundModule.stopAlarmSound();
+        console.log('AlarmSoundModule stopped sound');
+      } catch (error) {
+        console.error('Error stopping sound with AlarmSoundModule:', error);
       }
       
-      // Also call the global stopAlarmSound function to ensure all sounds are stopped
-      if (typeof stopAlarmSound === 'function') {
-        await stopAlarmSound();
-      }
+      // Use the notifications utility function instead
+      stopAlarmSound();
       
-      // Reset the global sound variable as well
-      if (global.currentAlarmSound) {
-        try {
-          const status = await global.currentAlarmSound.getStatusAsync();
-          if (status.isLoaded) {
-            await global.currentAlarmSound.stopAsync();
-            await global.currentAlarmSound.unloadAsync();
-          }
-        } catch (error) {
-          console.log('Error stopping global sound:', error);
-        }
-        global.currentAlarmSound = null;
-      }
-      
-      // Reset audio mode to default
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: false,
-        interruptionModeIOS: 1, // Use numeric value instead of constant
-        playsInSilentModeIOS: false,
-        shouldDuckAndroid: false,
-        interruptionModeAndroid: 1, // Use numeric value instead of constant
-        playThroughEarpieceAndroid: false
-      });
-      
-      console.log('Audio mode reset to default');
+      // Disable the alarm in AsyncStorage
+      await resetAlarmState();
       setIsPlaying(false);
-    } catch (error) {
-      console.error('Error stopping sound:', error);
-    }
-  };
-
-  const handleStopAlarm = async () => {
-    try {
-      console.log('Stopping alarm sound from handleStopAlarm');
       
-      // Stop vibration
-      stopVibration();
-      
-      // Stop sound
-      await stopSound();
-      
-      // Cancel all notifications
-      await cancelAllNotifications();
-      
-      // Reset alarm state in notifications.ts
-      resetAlarmState();
-      
-      // Clear current alarm data
-      await AsyncStorage.removeItem('currentAlarmData');
-      await AsyncStorage.removeItem('activeAlarm');
-      console.log('Cleared current alarm data from storage');
-      
-      // Navigate back to home screen
-      router.replace('/');
+      // Navigate back to home
+      router.replace('/(tabs)');
     } catch (error) {
       console.error('Error stopping alarm:', error);
-      // Try to navigate anyway
-      router.replace('/');
     }
   };
 
@@ -568,37 +500,55 @@ export default function AlarmRingScreen() {
 
   const handleStartMission = async () => {
     try {
-      // Stop the sound first
+      // Stop vibration
+      stopVibration();
+      
+      // Make sure sound is stopped before starting mission
       if (sound) {
-        console.log('Stopping alarm sound from handleStartMission');
-        await sound.stopAsync();
-        await sound.unloadAsync();
-        setSound(null);
-        setIsPlaying(false);
+        try {
+          const status = await sound.getStatusAsync();
+          if (status.isLoaded) {
+            await sound.stopAsync();
+          }
+        } catch (e) {
+          console.log('Error stopping sound when starting mission:', e);
+        }
       }
       
-      // Also stop any sound playing from notifications
-      await stopAlarmSound();
+      hasMissionStarted.current = true;
       
-      console.log('Starting mission in alarm-ring screen with type:', missionType);
-      
-      // Navigate to the appropriate mission screen based on mission type
-      if (missionType.toLowerCase() === 'tetris') {
-        router.replace('/final-tetris');
-      } else if (missionType.toLowerCase() === 'math') {
-        router.replace('/final-math');
-      } else if (missionType.toLowerCase() === 'typing') {
-        router.replace('/final-typing');
-      } else if (missionType.toLowerCase() === 'qr') {
-        router.replace('/final-qr');
-      } else if (missionType.toLowerCase() === 'wordle') {
-        router.replace('/final-wordle');
-      } else if (missionType.toLowerCase() === 'cookiejam') {
-        router.replace('/final-cookiejam');
-      } else {
-        // Default to math if mission type is unknown
-        console.warn('Unknown mission type:', missionType);
-        router.replace('/final-math');
+      // Navigate to the appropriate mission screen
+      if (currentAlarm?.mission) {
+        const mission = typeof currentAlarm.mission === 'string' 
+          ? currentAlarm.mission 
+          : currentAlarm.mission.name;
+        
+        console.log('Starting mission:', mission);
+        
+        // Different navigation based on mission type
+        switch (mission.toLowerCase()) {
+          case 'tetris':
+            router.replace('/final-tetris');
+            break;
+          case 'math':
+            router.replace('/final-math');
+            break;
+          case 'typing':
+            router.replace('/final-typing');
+            break;
+          case 'qr':
+            router.replace('/final-qr');
+            break;
+          case 'wordle':
+            router.replace('/final-wordle');
+            break;
+          case 'cookiejam':
+            router.replace('/final-cookiejam');
+            break;
+          default:
+            console.warn('Unknown mission type:', mission);
+            router.replace('/final-math');
+        }
       }
     } catch (error) {
       console.error('Error starting mission:', error);
@@ -725,7 +675,7 @@ export default function AlarmRingScreen() {
                 {!currentAlarm?.mission && (
                   <TouchableOpacity 
                     style={[styles.button, styles.stopButton]} 
-                    onPress={handleStopAlarm}
+                    onPress={stopSound}
                   >
                     <Text style={styles.buttonText}>Stop Alarm</Text>
                   </TouchableOpacity>
@@ -744,7 +694,7 @@ export default function AlarmRingScreen() {
                 ) : (
                   <TouchableOpacity 
                     style={[styles.button, styles.stopButton]} 
-                    onPress={handleStopAlarm}
+                    onPress={stopSound}
                   >
                     <Text style={styles.buttonText}>Stop Alarm</Text>
                   </TouchableOpacity>

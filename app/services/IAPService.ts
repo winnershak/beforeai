@@ -3,13 +3,22 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your product IDs
 const PRODUCTS = {
-  MONTHLY: 'blissmonth',
-  YEARLY: 'blissyear',
+  MONTHLY: 'blissmonthly',
+  YEARLY: 'blissyearly',
 };
+
+// Add a debug log to confirm the updated values
+console.log('UPDATED PRODUCT IDs ARE BEING USED:', PRODUCTS);
+
+// Add this debug log
+console.log('IAPService - PRODUCT IDs:', PRODUCTS);
 
 class IAPService {
   private initialized = false;
-  private useMockMode = false; // Make sure this is false for production
+
+  constructor() {
+    console.log('IAPService initialized with product IDs:', PRODUCTS);
+  }
 
   async initialize() {
     if (this.initialized) {
@@ -18,13 +27,6 @@ class IAPService {
     }
 
     try {
-      if (this.useMockMode) {
-        console.log('IAP: Using mock mode');
-        this.initialized = true;
-        await AsyncStorage.setItem('isPremium', 'true'); // For testing
-        return true;
-      }
-
       // Set up purchase listener first
       InAppPurchases.setPurchaseListener(({ responseCode, results, errorCode }) => {
         console.log('Purchase event received:', { responseCode, results, errorCode });
@@ -38,36 +40,25 @@ class IAPService {
         }
       });
 
-      try {
-        // Connect to the store - wrap in try/catch to handle "already connected" error
-        await InAppPurchases.connectAsync();
-        console.log('IAP service initialized successfully');
-      } catch (connectError) {
-        // If already connected, that's fine
-        if ((connectError as Error).message && (connectError as Error).message.includes('Already connected')) {
-          console.log('Already connected to App Store, continuing');
-        } else {
-          // For other errors, rethrow
-          throw connectError;
-        }
-      }
-      
+      // Connect to the App Store
+      await this.connectToStore();
+
+      // Verify products are available
+      const productTest = await InAppPurchases.getProductsAsync([
+        PRODUCTS.MONTHLY,
+        PRODUCTS.YEARLY
+      ]);
+      console.log('Available products from store:', productTest);
+
       this.initialized = true;
       return true;
     } catch (error) {
       console.error('IAP initialization failed:', error);
-      this.useMockMode = true;
-      this.initialized = true;
-      await AsyncStorage.setItem('isPremium', 'true'); // Fallback for testing
       return false;
     }
   }
 
   async getProducts() {
-    if (this.useMockMode) {
-      return this.getMockProducts();
-    }
-
     try {
       await this.ensureInitialized();
       console.log('Fetching products from store...');
@@ -76,42 +67,31 @@ class IAPService {
         PRODUCTS.YEARLY,
       ]);
       
-      console.log('Products result:', JSON.stringify(result, null, 2));
+      console.log('Raw products from store:', result);
       
-      // getProductsAsync returns { results: Product[] }
       const products = result.results || [];
       
       if (products.length === 0) {
         console.warn('No products available from store');
-        return this.getMockProducts();
+        return [];
       }
       
-      const mappedProducts = products.map(product => ({
+      return products.map(product => ({
         identifier: product.productId,
-        packageType: product.productId.includes('month') ? 'monthly' : 'yearly',
+        packageType: product.productId.includes('monthly') ? 'monthly' : 'yearly',
         product: {
           price: parseFloat(product.price),
           priceString: product.price,
           title: product.title || product.description
         }
       }));
-      
-      console.log('Mapped products:', JSON.stringify(mappedProducts, null, 2));
-      return mappedProducts;
     } catch (error) {
       console.error('Error getting products:', error);
-      return this.getMockProducts();
+      throw error;
     }
   }
 
   async purchaseProduct(productId: string) {
-    if (this.useMockMode) {
-      console.log('Mock mode: simulating successful purchase');
-      await AsyncStorage.setItem('isPremium', 'true');
-      await AsyncStorage.setItem('quizCompleted', 'true');
-      return true;
-    }
-
     try {
       console.log(`Attempting to purchase product: ${productId}`);
       await this.ensureInitialized();
@@ -141,14 +121,6 @@ class IAPService {
       } catch (purchaseError) {
         console.error('Error during purchase flow:', purchaseError);
         
-        // For development testing, simulate success
-        if (__DEV__) {
-          console.log('DEV MODE: Simulating successful purchase despite error');
-          await AsyncStorage.setItem('isPremium', 'true');
-          await AsyncStorage.setItem('quizCompleted', 'true');
-          return true;
-        }
-        
         return false;
       }
     } catch (error) {
@@ -158,11 +130,6 @@ class IAPService {
   }
 
   async restorePurchases() {
-    if (this.useMockMode) {
-      await AsyncStorage.setItem('isPremium', 'true');
-      return true;
-    }
-
     try {
       await this.ensureInitialized();
       
@@ -182,10 +149,6 @@ class IAPService {
   }
 
   async checkSubscriptionStatus() {
-    if (this.useMockMode) {
-      return true;
-    }
-
     try {
       await this.ensureInitialized();
       
@@ -209,27 +172,35 @@ class IAPService {
     }
   }
 
-  private getMockProducts() {
-    return [
-      {
-        identifier: PRODUCTS.MONTHLY,
-        packageType: 'monthly',
-        product: {
-          price: 12.99,
-          priceString: '$12.99',
-          title: 'Monthly Subscription'
+  // Connect to the App Store
+  private async connectToStore(): Promise<boolean> {
+    try {
+      // Check if already connected before trying to connect
+      try {
+        // If this doesn't throw, we're already connected
+        await InAppPurchases.getPurchaseHistoryAsync();
+        console.log('Already connected to App Store');
+        return true;
+      } catch (e) {
+        // If it throws with a different error, log it but continue
+        if (e && (e as Error).message && !(e as Error).message.includes('Must be connected')) {
+          console.log('Error checking connection status:', e);
         }
-      }, 
-      {
-        identifier: PRODUCTS.YEARLY,
-        packageType: 'yearly',
-        product: {
-          price: 79.99,
-          priceString: '$79.99',
-          title: 'Annual Subscription'
-        }
+        // Not connected, will proceed to connect
       }
-    ];
+      
+      // Connect to store
+      console.log('Connecting to App Store...');
+      await InAppPurchases.connectAsync();
+      console.log('Successfully connected to App Store');
+      return true;
+    } catch (error) {
+      // Only log if it's not an "already connected" error
+      if (error && (error as Error).message && !(error as Error).message.includes('Already connected')) {
+        console.error('Store connection error:', error);
+      }
+      return false;
+    }
   }
 }
 

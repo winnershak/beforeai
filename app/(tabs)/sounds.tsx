@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Switch, ScrollView, SafeAreaView, Dimensions } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, Switch, ScrollView, SafeAreaView, Dimensions, AppState } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
@@ -20,6 +20,9 @@ const soundAssets: { [key: string]: any } = {
   'Thunder': require('../../assets/sounds/thunder.caf'),
   'Waterfall': require('../../assets/sounds/waterfall.caf'),
 };
+
+// Cache for sound objects to prevent repeated loading/unloading
+const soundObjectCache = new Map();
 
 const formatTime = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -43,40 +46,68 @@ export default function SoundsScreen() {
   const [currentSound, setCurrentSound] = useState<string | null>(null);
   const [sound, setSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playingSounds, setPlayingSounds] = useState<Set<string>>(new Set());
   const [volume, setVolume] = useState(0.5);
   const [timer, setTimer] = useState(60); // Default 60 minutes
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
   const [timerEnabled, setTimerEnabled] = useState(false);
+  const [loading, setLoading] = useState(false); // Keep but don't show UI for it
+  const [audioSessionReady, setAudioSessionReady] = useState(false);
+  const soundsReady = useRef(false);
+  const appState = useRef(AppState.currentState);
+
+  // Set up audio session for background playback
+  const setupAudioSession = async () => {
+    if (audioSessionReady) return;
+    
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        playThroughEarpieceAndroid: false, // Use speaker for Android background playback
+        shouldDuckAndroid: true,
+        interruptionModeIOS: 1,
+        interruptionModeAndroid: 1,
+      });
+      console.log("Audio session configured for background playback");
+      setAudioSessionReady(true);
+    } catch (error) {
+      console.error("Error setting up audio session:", error);
+    }
+  };
 
   // Define available sounds
   useEffect(() => {
     const availableSounds: Sound[] = [
-      { id: '1', name: 'Beach', file: 'beach.caf', icon: 'sunny' },
-      { id: '2', name: 'Calm Rain', file: 'calm-rain.caf', icon: 'rainy' },
-      { id: '3', name: 'Fire', file: 'fire.caf', icon: 'flame' },
-      { id: '4', name: 'Forest', file: 'forest.caf', icon: 'leaf' },
-      { id: '5', name: 'Piano', file: 'piano.caf', icon: 'musical-notes' },
-      { id: '6', name: 'White Noise', file: 'white-noise.caf', icon: 'radio' },
-      { id: '7', name: 'Pink Noise', file: 'pink-noise.caf', icon: 'radio-outline' },
-      { id: '8', name: 'Rain', file: 'rain.caf', icon: 'water' },
-      { id: '9', name: 'Space', file: 'space.caf', icon: 'planet' },
-      { id: '10', name: 'Thunder', file: 'thunder.caf', icon: 'thunderstorm' },
-      { id: '11', name: 'Waterfall', file: 'waterfall.caf', icon: 'water-outline' },
+      { id: '1', name: 'Beach', file: 'beach.caf', icon: 'sunny' as any },
+      { id: '2', name: 'Calm Rain', file: 'calm-rain.caf', icon: 'rainy' as any },
+      { id: '3', name: 'Fire', file: 'fire.caf', icon: 'flame' as any },
+      { id: '4', name: 'Forest', file: 'forest.caf', icon: 'leaf' as any },
+      { id: '5', name: 'Piano', file: 'piano.caf', icon: 'musical-notes' as any },
+      { id: '6', name: 'White Noise', file: 'white-noise.caf', icon: 'radio' as any },
+      { id: '7', name: 'Pink Noise', file: 'pink-noise.caf', icon: 'radio-outline' as any },
+      { id: '8', name: 'Rain', file: 'rain.caf', icon: 'water' as any },
+      { id: '9', name: 'Space', file: 'space.caf', icon: 'planet' as any },
+      { id: '10', name: 'Thunder', file: 'thunder.caf', icon: 'thunderstorm' as any },
+      { id: '11', name: 'Waterfall', file: 'waterfall.caf', icon: 'water-outline' as any },
     ];
     
     setSounds(availableSounds);
     
+    // Set up audio session immediately
+    setupAudioSession();
+    
     // Load the last played sound
     loadLastPlayedSound();
+
+    // Preload most common sounds in background
+    preloadCommonSounds();
   }, []);
 
   // Clean up sound when component unmounts
   useEffect(() => {
     return () => {
-      if (sound) {
-        stopSound();
-        sound.unloadAsync();
-      }
+      stopSound();
     };
   }, [sound]);
 
@@ -106,29 +137,63 @@ export default function SoundsScreen() {
     // Configure audio session once at startup
     const setupAudio = async () => {
       try {
+        // Don't try to set up audio multiple times
+        if (audioSessionReady) return;
+        
+        setLoading(true);
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
           staysActiveInBackground: true,
           shouldDuckAndroid: true,
+          interruptionModeIOS: 1,
+          interruptionModeAndroid: 1,
         });
         console.log("Audio mode configured successfully");
+        setAudioSessionReady(true);
+        
+        // Preload just the first few most common sounds
+        const preloadFirstSounds = async () => {
+          const commonSounds = ['Beach', 'Rain', 'White Noise'];
+          for (const soundName of commonSounds) {
+            try {
+              if (!soundObjectCache.has(soundName)) {
+                const { sound } = await Audio.Sound.createAsync(
+                  soundAssets[soundName],
+                  { shouldPlay: false },
+                );
+                soundObjectCache.set(soundName, sound);
+              }
+            } catch (err) {
+              // Silently continue if one fails
+              console.log(`Error preloading ${soundName}:`, err);
+            }
+          }
+        };
+        
+        // Start background preloading
+        preloadFirstSounds();
         
         // Start background loading the last played sound first
         const lastSound = await AsyncStorage.getItem('lastPlayedSound');
         if (lastSound) {
           // Preload the last used sound in the background
           console.log(`Background loading last used sound: ${lastSound}`);
-          Audio.Sound.createAsync(
-            soundAssets[lastSound],
-            { shouldPlay: false },
-          ).then(({ sound }) => {
-            sound.unloadAsync(); // Just prime the cache
-          }).catch(err => {
+          try {
+            if (!soundObjectCache.has(lastSound)) {
+              const { sound } = await Audio.Sound.createAsync(
+                soundAssets[lastSound],
+                { shouldPlay: false },
+              );
+              soundObjectCache.set(lastSound, sound);
+            }
+          } catch (err) {
             console.log("Error preloading last sound:", err);
-          });
+          }
         }
+        setLoading(false);
       } catch (error) {
         console.error("Error configuring audio:", error);
+        setLoading(false);
       }
     };
     
@@ -161,147 +226,294 @@ export default function SoundsScreen() {
     }
   };
 
-  const playSound = async (soundName: string) => {
+  // Preload the most common sounds in the background
+  const preloadCommonSounds = async () => {
     try {
-      // Stop any currently playing sound
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
+      // Preload top 3 most used sounds in parallel
+      const commonSoundNames = ['White Noise', 'Rain', 'Beach'];
+      
+      Promise.all(
+        commonSoundNames.map(name => {
+          const soundAsset = soundAssets[name];
+          if (soundAsset) {
+            return Audio.Sound.createAsync(soundAsset, { shouldPlay: false });
+          }
+        })
+      ).then(results => {
+        results.forEach((result, index) => {
+          if (result) {
+            const sound = result.sound;
+            soundObjectCache.set(commonSoundNames[index], sound);
+          }
+        });
+        soundsReady.current = true;
+      });
+    } catch (error) {
+      console.error('Error preloading sounds:', error);
+    }
+  };
+
+  // Function to load a sound
+  const loadSound = async (soundName: string) => {
+    try {
+      // If already in cache, use cached sound
+      if (soundObjectCache.has(soundName)) {
+        const cachedSound = soundObjectCache.get(soundName);
+        return cachedSound;
       }
-      
-      console.log(`Attempting to play sound: ${soundName}`);
-      
-      // Get the sound asset
+
+      // Don't unload existing sounds - we want multiple to play
+
       const soundAsset = soundAssets[soundName];
       if (!soundAsset) {
-        console.error(`No sound asset found for: ${soundName}`);
+        console.error(`Sound asset not found for ${soundName}`);
+        return null;
+      }
+      
+      const { sound: newSound } = await Audio.Sound.createAsync(
+        soundAsset,
+        { volume, isLooping: true } // Set sounds to loop continuously
+      );
+      
+      // Cache for future use
+      soundObjectCache.set(soundName, newSound);
+      
+      return newSound;
+    } catch (error) {
+      console.error('Error loading sound:', error);
+      return null;
+    }
+  };
+
+  // Function to play a sound
+  const playSound = async (soundName: string) => {
+    try {
+      if (playingSounds.has(soundName)) {
+        // Toggle off if already playing
+        const soundToStop = soundObjectCache.get(soundName);
+        if (soundToStop) {
+          const status = await soundToStop.getStatusAsync();
+          if (status.isLoaded) {
+            await soundToStop.stopAsync();
+          }
+          // Remove from playing sounds
+          setPlayingSounds(prev => {
+            const updated = new Set(prev);
+            updated.delete(soundName);
+            return updated;
+          });
+          
+          // If this was the current sound, update UI
+          if (currentSound === soundName) {
+            setIsPlaying(false);
+          }
+        }
         return;
       }
       
-      // Load and play the sound with optimized settings
-      console.log(`Creating sound from asset: ${soundName}`);
-      const { sound: newSound } = await Audio.Sound.createAsync(
-        soundAsset,
-        { 
-          shouldPlay: true, 
-          isLooping: true, 
-          volume,
-          progressUpdateIntervalMillis: 500, // Less frequent updates
-          positionMillis: 0,
-          rate: 1.0,
-          shouldCorrectPitch: false, // Faster loading
-        },
-        (status) => {
-          if (status.isLoaded) {
-            // Only log initial playback state to reduce console spam
-            if (status.didJustFinish || status.positionMillis === 0) {
-              console.log(`Sound ${soundName} playing state: ${status.isPlaying}`);
-            }
-          } else if (status.error) {
-            console.error(`Sound playback error: ${status.error}`);
-          }
-        }
-      );
-      
-      console.log(`Sound loaded successfully: ${soundName}`);
-      
-      setSound(newSound);
-      setIsPlaying(true);
+      // Set current sound name immediately for UI responsiveness
       setCurrentSound(soundName);
       
-      // Save the last played sound
-      await AsyncStorage.setItem('lastPlayedSound', soundName);
+      // Load the sound if needed
+      let soundToPlay = soundObjectCache.get(soundName);
       
-      // Start timer if enabled
-      if (timerEnabled) {
-        setTimeRemaining(timer * 60); // Convert minutes to seconds
+      if (!soundToPlay) {
+        // Load the new sound
+        soundToPlay = await loadSound(soundName);
+        
+        // Verify sound loaded properly
+        if (!soundToPlay) {
+          console.log(`Could not load sound: ${soundName}`);
+          return;
+        }
+      }
+      
+      try {
+        // For UI state, we'll keep the most recently played sound as "current"
+        if (!sound) {
+          setSound(soundToPlay);
+        }
+        
+        // Set volume then play
+        await soundToPlay.setVolumeAsync(volume);
+        await soundToPlay.playAsync();
+        setIsPlaying(true);
+        
+        // Add to playing sounds set for UI highlighting
+        setPlayingSounds(prev => {
+          const updated = new Set(prev);
+          updated.add(soundName);
+          return updated;
+        });
+        
+        // Save last played sound
+        await AsyncStorage.setItem('lastPlayedSound', soundName);
+        
+        // Start timer if enabled
+        if (timerEnabled) {
+          setTimeRemaining(timer * 60);
+        }
+      } catch (e) {
+        console.log(`Error playing sound ${soundName}:`, e);
       }
     } catch (error) {
-      console.error(`Error playing sound ${soundName}:`, error);
+      console.error('Error playing sound:', error);
     }
   };
 
+  // Function to stop the sound
   const stopSound = async () => {
-    if (sound) {
-      await sound.stopAsync();
+    try {
+      if (sound) {
+        // Check if sound is loaded before stopping
+        const status = await sound.getStatusAsync();
+        if (status.isLoaded) {
+          await sound.stopAsync();
+        }
+        // Don't unload - just stop it for quicker restart
+        // sound.unloadAsync();
+        setIsPlaying(false);
+        setPlayingSounds(new Set()); // Clear all playing sounds
+        setTimeRemaining(null);
+      }
+    } catch (error) {
+      console.error('Error stopping sound:', error);
+      // Force reset state in case of error
       setIsPlaying(false);
-      setTimeRemaining(null);
+      setPlayingSounds(new Set());
+      setSound(null);
     }
   };
 
-  const togglePlayPause = () => {
-    if (isPlaying) {
-      stopSound();
-    } else if (currentSound) {
-      playSound(currentSound);
+  const togglePlayPause = async () => {
+    try {
+      if (isPlaying) {
+        // Stop all playing sounds
+        for (const playingSoundName of [...playingSounds]) {
+          const soundToStop = soundObjectCache.get(playingSoundName);
+          if (soundToStop) {
+            try {
+              const status = await soundToStop.getStatusAsync();
+              if (status.isLoaded) {
+                await soundToStop.stopAsync();
+              }
+            } catch (e) {
+              // Ignore errors on individual sounds
+            }
+          }
+        }
+        // Clear playing sounds state
+        setPlayingSounds(new Set());
+        setIsPlaying(false);
+        setTimeRemaining(null);
+      } else if (currentSound) {
+        // Just play the current sound
+        await playSound(currentSound);
+      }
+    } catch (error) {
+      console.error('Error toggling play/pause:', error);
+      // Reset state if there's an error
+      setIsPlaying(false);
     }
   };
 
-  const changeVolume = async (value: number) => {
-    setVolume(value);
-    if (sound) {
-      await sound.setVolumeAsync(value);
+  const changeVolume = async (newVolume: number) => {
+    try {
+      setVolume(newVolume);
+      
+      if (sound) {
+        await sound.setVolumeAsync(newVolume);
+      }
+      
+      // Save the new volume
+      await AsyncStorage.setItem('soundVolume', newVolume.toString());
+    } catch (error) {
+      console.error('Error changing volume:', error);
     }
-    await AsyncStorage.setItem('soundVolume', value.toString());
   };
 
-  const toggleTimer = (value: boolean) => {
-    setTimerEnabled(value);
-    if (value && isPlaying) {
+  const toggleTimer = () => {
+    setTimerEnabled(!timerEnabled);
+    
+    if (!timerEnabled && isPlaying) {
+      // Timer just enabled and sound is playing, start countdown
       setTimeRemaining(timer * 60);
-    } else {
+    } else if (timerEnabled) {
+      // Timer disabled, cancel countdown
       setTimeRemaining(null);
     }
   };
 
-  const changeTimer = async (value: number) => {
-    setTimer(value);
-    if (timerEnabled && isPlaying) {
-      setTimeRemaining(value * 60);
+  const changeTimer = async (newTimer: number) => {
+    try {
+      setTimer(newTimer);
+      
+      // Save the new timer setting
+      await AsyncStorage.setItem('soundTimer', newTimer.toString());
+      
+      // Update the countdown if timer is active
+      if (timerEnabled && isPlaying) {
+        setTimeRemaining(newTimer * 60);
+      }
+    } catch (error) {
+      console.error('Error changing timer:', error);
     }
-    await AsyncStorage.setItem('soundTimer', value.toString());
   };
 
-  // Handle sound item press - play or stop the sound
-  const handleSoundPress = (soundName: string) => {
-    if (currentSound === soundName && isPlaying) {
-      stopSound();
-    } else {
-      playSound(soundName);
-    }
-  };
+  // Add this new function to handle app state changes
+  useEffect(() => {
+    // Handle app state changes (background/foreground)
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current === 'active' && nextAppState.match(/inactive|background/)) {
+        // App is going to background
+        console.log('App going to background - ensuring sounds continue');
+        
+        // Ensure audio session is properly configured for background
+        Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldDuckAndroid: true,
+          interruptionModeIOS: 1,
+          interruptionModeAndroid: 1,
+        });
+      }
+      
+      appState.current = nextAppState;
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, []);
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.soundGrid}>
-          {sounds.map((item, index) => (
+          {sounds.map(item => (
             <TouchableOpacity
               key={item.id}
               style={[
                 styles.soundItem,
-                currentSound === item.name && isPlaying && styles.activeSoundItem
+                playingSounds.has(item.name) && styles.activeSoundItem
               ]}
-              onPress={() => handleSoundPress(item.name)}
+              disabled={loading}
+              onPress={() => playSound(item.name)}
             >
               <View style={[
                 styles.soundIconContainer,
-                currentSound === item.name && isPlaying && styles.activeSoundIconContainer
+                playingSounds.has(item.name) && styles.activeSoundIconContainer
               ]}>
-                <Ionicons 
-                  name={item.icon as any} 
-                  size={28}
-                  color={currentSound === item.name && isPlaying ? "#fff" : "#0A84FF"} 
-                />
-                {currentSound === item.name && isPlaying && (
+                <Ionicons name={item.icon as any} size={24} color={playingSounds.has(item.name) ? '#fff' : '#999'} />
+                {playingSounds.has(item.name) && (
                   <View style={styles.playingIndicator}>
-                    <Ionicons name="volume-high" size={10} color="#fff" />
+                    <Ionicons name="play" size={10} color="#fff" />
                   </View>
                 )}
               </View>
               <Text style={[
                 styles.soundName,
-                currentSound === item.name && isPlaying && styles.activeSoundName
+                playingSounds.has(item.name) && styles.activeSoundName
               ]}>
                 {item.name}
               </Text>
@@ -318,13 +530,14 @@ export default function SoundsScreen() {
             )}
             
             <TouchableOpacity 
-              style={styles.playButton} 
+              style={styles.playButton}
               onPress={togglePlayPause}
+              disabled={!currentSound}
             >
-              <Ionicons 
-                name={isPlaying ? "pause-circle" : "play-circle"} 
-                size={80} 
-                color="#0A84FF" 
+              <Ionicons
+                name={isPlaying ? "pause-circle" : "play-circle"}
+                size={60}
+                color="#0A84FF"
               />
             </TouchableOpacity>
             
@@ -336,6 +549,7 @@ export default function SoundsScreen() {
                   onValueChange={toggleTimer}
                   trackColor={{ false: '#444', true: '#0A84FF' }}
                   thumbColor={timerEnabled ? '#fff' : '#f4f3f4'}
+                  disabled={loading}
                 />
               </View>
               
@@ -352,10 +566,17 @@ export default function SoundsScreen() {
                     minimumTrackTintColor="#0A84FF"
                     maximumTrackTintColor="#444"
                     thumbTintColor="#0A84FF"
+                    disabled={loading}
                   />
                 </View>
               )}
             </View>
+          </View>
+        )}
+        
+        {loading && (
+          <View style={styles.loadingText}>
+            <Text style={{color: '#666', fontSize: 14}}>Loading...</Text>
           </View>
         )}
       </ScrollView>
@@ -463,5 +684,10 @@ const styles = StyleSheet.create({
   slider: {
     width: '100%',
     height: 36,
+  },
+  loadingText: {
+    alignItems: 'center',
+    marginTop: 10,
+    marginBottom: 10,
   },
 }); 
