@@ -55,7 +55,7 @@ const activateBackgroundAudio = async () => {
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       staysActiveInBackground: true,
-      interruptionModeIOS: 1, // DoNotMix
+      interruptionModeIOS: 2, // DuckOthers - ensures alarm can be heard
       shouldDuckAndroid: true,
       interruptionModeAndroid: 1, // DoNotMix
     });
@@ -63,7 +63,10 @@ const activateBackgroundAudio = async () => {
     // Create silent looping audio (using a built-in sound for simplicity)
     const { sound } = await Audio.Sound.createAsync(
       require('../assets/sounds/silence.caf'), // Make sure this file exists!
-      { volume: 0.01, isLooping: true }
+      { 
+        volume: 0.0, // Completely silent
+        isLooping: true,
+      }
     );
     
     await sound.playAsync();

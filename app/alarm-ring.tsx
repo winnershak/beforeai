@@ -179,20 +179,20 @@ export default function AlarmRingScreen() {
         const soundName = params.sound as string || 'beacon';
         const volume = Number(params.soundVolume) || 1;
         
-        // Use the AlarmSoundModule directly
-        console.log(`Using AlarmSoundModule to play: ${soundName} at volume ${volume}`);
+        // Start vibration pattern if enabled
+        startVibration();
         
-        try {
-          const success = await AlarmSoundModule.playAlarmSound(soundName.toLowerCase(), volume);
-          console.log('AlarmSoundModule playback started:', success);
-          setIsPlaying(true);
-        } catch (error) {
-          console.error('Error with AlarmSoundModule playback:', error);
-          
-          // Show error state in UI
-          setErrorMessage('Failed to play alarm sound');
-          // Fall back to vibration
-          Vibration.vibrate([500, 500], true);
+        // Let the native module handle all audio configuration
+        console.log('Using native module for alarm audio');
+        
+        // Use the native module directly
+        if (Platform.OS === 'ios') {
+          console.log('Using AlarmSoundModule to play:', soundName, 'at volume', volume);
+          AlarmSoundModule.playAlarmSound(soundName, volume)
+            .catch((error: Error) => {
+              console.error('Error with AlarmSoundModule playback:', error);
+              // Fall back to vibration only
+            });
         }
       } catch (error) {
         console.error('Error loading and playing alarm sound:', error);

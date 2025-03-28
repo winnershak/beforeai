@@ -98,14 +98,9 @@ class AlarmSound: NSObject {
     
     DispatchQueue.main.async {
       do {
-        // VERY aggressive setup: ensure the audio session is active right now
-        try AVAudioSession.sharedInstance().setCategory(
-          .playback,
-          mode: .default,
-          options: [.defaultToSpeaker]
-        )
-        try AVAudioSession.sharedInstance().setActive(true, options: [])
-        print("🔊 AVAudioSession aggressively activated with speaker output.")
+        // CRITICAL FIX: Don't change the audio session at all!
+        // Use the existing audio session created by the silent background player
+        print("🔊 Using existing audio session from background player")
 
         // Maintain case-insensitive file lookup
         let normalizedSoundName = soundName.lowercased()
@@ -130,13 +125,19 @@ class AlarmSound: NSObject {
           throw NSError(domain: "AlarmError", code: 3, userInfo: [NSLocalizedDescriptionKey: "AVAudioPlayer init failed"])
         }
 
-        player.volume = 1.0 // Start at max volume
+        // Maximum volume for alarm
+        player.volume = 1.0
+        
+        // Make sure the player is prepared before playing
+        if !player.prepareToPlay() {
+          throw NSError(domain: "AlarmError", code: 4, userInfo: [NSLocalizedDescriptionKey: "Failed to prepare audio player"])
+        }
+        
         player.numberOfLoops = -1
-        player.prepareToPlay()
         player.play()
 
         capturedResolver(true)
-        print("✅ Alarm sound playing aggressively: \(soundName).caf")
+        print("✅ Alarm sound playing: \(soundName).caf")
       } catch {
         capturedRejecter("error", "Playback failed: \(error.localizedDescription)", error)
         print("❌ Playback failed: \(error.localizedDescription)")
@@ -160,10 +161,8 @@ class AlarmSound: NSObject {
       self.audioPlayer = nil
       
       do {
-        // Deactivate audio session
-        try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         capturedResolver(true)
-        print("✅ Alarm sound stopped, audio session deactivated.")
+        print("✅ Alarm sound stopped, keeping audio session active.")
       } catch {
         capturedRejecter("error", "Audio session deactivate failed: \(error.localizedDescription)", error)
         print("❌ Audio session deactivate failed: \(error.localizedDescription)")

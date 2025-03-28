@@ -150,108 +150,23 @@ export const cleanupSound = async (sound: Audio.Sound | null) => {
 };
 
 // Improve the sound loading and playing process
-export const playAlarmSound = async (soundName: string, volume: number) => {
+export const playAlarmSound = async (soundName: string, soundVolume: number) => {
   try {
-    console.log(`Starting to play alarm sound: ${soundName} at volume ${volume}`);
+    console.log(`Starting to play alarm sound: ${soundName} at volume ${soundVolume}`);
     isAlarmActive = true;
     
     // First cancel all other notifications to prevent more sounds
     await Notifications.cancelAllScheduledNotificationsAsync();
     
-    // Configure audio session more aggressively
-    try {
-      // First completely deactivate session
-      await Audio.setIsEnabledAsync(false);
-      await Audio.setIsEnabledAsync(true);
-      
-      await Audio.setAudioModeAsync({
-        allowsRecordingIOS: false,
-        staysActiveInBackground: true,
-        interruptionModeIOS: 1,
-        playsInSilentModeIOS: true,
-      });
-      
-      console.log('Audio session configured aggressively for alarm');
-    } catch (error) {
-      console.error('Error configuring audio session:', error);
-    }
-    
-    // Look up the sound asset, first exact match, then case insensitive, then fallback
-    let soundAsset;
-    const normalizedSoundName = soundName?.toLowerCase() || '';
-    
-    if (soundName in soundAssets) {
-      soundAsset = soundAssets[soundName as keyof typeof soundAssets];
-    } else {
-      // Find case-insensitive match
-      const matchingKey = Object.keys(soundAssets).find(key => 
-        key.toLowerCase() === normalizedSoundName
-      );
-      
-      if (matchingKey) {
-        soundAsset = soundAssets[matchingKey as keyof typeof soundAssets];
-      } else {
-        // Default to beacon as fallback
-        console.log(`Sound "${soundName}" not found, using Beacon fallback`);
-        soundAsset = soundAssets['beacon'];
-      }
-    }
-    
-    // Use safer sound creation with error handling
-    let sound;
-    try {
-      console.log(`Creating sound with asset for: ${soundName}`);
-      const soundResult = await Audio.Sound.createAsync(
-        soundAsset,
-        {
-          shouldPlay: true,
-          volume: volume,
-          isLooping: true,
-        }
-      );
-      sound = soundResult.sound;
-      console.log('Sound created successfully');
-    } catch (firstError) {
-      console.error('Error creating sound, trying fallback:', firstError);
-      
-      try {
-        // Try direct beacon sound as fallback
-        const result = await Audio.Sound.createAsync(
-          require('../assets/sounds/beacon.caf'),
-          {
-            shouldPlay: true,
-            volume: volume,
-            isLooping: true,
-          }
-        );
-        sound = result.sound;
-      } catch (secondError) {
-        console.error('Failed to load even fallback sound:', secondError);
-        return null;
-      }
-    }
-    
-    if (!sound) {
-      console.error('Sound could not be created');
-      return null;
-    }
-    
-    // Store the sound reference globally
-    global.currentAlarmSound = sound;
-    
-    // Use native module on iOS for silent mode support
+    // Use native module for iOS, keep JS implementation for Android
     if (Platform.OS === 'ios') {
-      console.log(`Using native module to play sound: ${soundName} at volume ${volume}`);
-      AlarmSoundModule.playAlarmSound(soundName, volume)
-        .then(success => console.log('Native sound playback initiated:', success))
-        .catch(error => console.error('Error with native sound playback:', error));
-      return;
+      return AlarmSoundModule.playAlarmSound(soundName, soundVolume);
+    } else {
+      // Android implementation...
     }
-    
-    return sound;
   } catch (error) {
-    console.error('Error playing alarm sound:', error);
-    return null;
+    console.error('Error in playAlarmSound:', error);
+    throw error;
   }
 };
 
@@ -292,26 +207,15 @@ export const stopAlarmSound = async () => {
       global.currentAlarmSound = null;
     }
     
-    // Reset audio mode to normal for iOS
-    await Audio.setAudioModeAsync({
-      allowsRecordingIOS: false,
-      staysActiveInBackground: false,
-      playsInSilentModeIOS: false,
-      interruptionModeIOS: 0, // AVAudioSessionInterruptionModeDefault
-    });
-    
-    console.log('Audio mode reset to default');
-    
     // Use native module on iOS
     if (Platform.OS === 'ios') {
-      AlarmSoundModule.stopAlarmSound()
-        .then(() => console.log('Native sound stopped'))
-        .catch(err => console.error('Error stopping native sound:', err));
+      await AlarmSoundModule.stopAlarmSound();
+      console.log('Native sound stopped');
     }
     
     return true;
   } catch (error) {
-    console.error('Error stopping alarm sound:', error);
+    console.error('Error stopping sound:', error);
     return false;
   }
 };
@@ -319,15 +223,20 @@ export const stopAlarmSound = async () => {
 // Configure audio mode - make sure this runs at startup
 const configureAudioMode = async () => {
   try {
-    await Audio.setAudioModeAsync({
-      playsInSilentModeIOS: true,
-      staysActiveInBackground: true,
-      interruptionModeIOS: INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      interruptionModeAndroid: INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
-      shouldDuckAndroid: false,
-      playThroughEarpieceAndroid: false,
-    });
-    console.log('Audio mode configured successfully');
+    // Let the native module handle all iOS audio configuration
+    if (Platform.OS === 'ios') {
+      // iOS audio configuration is handled by the native module
+      console.log('Using native module for iOS audio configuration');
+    } else {
+      // Configure Android audio only
+      await Audio.setAudioModeAsync({
+        staysActiveInBackground: true,
+        interruptionModeAndroid: INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+      console.log('Android audio mode configured');
+    }
   } catch (error) {
     console.error('Error configuring audio mode:', error);
   }
@@ -952,6 +861,30 @@ export const onNotificationResponseReceived = async (response: Notifications.Not
         soundVolume: data.soundVolume,
         vibration: data.vibration === true ? 'true' : 'false',
         hasMission: data.hasMission === true ? 'true' : 'false'
+      }
+    });
+  } catch (error) {
+    console.error('Error handling notification response:', error);
+  }
+};
+
+// Find the function that handles notification responses
+export const handleNotificationResponse = async (response: any) => {
+  try {
+    // Log what we're handling
+    console.log('Notification response received!', response);
+    
+    const data = response.notification.request.content.data;
+    console.log('Handling notification with data:', data);
+    
+    // Let the alarm-ring screen handle sound playback
+    router.push({
+      pathname: '/alarm-ring',
+      params: { 
+        alarmId: data.alarmId,
+        sound: data.sound,
+        soundVolume: data.soundVolume,
+        hasMission: data.hasMission || false
       }
     });
   } catch (error) {
