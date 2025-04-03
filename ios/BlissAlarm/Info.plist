@@ -51,9 +51,17 @@
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
-      <false/>
+      <true/>
       <key>NSAllowsLocalNetworking</key>
       <true/>
+      <key>NSExceptionDomains</key>
+      <dict>
+        <key>localhost</key>
+        <dict>
+          <key>NSExceptionAllowsInsecureHTTPLoads</key>
+          <true/>
+        </dict>
+      </dict>
     </dict>
     <key>NSCameraUsageDescription</key>
     <string>$(PRODUCT_NAME) needs access to your Camera.</string>
@@ -102,5 +110,12 @@
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Bliss Alarm needs access to the local network for development and connecting to devices</string>
+    <key>NSBonjourServices</key>
+    <array>
+      <string>_expo._tcp</string>
+      <string>_http._tcp</string>
+    </array>
   </dict>
 </plist>

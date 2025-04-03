@@ -37,6 +37,9 @@
 		DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5622D8BB373005F15FF /* DeviceActivity.framework */; };
 		DC55B0192D94C553004436B8 /* AlarmSound.m in Sources */ = {isa = PBXBuildFile; fileRef = DC55B0162D94C553004436B8 /* AlarmSound.m */; };
 		DC55B01B2D94C6A7004436B8 /* AlarmSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */; };
+		DC55B01E2D9637FB004436B8 /* SystemVolumeControl.m in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */; };
+		DC55B01F2D9637FB004436B8 /* SystemVolumeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */; };
+		DC55B0212D96385A004436B8 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC55B0202D96385A004436B8 /* MediaPlayer.framework */; };
 		DCACC2A42D8F7FC0004DD610 /* test.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2A32D8F7FC0004DD610 /* test.mp3 */; };
 		DCACC2C72D8FCCE2004DD610 /* chimes.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C22D8FCCE2004DD610 /* chimes.caf */; };
 		DCACC2C82D8FCCE2004DD610 /* circuit.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C32D8FCCE2004DD610 /* circuit.caf */; };
@@ -93,6 +96,9 @@
 		DC07F5622D8BB373005F15FF /* DeviceActivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeviceActivity.framework; path = System/Library/Frameworks/DeviceActivity.framework; sourceTree = SDKROOT; };
 		DC55B0162D94C553004436B8 /* AlarmSound.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AlarmSound.m; sourceTree = "<group>"; };
 		DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmSound.swift; sourceTree = "<group>"; };
+		DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SystemVolumeControl.m; sourceTree = "<group>"; };
+		DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVolumeControl.swift; sourceTree = "<group>"; };
+		DC55B0202D96385A004436B8 /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
 		DCACC2A32D8F7FC0004DD610 /* test.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = test.mp3; sourceTree = "<group>"; };
 		DCACC2C12D8FCCE2004DD610 /* beacon.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = beacon.caf; sourceTree = "<group>"; };
 		DCACC2C22D8FCCE2004DD610 /* chimes.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chimes.caf; sourceTree = "<group>"; };
@@ -119,6 +125,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DC55B0212D96385A004436B8 /* MediaPlayer.framework in Frameworks */,
 				DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */,
 				DC07F5612D8BB36D005F15FF /* ManagedSettings.framework in Frameworks */,
 				DC07F5602D8BB363005F15FF /* FamilyControls.framework in Frameworks */,
@@ -180,6 +187,7 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				DC55B0202D96385A004436B8 /* MediaPlayer.framework */,
 				DC07F5622D8BB373005F15FF /* DeviceActivity.framework */,
 				DC07F55F2D8BB363005F15FF /* FamilyControls.framework */,
 				DC07F5582D8BB0F9005F15FF /* ManagedSettings.framework */,
@@ -201,6 +209,8 @@
 			children = (
 				DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */,
 				DC55B0162D94C553004436B8 /* AlarmSound.m */,
+				DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */,
+				DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */,
 				DC07F55E2D8BB2BF005F15FF /* BlissAlarm-Bridging-Header.h */,
 				DC07F55A2D8BB29E005F15FF /* ScreenTimeBridge.m */,
 				DC07F55B2D8BB29E005F15FF /* ScreenTimeBridge.swift */,
@@ -499,6 +509,8 @@
 				DC07F55C2D8BB29E005F15FF /* ScreenTimeBridge.m in Sources */,
 				DC07F55D2D8BB29E005F15FF /* ScreenTimeBridge.swift in Sources */,
 				DC55B0192D94C553004436B8 /* AlarmSound.m in Sources */,
+				DC55B01E2D9637FB004436B8 /* SystemVolumeControl.m in Sources */,
+				DC55B01F2D9637FB004436B8 /* SystemVolumeControl.swift in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,

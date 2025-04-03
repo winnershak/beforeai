@@ -391,28 +391,19 @@ Notifications.setNotificationHandler({
   },
 });
 
-// Request permissions at app startup
+// Add this function to request permissions only when needed
 export const requestNotificationPermissions = async () => {
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    
-    let finalStatus = existingStatus;
-    
-    // Only ask if permissions have not been determined
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
-    
-    // Save the permission status
-    if (finalStatus === 'granted') {
-      await AsyncStorage.setItem('notificationPermissionGranted', 'true');
-      return true;
-    }
-    
-    return false;
+    const result = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: true,
+        allowSound: true,
+      },
+    });
+    return result.status === 'granted';
   } catch (error) {
-    console.error('Error requesting notification permissions:', error);
+    console.error('Error requesting permissions:', error);
     return false;
   }
 };
@@ -510,6 +501,13 @@ const handleAppStateChange = async (nextAppState: AppStateStatus) => {
 // Update the scheduleAlarmNotification function to create 15 backup notifications
 export const scheduleAlarmNotification = async (alarm: Alarm) => {
   try {
+    // Request permissions only when scheduling an alarm
+    const hasPermission = await requestNotificationPermissions();
+    if (!hasPermission) {
+      console.log('No notification permissions');
+      return null;
+    }
+    
     // Generate a unique notification ID for this alarm if not provided
     const notificationId = alarm.id ? `notification_${alarm.id}_${Date.now()}` : `notification_${Date.now()}`;
     console.log(`Creating notification with unique ID: ${notificationId}`);
@@ -692,19 +690,6 @@ export const setupNotificationHandlers = async () => {
     }),
   });
 
-  // Add this code to request permissions with sound focus
-  try {
-    await Notifications.requestPermissionsAsync({
-      ios: {
-        allowAlert: true,
-        allowBadge: true,
-        allowSound: true,
-      },
-    });
-  } catch (error) {
-    console.error('Error requesting notification permissions:', error);
-  }
-
   // Add notification received handler
   Notifications.addNotificationReceivedListener((notification) => {
     console.log('Notification received!', notification);
@@ -719,12 +704,9 @@ export const setupNotificationHandlers = async () => {
   console.log('Notification handlers set up successfully');
 };
 
-// Update initializeAlarmSystem to include the notification handlers setup
-export const initializeAlarmSystem = async () => {
-  // Request permissions
-  await requestNotificationPermissions();
-  
-  // Set up notification handlers
+// Add a separation between notification setup and permission request
+export const initializeAlarmSystem = async (skipPermissions = false) => {
+  // Set up notification handlers without any permission requests
   await setupNotificationHandlers();
   
   // Configure audio
@@ -733,15 +715,18 @@ export const initializeAlarmSystem = async () => {
   // Set up app state listener
   setupAppStateListener();
   
-  // Register background task
-  await registerBackgroundAlarmTask();
+  // Only register background tasks when explicitly requested
+  if (skipPermissions === false) { // Be explicit to ensure it's truly false
+    await registerBackgroundAlarmTask();
+  }
   
-  console.log('Alarm system initialized');
+  console.log('Alarm system initialized without permission requests');
 };
 
-// Add this to your app.tsx or index.js to initialize the alarm system
+// The app should call this at startup
 export const setupAlarms = () => {
-  initializeAlarmSystem().catch(error => {
+  // Always skip permissions at startup
+  initializeAlarmSystem(true).catch(error => {
     console.error('Error initializing alarm system:', error);
   });
 };

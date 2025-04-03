@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
+import { useFocusEffect } from '@react-navigation/native';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -44,28 +45,37 @@ export default function AppBlockScreen() {
   
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
-  // Load saved schedules
-  useEffect(() => {
-    const loadSchedules = async () => {
-      try {
-        const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
-        if (savedSchedules) {
-          const parsed = JSON.parse(savedSchedules);
-          // Convert string dates back to Date objects
-          const schedules = parsed.map((schedule: any) => ({
-            ...schedule,
-            startTime: new Date(schedule.startTime),
-            endTime: new Date(schedule.endTime)
-          }));
-          setSchedules(schedules);
+  // Load schedules whenever the screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadSchedules = async () => {
+        try {
+          console.log("🔄 Reloading schedules from storage");
+          const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
+          if (savedSchedules) {
+            const parsed = JSON.parse(savedSchedules);
+            // Convert string dates back to Date objects
+            const schedules = parsed.map((schedule: any) => ({
+              ...schedule,
+              startTime: new Date(schedule.startTime),
+              endTime: new Date(schedule.endTime)
+            }));
+            setSchedules(schedules);
+          } else {
+            // If no schedules, set empty array
+            setSchedules([]);
+          }
+        } catch (error) {
+          console.error('Error loading app block schedules:', error);
         }
-      } catch (error) {
-        console.error('Error loading app block schedules:', error);
-      }
-    };
-    
-    loadSchedules();
-  }, []);
+      };
+      
+      loadSchedules();
+      
+      // No cleanup needed
+      return () => {};
+    }, [])
+  );
   
   // Save schedules when they change
   useEffect(() => {
@@ -157,6 +167,21 @@ export default function AppBlockScreen() {
   
   // Edit an existing schedule
   const editSchedule = (index: number) => {
+    // Get the schedule
+    const schedule = schedules[index];
+    
+    // If the schedule is active, go to breathe page
+    if (schedule.isActive) {
+      // Store the current schedule ID for the breathe page to use
+      AsyncStorage.setItem('currentBlockScheduleId', schedule.id)
+        .then(() => {
+          router.push('../breathe');
+        })
+        .catch(err => console.error('Error saving current schedule ID:', err));
+      return;
+    }
+    
+    // Otherwise, go to edit page as normal
     router.push(`/appblock/edit?id=${schedules[index].id}`);
   };
   
@@ -190,6 +215,16 @@ export default function AppBlockScreen() {
       newDays[dayIndex] = !newDays[dayIndex];
       setCurrentSchedule({...currentSchedule, daysOfWeek: newDays});
     }
+  };
+  
+  // Toggle a schedule's active state
+  const toggleSchedule = (index: number) => {
+    const newSchedules = [...schedules];
+    newSchedules[index].isActive = true; // Always set to active
+    setSchedules(newSchedules);
+    
+    // Apply the schedule if it's now active
+    applyAppBlockSchedule(newSchedules[index]);
   };
   
   // Add this function to apply the app blocking schedule
@@ -377,23 +412,13 @@ export default function AppBlockScreen() {
               <View style={styles.scheduleHeader}>
                 <View style={styles.scheduleNameContainer}>
                   <View style={styles.activeIndicator}>
-                    <View 
-                      style={[
-                        styles.activeIndicatorDot, 
-                        schedule.isActive ? styles.activeIndicatorDotOn : styles.activeIndicatorDotOff
-                      ]} 
-                    />
+                    <View style={[
+                      styles.activeIndicatorDot, 
+                      styles.activeIndicatorDotOn
+                    ]} />
                   </View>
                   <Text style={styles.scheduleName}>{schedule.name}</Text>
                 </View>
-                
-                <Switch
-                  value={schedule.isActive}
-                  onValueChange={() => toggleScheduleActive(index)}
-                  trackColor={{ false: '#767577', true: '#0A84FF' }}
-                  thumbColor={schedule.isActive ? '#FFFFFF' : '#f4f3f4'}
-                  ios_backgroundColor="#3e3e3e"
-                />
               </View>
               
               <View style={styles.scheduleDetails}>
@@ -563,9 +588,6 @@ const styles = StyleSheet.create({
   },
   activeIndicatorDotOn: {
     backgroundColor: '#34C759',
-  },
-  activeIndicatorDotOff: {
-    backgroundColor: '#8E8E93',
   },
   scheduleName: {
     fontSize: 18,

@@ -262,17 +262,25 @@ export default function SoundsScreen() {
         return cachedSound;
       }
 
-      // Don't unload existing sounds - we want multiple to play
-
       const soundAsset = soundAssets[soundName];
       if (!soundAsset) {
         console.error(`Sound asset not found for ${soundName}`);
         return null;
       }
       
+      // Create the sound with progressive loading (isStreaming: true)
       const { sound: newSound } = await Audio.Sound.createAsync(
         soundAsset,
-        { volume, isLooping: true } // Set sounds to loop continuously
+        { volume, isLooping: true, progressUpdateIntervalMillis: 100 }, // Set sounds to loop continuously
+        // This onPlaybackStatusUpdate allows us to start playing before fully loaded
+        (status) => {
+          if (status.isLoaded && !status.isPlaying && status.isBuffering) {
+            // Sound is buffering enough to start playing
+            console.log(`${soundName} ready to start playing`);
+          }
+        },
+        // Enable streaming mode for progressive loading
+        true
       );
       
       // Cache for future use
@@ -314,6 +322,16 @@ export default function SoundsScreen() {
       // Set current sound name immediately for UI responsiveness
       setCurrentSound(soundName);
       
+      // Set the UI state to playing immediately for perceived performance
+      setIsPlaying(true);
+      
+      // Add to playing sounds set for UI highlighting instantly
+      setPlayingSounds(prev => {
+        const updated = new Set(prev);
+        updated.add(soundName);
+        return updated;
+      });
+      
       // Load the sound if needed
       let soundToPlay = soundObjectCache.get(soundName);
       
@@ -324,6 +342,13 @@ export default function SoundsScreen() {
         // Verify sound loaded properly
         if (!soundToPlay) {
           console.log(`Could not load sound: ${soundName}`);
+          // Rollback UI states since sound failed to load
+          setIsPlaying(false);
+          setPlayingSounds(prev => {
+            const updated = new Set(prev);
+            updated.delete(soundName);
+            return updated;
+          });
           return;
         }
       }
@@ -337,14 +362,6 @@ export default function SoundsScreen() {
         // Set volume then play
         await soundToPlay.setVolumeAsync(volume);
         await soundToPlay.playAsync();
-        setIsPlaying(true);
-        
-        // Add to playing sounds set for UI highlighting
-        setPlayingSounds(prev => {
-          const updated = new Set(prev);
-          updated.add(soundName);
-          return updated;
-        });
         
         // Save last played sound
         await AsyncStorage.setItem('lastPlayedSound', soundName);
@@ -355,9 +372,23 @@ export default function SoundsScreen() {
         }
       } catch (e) {
         console.log(`Error playing sound ${soundName}:`, e);
+        // Rollback UI states if play fails
+        setIsPlaying(false);
+        setPlayingSounds(prev => {
+          const updated = new Set(prev);
+          updated.delete(soundName);
+          return updated;
+        });
       }
     } catch (error) {
       console.error('Error playing sound:', error);
+      // Rollback UI states if anything fails
+      setIsPlaying(false);
+      setPlayingSounds(prev => {
+        const updated = new Set(prev);
+        updated.delete(soundName);
+        return updated;
+      });
     }
   };
 

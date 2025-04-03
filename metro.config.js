@@ -20,4 +20,24 @@ config.resolver.blockList = [
   /node_modules\/expo-sensors\/.*/ // Block the original expo-sensors
 ];
 
+// Fix for iOS 18 deep linking issues
+config.server = {
+  ...config.server,
+  enhanceMiddleware: (middleware) => {
+    return (req, res, next) => {
+      // Fix URL handling for iOS 18
+      if (req.url.includes('&platform=ios')) {
+        req.url = req.url.replace('&platform=ios', '');
+      }
+      return middleware(req, res, next);
+    };
+  },
+};
+
+// Ensure proper handling of assets
+config.resolver = {
+  ...config.resolver,
+  assetExts: [...config.resolver.assetExts, 'caf'],
+};
+
 module.exports = config;

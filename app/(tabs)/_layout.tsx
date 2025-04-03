@@ -44,31 +44,6 @@ export default function TabLayout() {
     checkPremiumAccess();
   }, []);
 
-  useEffect(() => {
-    async function setupNotifications() {
-      try {
-        const { status } = await Notifications.requestPermissionsAsync();
-        if (status !== 'granted') {
-          console.log('Notification permission not granted');
-          return;
-        }
-
-        const token = await Notifications.getExpoPushTokenAsync({
-          projectId: "d43d4d10-e1e4-4b3e-8fbf-eb5981d8c9d5" // Replace with your project ID
-        });
-        console.log('Expo push token:', token.data);
-      } catch (error) {
-        console.error('Error setting up notifications:', error);
-      }
-    }
-
-    setupNotifications();
-  }, []);
-
-  useEffect(() => {
-    registerBackgroundTask().catch(console.error);
-  }, []);
-
   if (isLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>

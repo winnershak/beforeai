@@ -261,6 +261,60 @@ export default function EditScheduleScreen() {
     }
   };
   
+  // Function to confirm schedule deletion
+  const confirmDelete = () => {
+    Alert.alert(
+      'Delete Schedule',
+      'Are you sure you want to delete this schedule?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Get existing schedules, filter out the current one
+              const newSchedules = schedules.filter(s => s.id !== schedule.id);
+              
+              // Update AsyncStorage
+              await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(newSchedules));
+              
+              // Remove from iOS Screen Time
+              if (Platform.OS === 'ios' && ScreenTimeBridge) {
+                try {
+                  // Create properly formatted data matching what's in applyAppBlockSchedule function
+                  const deleteData = {
+                    id: schedule.id,
+                    startTime: schedule.startTime.toISOString(),
+                    endTime: schedule.endTime.toISOString(),
+                    blockedApps: schedule.blockedApps, // Keep original arrays
+                    blockedCategories: schedule.blockedCategories,
+                    blockedWebDomains: schedule.blockedWebDomains,
+                    daysOfWeek: schedule.daysOfWeek,
+                    isActive: false // Just set to inactive
+                  };
+                
+                  console.log("🗑️ Removing schedule from Screen Time:", schedule.id);
+                  await ScreenTimeBridge.applyAppBlockSchedule(deleteData);
+                } catch (error) {
+                  console.error("Error disabling schedule in Screen Time:", error);
+                }
+              }
+              
+              // Navigate back
+              router.back();
+            } catch (err) {
+              console.error('Error deleting schedule:', err);
+            }
+          }
+        }
+      ]
+    );
+  };
+  
   return (
     <SafeAreaView style={styles.safeArea}>
       <Stack.Screen 
@@ -365,13 +419,22 @@ export default function EditScheduleScreen() {
         <View style={styles.spacer} />
       </ScrollView>
       
-      <View style={styles.saveButtonContainer}>
-        <TouchableOpacity
+      <View style={styles.stickyButtonContainer}>
+        <TouchableOpacity 
           style={styles.saveButton}
           onPress={saveSchedule}
         >
-          <Text style={styles.saveButtonText}>Save Schedule</Text>
+          <Text style={styles.saveButtonText}>Save</Text>
         </TouchableOpacity>
+        
+        {!isNew && (
+          <TouchableOpacity 
+            style={styles.blackDeleteButton}
+            onPress={confirmDelete}
+          >
+            <Text style={styles.deleteButtonText}>Delete</Text>
+          </TouchableOpacity>
+        )}
       </View>
       
       {(showStartPicker || showEndPicker) && (
@@ -406,6 +469,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
+    padding: 16,
+    paddingBottom: 100, // Add space for sticky buttons
   },
   contentContainer: {
     padding: 16,
@@ -500,26 +565,29 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  saveButtonContainer: {
+  stickyButtonContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    padding: 16,
-    backgroundColor: 'rgba(0,0,0,0.8)',
+    backgroundColor: '#000',
+    paddingVertical: 20,
+    paddingHorizontal: 16,
     borderTopWidth: 1,
-    borderTopColor: '#333',
+    borderTopColor: '#222',
+    zIndex: 10,
   },
   saveButton: {
-    backgroundColor: '#007AFF',
-    borderRadius: 10,
+    backgroundColor: '#0A84FF',
+    borderRadius: 12,
     padding: 16,
     alignItems: 'center',
+    marginBottom: 12,
   },
   saveButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: 'bold',
   },
   spacer: {
     height: 80, // Space for the sticky button
@@ -587,5 +655,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     marginLeft: 4,
+  },
+  blackDeleteButton: {
+    backgroundColor: '#000',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#333',
+  },
+  deleteButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

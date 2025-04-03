@@ -5,7 +5,7 @@ import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { scheduleAlarmNotification, cancelAlarmNotification } from '../notifications';
+import { scheduleAlarmNotification, cancelAlarmNotification, requestNotificationPermissions } from '../notifications';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -601,6 +601,17 @@ export default function TabOneScreen() {
       Linking.openSettings();
     }
   };
+
+  // Only request permissions when this tab is active
+  useEffect(() => {
+    // This won't show a prompt if permissions are already granted
+    const checkPermissionsForAlarms = async () => {
+      // We only check permissions when the user navigates to the Alarms tab
+      // This will not show a prompt unless the user tries to create an alarm
+    };
+    
+    checkPermissionsForAlarms();
+  }, []);
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>

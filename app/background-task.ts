@@ -39,6 +39,7 @@ TaskManager.defineTask(TETRIS_TASK, async () => {
 
 // Function to register all background tasks
 export async function registerBackgroundTask() {
+  // Don't request permissions immediately
   try {
     await BackgroundFetch.registerTaskAsync(ALARM_CHECK_TASK, {
       minimumInterval: 900, // 15 minutes in seconds
@@ -49,19 +50,22 @@ export async function registerBackgroundTask() {
     await BackgroundFetch.registerTaskAsync(REFRESH_TASK, {
       minimumInterval: 3600, // 1 hour in seconds
       stopOnTerminate: false,
-      startOnBoot: true,
+      startOnBoot: false,
     });
     
     await BackgroundFetch.registerTaskAsync(TETRIS_TASK, {
       minimumInterval: 1800, // 30 minutes in seconds
       stopOnTerminate: false,
-      startOnBoot: true,
+      startOnBoot: false,
     });
     
     console.log('Background tasks registered successfully');
-  } catch (err) {
-    console.error('Background task registration failed:', err);
+    return true;
+  } catch (error) {
+    console.error('Error registering background tasks:', error);
+    return false;
   }
 }
 
+// Export without executing
 export default {}; 

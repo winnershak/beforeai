@@ -14,6 +14,9 @@ class AlarmSound: NSObject {
   var volumeStep: Float = 0.05
   var volumeIncreaseInterval: TimeInterval = 1.0  // Increase volume every 1 second
   
+  // Reference to volume control
+  private let volumeControl = SystemVolumeControl()
+  
   @objc
   func configureAudio() {
     // Set the AVAudioSession once at app startup
@@ -98,6 +101,11 @@ class AlarmSound: NSObject {
     
     DispatchQueue.main.async {
       do {
+        // Set system volume to match user's alarm volume setting
+        self.volumeControl.setSystemVolume(volume, 
+                                         resolver: { _ in print("🔊 System volume set to \(volume)") },
+                                         rejecter: { _, _, _ in print("❌ Failed to set system volume") })
+        
         // CRITICAL FIX: Don't change the audio session at all!
         // Use the existing audio session created by the silent background player
         print("🔊 Using existing audio session from background player")
@@ -152,6 +160,12 @@ class AlarmSound: NSObject {
     let capturedRejecter = rejecter
     
     DispatchQueue.main.async {
+      // Restore original system volume
+      self.volumeControl.restoreOriginalVolume(
+        { _ in print("🔊 Original system volume restored") },
+        rejecter: { _, _, _ in print("❌ Failed to restore system volume") }
+      )
+      
       // Cancel any timers
       self.timer?.invalidate()
       self.timer = nil

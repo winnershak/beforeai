@@ -77,6 +77,8 @@ TaskManager.defineTask('ALARM_TASK', async ({ data, error }) => {
 });
 
 export default function AppLayout() {
+  console.log('Loading root layout...');
+
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
@@ -94,6 +96,7 @@ export default function AppLayout() {
   const [isPremium, setIsPremium] = useState(false);
 
   useEffect(() => {
+    console.log('Root layout mounted');
     if (loaded) {
       SplashScreen.hideAsync();
     }
@@ -150,7 +153,6 @@ export default function AppLayout() {
     });
 
     // Initial setup
-    requestNotificationPermissions();
     registerBackgroundTask();
 
     return () => {
@@ -242,41 +244,6 @@ export default function AppLayout() {
 
     setup();
   }, []);
-
-  useEffect(() => {
-    const checkNotificationPermissions = async () => {
-      try {
-        // Check if user is premium or has completed quiz
-        const isPremium = await AsyncStorage.getItem('isPremium');
-        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-        
-        // Only check permissions if user has completed onboarding
-        if (isPremium === 'true' || quizCompleted === 'true') {
-          const { status } = await Notifications.getPermissionsAsync();
-          
-          // Only redirect if permissions not granted AND not in quiz flow
-          if (status !== 'granted' && initialRoute !== 'quiz' && initialRoute !== null) {
-            // Check if we've already shown the permission screen recently
-            const lastPrompt = await AsyncStorage.getItem('lastPermissionPrompt');
-            const now = Date.now();
-            
-            // Only show once per day max
-            if (!lastPrompt || (now - parseInt(lastPrompt)) > 86400000) {
-              await AsyncStorage.setItem('lastPermissionPrompt', now.toString());
-              router.replace('/screens/NotificationPermissionScreen');
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error checking notification permissions:', error);
-      }
-    };
-    
-    // Only run this check if the app is fully ready
-    if (isReady && initialRoute !== null) {
-      checkNotificationPermissions();
-    }
-  }, [isReady, initialRoute]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
@@ -385,13 +352,13 @@ export default function AppLayout() {
 
   // Add this effect to handle navigation after the component is mounted
   useEffect(() => {
-    if (!isLoading && initialRoute && isAppReady) {
-      // Delay navigation until after layout mounting
-      setTimeout(() => {
+    if (loaded && isReady) {
+      // Only navigate when everything is loaded
+      if (initialRoute) {
         router.replace(initialRoute);
-      }, 100);
+      }
     }
-  }, [isLoading, initialRoute, isAppReady]);
+  }, [loaded, isReady, initialRoute]);
 
   useEffect(() => {
     async function setupNotifications() {
@@ -422,20 +389,6 @@ export default function AppLayout() {
     };
   }, []);
 
-  // This effect probably has some auto-navigation logic
-  useEffect(() => {
-    const checkOnboarding = async () => {
-      // Your existing code...
-      
-      // THIS is likely causing your issue:
-      setTimeout(() => {
-        router.replace('/(tabs)'); // or whatever your navigation is
-      }, 100);
-    };
-    
-    checkOnboarding();
-  }, []);
-
   // Configure audio session at app start
   useEffect(() => {
     if (Platform.OS === 'ios') {
@@ -444,6 +397,33 @@ export default function AppLayout() {
       console.log('Configured audio session for silent mode on app startup');
     }
   }, []);
+
+  useEffect(() => {
+    const checkNotificationPermissions = async () => {
+      try {
+        // Check if user is premium or has completed quiz
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+        
+        // Only request permissions if we're in the alarms tab specifically
+        if ((isPremium === 'true' || quizCompleted === 'true') && 
+            initialRoute === '(tabs)') {
+          // Check if we're already in the alarms tab
+          const currentTab = await AsyncStorage.getItem('currentTab');
+          if (currentTab === 'alarms') {
+            requestNotificationPermissions();
+          }
+        }
+      } catch (error) {
+        console.error('Error checking notification permissions:', error);
+      }
+    };
+    
+    // Only run this check if the app is fully ready
+    if (isReady && initialRoute !== null) {
+      checkNotificationPermissions();
+    }
+  }, [isReady, initialRoute]);
 
   if (!loaded || loading || !isReady) {
     return null;
