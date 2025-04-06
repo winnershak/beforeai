@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -41,9 +41,101 @@ export default function AppBlockScreen() {
   const [currentSchedule, setCurrentSchedule] = useState<AppBlockSchedule | null>(null);
   const [editIndex, setEditIndex] = useState<number | null>(null);
   const [hasScreenTimeAccess, setHasScreenTimeAccess] = useState(false);
+  const [isCheckingPermissions, setIsCheckingPermissions] = useState(true);
   const [passcodeRequired, setPasscodeRequired] = useState(false);
+  const [isSnoozeActive, setIsSnoozeActive] = useState(false);
+  const [snoozeEndTime, setSnoozeEndTime] = useState<Date | null>(null);
+  const [snoozeTimeLeft, setSnoozeTimeLeft] = useState('');
+  const snoozeTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  // Function to check if there's an active snooze
+  const checkSnoozeStatus = async () => {
+    try {
+      const snoozeUntil = await AsyncStorage.getItem('appBlockDisabledUntil');
+      
+      if (snoozeUntil) {
+        const endTime = new Date(snoozeUntil);
+        const now = new Date();
+        
+        // If the snooze end time is in the future
+        if (endTime > now) {
+          setIsSnoozeActive(true);
+          setSnoozeEndTime(endTime);
+          updateSnoozeTimeLeft(endTime);
+        } else {
+          // Snooze expired
+          setIsSnoozeActive(false);
+          setSnoozeEndTime(null);
+          setSnoozeTimeLeft('');
+          
+          // Clean up the expired snooze
+          await AsyncStorage.removeItem('appBlockDisabledUntil');
+        }
+      } else {
+        setIsSnoozeActive(false);
+        setSnoozeEndTime(null);
+        setSnoozeTimeLeft('');
+      }
+    } catch (error) {
+      console.error('Error checking snooze status:', error);
+    }
+  };
+  
+  // Function to update the time left display
+  const updateSnoozeTimeLeft = (endTime: Date) => {
+    const now = new Date();
+    const diffMs = endTime.getTime() - now.getTime();
+    
+    if (diffMs <= 0) {
+      setIsSnoozeActive(false);
+      setSnoozeTimeLeft('');
+      return;
+    }
+    
+    // Calculate hours, minutes, seconds
+    const diffSecs = Math.floor(diffMs / 1000);
+    const hours = Math.floor(diffSecs / 3600);
+    const minutes = Math.floor((diffSecs % 3600) / 60);
+    
+    if (hours > 0) {
+      setSnoozeTimeLeft(`${hours}h ${minutes}m`);
+    } else {
+      setSnoozeTimeLeft(`${minutes}m`);
+    }
+  };
+  
+  // Set up timer to update snooze countdown
+  useEffect(() => {
+    if (isSnoozeActive && snoozeEndTime) {
+      // Update immediately
+      updateSnoozeTimeLeft(snoozeEndTime);
+      
+      // Then set up interval to update every minute
+      snoozeTimerRef.current = setInterval(() => {
+        if (snoozeEndTime) {
+          const now = new Date();
+          if (snoozeEndTime <= now) {
+            // Snooze is over
+            setIsSnoozeActive(false);
+            clearInterval(snoozeTimerRef.current as NodeJS.Timeout);
+            snoozeTimerRef.current = null;
+            checkSnoozeStatus(); // Recheck to clean up
+          } else {
+            updateSnoozeTimeLeft(snoozeEndTime);
+          }
+        }
+      }, 60000); // Update every minute
+    }
+    
+    return () => {
+      if (snoozeTimerRef.current) {
+        clearInterval(snoozeTimerRef.current);
+        snoozeTimerRef.current = null;
+      }
+    };
+  }, [isSnoozeActive, snoozeEndTime]);
   
   // Load schedules whenever the screen comes into focus
   useFocusEffect(
@@ -71,6 +163,7 @@ export default function AppBlockScreen() {
       };
       
       loadSchedules();
+      checkSnoozeStatus();
       
       // No cleanup needed
       return () => {};
@@ -105,6 +198,7 @@ export default function AppBlockScreen() {
   // Function to request Screen Time access with better error handling
   const requestScreenTimeAccess = async () => {
     try {
+      setIsCheckingPermissions(true);
       if (Platform.OS === 'ios') {
         // Use the Swift bridge to request authorization
         if (ScreenTimeBridge) {
@@ -154,9 +248,11 @@ export default function AppBlockScreen() {
           }
         }
       }
+      setIsCheckingPermissions(false);
     } catch (error) {
       // This should now only catch unexpected errors
       console.error('Unexpected error in Screen Time access flow:', error);
+      setIsCheckingPermissions(false);
     }
   };
   
@@ -167,22 +263,12 @@ export default function AppBlockScreen() {
   
   // Edit an existing schedule
   const editSchedule = (index: number) => {
-    // Get the schedule
     const schedule = schedules[index];
+    setCurrentSchedule(schedule);
+    setEditIndex(index);
     
-    // If the schedule is active, go to breathe page
-    if (schedule.isActive) {
-      // Store the current schedule ID for the breathe page to use
-      AsyncStorage.setItem('currentBlockScheduleId', schedule.id)
-        .then(() => {
-          router.push('../breathe');
-        })
-        .catch(err => console.error('Error saving current schedule ID:', err));
-      return;
-    }
-    
-    // Otherwise, go to edit page as normal
-    router.push(`/appblock/edit?id=${schedules[index].id}`);
+    // Navigate to the edit screen
+    router.push(`/appblock/edit?id=${schedule.id}`);
   };
   
   // Delete a schedule
@@ -367,6 +453,42 @@ export default function AppBlockScreen() {
     }
   }, [schedules, hasScreenTimeAccess]);
   
+  // Function to check if a schedule is currently active based on time
+  const isScheduleCurrentlyActive = (schedule: AppBlockSchedule) => {
+    // If the schedule is not set to active, it's definitely not active
+    if (!schedule.isActive) return false;
+    
+    const now = new Date();
+    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Check if today is a day when this schedule is active
+    if (!schedule.daysOfWeek[currentDay]) return false;
+    
+    // Get current hour and minute
+    const currentHour = now.getHours();
+    const currentMinute = now.getMinutes();
+    const currentTimeAsMinutes = currentHour * 60 + currentMinute;
+    
+    // Get schedule start and end times
+    const startHour = schedule.startTime.getHours();
+    const startMinute = schedule.startTime.getMinutes();
+    const startTimeAsMinutes = startHour * 60 + startMinute;
+    
+    const endHour = schedule.endTime.getHours();
+    const endMinute = schedule.endTime.getMinutes();
+    const endTimeAsMinutes = endHour * 60 + endMinute;
+    
+    // Check if current time is within schedule time range
+    // Handle both normal ranges and overnight ranges
+    if (startTimeAsMinutes <= endTimeAsMinutes) {
+      // Normal time range (e.g., 9:00 - 17:00)
+      return currentTimeAsMinutes >= startTimeAsMinutes && currentTimeAsMinutes <= endTimeAsMinutes;
+    } else {
+      // Overnight time range (e.g., 22:00 - 7:00)
+      return currentTimeAsMinutes >= startTimeAsMinutes || currentTimeAsMinutes <= endTimeAsMinutes;
+    }
+  };
+  
   return (
     <>
       <Stack.Screen 
@@ -384,8 +506,8 @@ export default function AppBlockScreen() {
       />
       
       <View style={styles.container}>
-        {/* Instructions */}
-        {!hasScreenTimeAccess && (
+        {/* Instructions - Only show when we know permissions are missing */}
+        {!hasScreenTimeAccess && !isCheckingPermissions && (
           <View style={styles.instructionCard}>
             <Text style={styles.instructionTitle}>Focus Time</Text>
             <Text style={styles.instructionText}>
@@ -403,66 +525,107 @@ export default function AppBlockScreen() {
         
         {/* Schedules List */}
         <ScrollView style={styles.schedulesList}>
-          {schedules.map((schedule, index) => (
-            <TouchableOpacity 
-              key={schedule.id}
-              style={styles.scheduleCard}
-              onPress={() => editSchedule(index)}
-            >
-              <View style={styles.scheduleHeader}>
-                <View style={styles.scheduleNameContainer}>
-                  <View style={styles.activeIndicator}>
-                    <View style={[
-                      styles.activeIndicatorDot, 
-                      styles.activeIndicatorDotOn
-                    ]} />
+          {schedules.map((schedule, index) => {
+            const isCurrentlyActive = isScheduleCurrentlyActive(schedule);
+            
+            return (
+              <TouchableOpacity 
+                key={schedule.id}
+                style={styles.scheduleCard}
+                onPress={() => editSchedule(index)}
+              >
+                <View style={styles.scheduleHeader}>
+                  <View style={styles.scheduleNameContainer}>
+                    <View style={styles.activeIndicator}>
+                      <View style={[
+                        styles.activeIndicatorDot,
+                        isSnoozeActive ? styles.activeIndicatorDotSnoozed : 
+                        isCurrentlyActive ? styles.activeIndicatorDotOn : 
+                        schedule.isActive ? styles.activeIndicatorDotScheduled : styles.activeIndicatorDotOff
+                      ]} />
+                    </View>
+                    <Text style={styles.scheduleName}>{schedule.name || 'Focus Time'}</Text>
                   </View>
-                  <Text style={styles.scheduleName}>{schedule.name}</Text>
-                </View>
-              </View>
-              
-              <View style={styles.scheduleDetails}>
-                <View style={styles.scheduleTimeRow}>
-                  <Ionicons name="time-outline" size={18} color="#0A84FF" style={styles.timeIcon} />
-                  <Text style={styles.timeText}>
-                    {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
-                  </Text>
+                  
+                  {/* Status Badge */}
+                  {(schedule.isActive) && (
+                    <View style={[
+                      styles.statusBadge,
+                      isSnoozeActive ? styles.statusBadgeSnoozed : 
+                      isCurrentlyActive ? styles.statusBadgeActive : styles.statusBadgeScheduled
+                    ]}>
+                      <Text style={styles.statusBadgeText}>
+                        {isSnoozeActive ? 'Snoozed' : isCurrentlyActive ? 'Active' : 'Scheduled'}
+                      </Text>
+                    </View>
+                  )}
                 </View>
                 
-                <View style={styles.daysList}>
-                  {schedule.daysOfWeek.map((isActive, dayIndex) => (
-                    <View 
-                      key={dayIndex} 
-                      style={[
-                        styles.dayBubble,
-                        isActive ? styles.selectedDay : styles.unselectedDay
-                      ]}
+                {/* Snooze Info (only show if both snoozed and the schedule would be active now) */}
+                {isSnoozeActive && isCurrentlyActive && (
+                  <View style={styles.snoozeInfoContainer}>
+                    <View style={styles.snoozeInfoContent}>
+                      <Ionicons name="time-outline" size={16} color="#0A84FF" style={{marginRight: 8}} />
+                      <Text style={styles.snoozeInfoText}>
+                        Paused · Resuming in {snoozeTimeLeft}
+                      </Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.snoozeEndButton}
+                      onPress={async () => {
+                        await AsyncStorage.removeItem('appBlockDisabledUntil');
+                        setIsSnoozeActive(false);
+                        checkSnoozeStatus();
+                      }}
                     >
-                      <Text 
-                        style={[
-                          styles.dayText,
-                          isActive ? styles.selectedDayText : styles.unselectedDayText
-                        ]}
-                      >
-                        {daysOfWeek[dayIndex][0]}
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-                
-                {schedule.blockedApps.length > 0 && (
-                  <View style={styles.appsContainer}>
-                    <View style={styles.appsHeader}>
-                      <Ionicons name="apps" size={18} color="#0A84FF" />
-                      <Text style={styles.appsHeaderText}>
-                        {schedule.blockedApps.length} apps blocked
-                      </Text>
-                    </View>
+                      <Text style={styles.snoozeEndButtonText}>End</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
-              </View>
-            </TouchableOpacity>
-          ))}
+                
+                <View style={styles.scheduleDetails}>
+                  <View style={styles.scheduleTimeRow}>
+                    <Ionicons name="time-outline" size={18} color="#0A84FF" style={styles.timeIcon} />
+                    <Text style={styles.timeText}>
+                      {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.daysList}>
+                    {schedule.daysOfWeek.map((isActive, dayIndex) => (
+                      <View 
+                        key={dayIndex} 
+                        style={[
+                          styles.dayBubble,
+                          isActive ? styles.selectedDay : styles.unselectedDay
+                        ]}
+                      >
+                        <Text 
+                          style={[
+                            styles.dayText,
+                            isActive ? styles.selectedDayText : styles.unselectedDayText
+                          ]}
+                        >
+                          {daysOfWeek[dayIndex][0]}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+                  
+                  {schedule.blockedApps.length > 0 && (
+                    <View style={styles.appsContainer}>
+                      <View style={styles.appsHeader}>
+                        <Ionicons name="apps" size={18} color="#0A84FF" />
+                        <Text style={styles.appsHeaderText}>
+                          {schedule.blockedApps.length} apps blocked
+                        </Text>
+                      </View>
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
         
         {/* Add New Schedule Button */}
@@ -588,6 +751,18 @@ const styles = StyleSheet.create({
   },
   activeIndicatorDotOn: {
     backgroundColor: '#34C759',
+  },
+  activeIndicatorDotOff: {
+    backgroundColor: '#8E8E93',
+  },
+  activeIndicatorDotSnoozed: {
+    backgroundColor: '#0A84FF',
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  activeIndicatorDotScheduled: {
+    backgroundColor: '#FF9500', // Orange color for scheduled but not active
   },
   scheduleName: {
     fontSize: 18,
@@ -715,5 +890,54 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     marginLeft: 8,
     fontSize: 14,
+  },
+  snoozeInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(10, 132, 255, 0.1)',
+    borderRadius: 8,
+    padding: 10,
+    marginBottom: 12,
+  },
+  snoozeInfoContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  snoozeInfoText: {
+    color: '#0A84FF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  snoozeEndButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  snoozeEndButtonText: {
+    color: '#0A84FF',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  statusBadgeActive: {
+    backgroundColor: 'rgba(52, 199, 89, 0.2)',
+  },
+  statusBadgeSnoozed: {
+    backgroundColor: 'rgba(10, 132, 255, 0.2)',
+  },
+  statusBadgeScheduled: {
+    backgroundColor: 'rgba(255, 149, 0, 0.2)', // Orange background for scheduled
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
   },
 }); 

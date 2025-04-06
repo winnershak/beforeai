@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform, Switch } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform, Switch, Image } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -593,12 +593,30 @@ export default function TabOneScreen() {
     }
   };
   
-  // Add this function to open settings
-  const openNotificationSettings = () => {
-    if (Platform.OS === 'ios') {
-      Linking.openURL('app-settings:');
-    } else {
-      Linking.openSettings();
+  // Function to open notification settings specifically
+  const openNotificationSettings = async () => {
+    try {
+      if (Platform.OS === 'ios') {
+        // On iOS, try to open notification settings directly
+        await Linking.openURL('App-prefs:root=NOTIFICATIONS_ID');
+      } else {
+        // On Android, open notification settings
+        await Linking.openSettings();
+        // For newer Android versions, you could try this more specific intent:
+        // await Linking.openURL('android.settings.APP_NOTIFICATION_SETTINGS');
+      }
+    } catch (error) {
+      console.error('Error opening settings:', error);
+      // Fallback to general settings if specific notification settings fail
+      try {
+        if (Platform.OS === 'ios') {
+          await Linking.openURL('app-settings:');
+        } else {
+          await Linking.openSettings();
+        }
+      } catch (secondError) {
+        console.error('Error opening general settings:', secondError);
+      }
     }
   };
 
@@ -613,19 +631,69 @@ export default function TabOneScreen() {
     checkPermissionsForAlarms();
   }, []);
 
+  // Function to request notification permissions directly
+  const requestNotificationPermission = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status === 'granted') {
+          setNotificationsEnabled(true);
+          return; // Successfully enabled - don't continue to settings
+        }
+      }
+      
+      // If we get here, permission wasn't granted through the direct request
+      // This means user previously denied or we need to go to settings
+      Alert.alert(
+        "Additional Permissions Needed",
+        "Please enable notifications for this app in your device settings.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "Open Settings", onPress: openNotificationSettings }
+        ]
+      );
+    } catch (error) {
+      console.error('Error requesting notification permission:', error);
+      // Only open settings as a last resort if the request failed entirely
+      openNotificationSettings();
+    }
+  };
+
+  // Show custom permission request dialog
+  const showNotificationPermissionDialog = () => {
+    Alert.alert(
+      "Enable Notifications",
+      "Alarms require notifications to function properly. Would you like to enable notifications now?",
+      [
+        {
+          text: "Not Now",
+          style: "cancel"
+        },
+        { 
+          text: "Allow", 
+          onPress: requestNotificationPermission,
+          style: "default"
+        }
+      ],
+      { cancelable: false }
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Notification Permission Banner */}
       {!notificationsEnabled && (
         <TouchableOpacity 
           style={styles.permissionBanner}
-          onPress={openNotificationSettings}
+          onPress={showNotificationPermissionDialog}
         >
           <Ionicons name="notifications-off" size={24} color="#FF3B30" />
           <View style={styles.permissionTextContainer}>
             <Text style={styles.permissionTitle}>Notifications Disabled</Text>
             <Text style={styles.permissionText}>
-              Alarms require notifications to function properly. Tap here to enable in Settings.
+              Alarms require notifications to function properly. Tap here to enable.
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={20} color="#999" />

@@ -102,8 +102,8 @@ export default function EditScheduleScreen() {
     blockedWebDomains: []
   });
   
-  const [showStartPicker, setShowStartPicker] = useState(false);
-  const [showEndPicker, setShowEndPicker] = useState(false);
+  const [showStartTimePicker, setShowStartTimePicker] = useState(false);
+  const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [schedules, setSchedules] = useState<AppBlockSchedule[]>([]);
   
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -152,20 +152,27 @@ export default function EditScheduleScreen() {
   };
   
   // Handle time picker changes
-  const onTimeChange = (event: any, selectedDate?: Date) => {
+  const handleStartTimeChange = (event: any, selectedDate?: Date) => {
     if (selectedDate) {
-      if (showStartPicker) {
-        setSchedule({...schedule, startTime: selectedDate});
-      } else if (showEndPicker) {
-        setSchedule({...schedule, endTime: selectedDate});
-      }
+      setSchedule({...schedule, startTime: selectedDate});
     }
   };
   
-  // Done button for time picker
-  const handleTimePickerDone = () => {
-    setShowStartPicker(false);
-    setShowEndPicker(false);
+  const handleEndTimeChange = (event: any, selectedDate?: Date) => {
+    if (selectedDate) {
+      setSchedule({...schedule, endTime: selectedDate});
+    }
+  };
+  
+  // Function to toggle time pickers
+  const toggleStartTimePicker = () => {
+    setShowStartTimePicker(prev => !prev);
+    setShowEndTimePicker(false); // Close other picker if open
+  };
+  
+  const toggleEndTimePicker = () => {
+    setShowStartTimePicker(false); // Close other picker if open
+    setShowEndTimePicker(prev => !prev);
   };
   
   // Open app selection picker
@@ -356,14 +363,14 @@ export default function EditScheduleScreen() {
           <View style={styles.timeInputContainer}>
             <TouchableOpacity
               style={styles.timeInput}
-              onPress={() => setShowStartPicker(true)}
+              onPress={toggleStartTimePicker}
             >
               <Text style={styles.timeInputText}>{formatTime(schedule.startTime)}</Text>
             </TouchableOpacity>
             <Text style={styles.timeInputSeparator}>to</Text>
             <TouchableOpacity
               style={styles.timeInput}
-              onPress={() => setShowEndPicker(true)}
+              onPress={toggleEndTimePicker}
             >
               <Text style={styles.timeInputText}>{formatTime(schedule.endTime)}</Text>
             </TouchableOpacity>
@@ -437,22 +444,39 @@ export default function EditScheduleScreen() {
         )}
       </View>
       
-      {(showStartPicker || showEndPicker) && (
+      {showStartTimePicker && (
         <View style={styles.timePickerContainer}>
           <View style={styles.timePickerHeader}>
-            <Text style={styles.timePickerTitle}>
-              {showStartPicker ? 'Start Time' : 'End Time'}
-            </Text>
-            <TouchableOpacity onPress={handleTimePickerDone}>
+            <Text style={styles.timePickerTitle}>Select Start Time</Text>
+            <TouchableOpacity onPress={toggleStartTimePicker}>
               <Text style={styles.timePickerDone}>Done</Text>
             </TouchableOpacity>
           </View>
           <DateTimePicker
-            value={showStartPicker ? schedule.startTime : schedule.endTime}
+            value={schedule.startTime}
             mode="time"
-            is24Hour={false}
-            display="spinner"
-            onChange={onTimeChange}
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleStartTimeChange}
+            textColor="#FFFFFF"
+            style={styles.timePicker}
+          />
+        </View>
+      )}
+
+      {showEndTimePicker && (
+        <View style={styles.timePickerContainer}>
+          <View style={styles.timePickerHeader}>
+            <Text style={styles.timePickerTitle}>Select End Time</Text>
+            <TouchableOpacity onPress={toggleEndTimePicker}>
+              <Text style={styles.timePickerDone}>Done</Text>
+            </TouchableOpacity>
+          </View>
+          <DateTimePicker
+            value={schedule.endTime}
+            mode="time"
+            display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+            onChange={handleEndTimeChange}
+            textColor="#FFFFFF"
             style={styles.timePicker}
           />
         </View>
@@ -594,17 +618,19 @@ const styles = StyleSheet.create({
   },
   timePickerContainer: {
     position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
+    top: '25%',  // Position from top
+    left: 0,     // Start at left edge
+    right: 0,    // Extend to right edge
+    width: '100%', // Take full width
     backgroundColor: '#1C1C1E',
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
+    borderRadius: 16,
     paddingBottom: 30,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: -2 },
     shadowOpacity: 0.3,
     shadowRadius: 5,
+    zIndex: 1000,
+    alignSelf: 'center', // Center horizontally
   },
   timePickerHeader: {
     flexDirection: 'row',
@@ -627,6 +653,7 @@ const styles = StyleSheet.create({
   timePicker: {
     height: 200,
     width: '100%',
+    color: '#FFFFFF',
   },
   countContainer: {
     flexDirection: 'row',

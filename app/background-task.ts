@@ -1,5 +1,6 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Define your task identifiers - these must match what's in app.json
 const ALARM_CHECK_TASK = 'com.yourusername.blissalarm.alarmcheck';
@@ -9,6 +10,16 @@ const TETRIS_TASK = 'com.yourusername.blissalarm.tetris';
 // Register the background tasks
 TaskManager.defineTask(ALARM_CHECK_TASK, async () => {
   try {
+    // Check if we have any alarms first
+    const alarmsJson = await AsyncStorage.getItem('alarms');
+    const alarms = alarmsJson ? JSON.parse(alarmsJson) : [];
+    
+    // Return early if no alarms exist
+    if (!alarms || alarms.length === 0) {
+      console.log('No alarms to check in background task');
+      return BackgroundFetch.BackgroundFetchResult.NoData;
+    }
+    
     // Your alarm checking logic here
     return BackgroundFetch.BackgroundFetchResult.NewData;
   } catch (error) {

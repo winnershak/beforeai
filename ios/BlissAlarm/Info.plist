@@ -89,6 +89,7 @@
     <key>UIRequiredDeviceCapabilities</key>
     <array>
       <string>arm64</string>
+      <string>armv7</string>
     </array>
     <key>UIRequiresFullScreen</key>
     <false/>
@@ -116,6 +117,10 @@
     <array>
       <string>_expo._tcp</string>
       <string>_http._tcp</string>
+    </array>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>prefs</string>
     </array>
   </dict>
 </plist>

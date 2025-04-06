@@ -77,7 +77,8 @@
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
     "use-latest-callback": "^0.2.3",
-    "@react-native-picker/picker": "2.9.0"
+    "@react-native-picker/picker": "2.9.0",
+    "expo-store-review": "~8.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",

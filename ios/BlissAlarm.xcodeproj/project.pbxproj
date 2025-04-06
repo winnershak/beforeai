@@ -47,6 +47,7 @@
 		DCACC2CA2D8FCCE2004DD610 /* beacon.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C12D8FCCE2004DD610 /* beacon.caf */; };
 		DCACC2CB2D8FCCE2004DD610 /* radar.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C52D8FCCE2004DD610 /* radar.caf */; };
 		DCACC2CC2D8FCCE2004DD610 /* reflection.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C62D8FCCE2004DD610 /* reflection.caf */; };
+		DCE529332DA1EA4500D735C6 /* ManagedSettingsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */; };
 		DCEDACFD2D8FD909002223D7 /* orkney.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACFA2D8FD909002223D7 /* orkney.mp3 */; };
 		DCEDACFE2D8FD909002223D7 /* circuit.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACF92D8FD909002223D7 /* circuit.mp3 */; };
 		DCEDACFF2D8FD909002223D7 /* reflection.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACFC2D8FD909002223D7 /* reflection.mp3 */; };
@@ -58,6 +59,19 @@
 		F4BAC288DA144819AB4212E6 /* slice.caf in Resources */ = {isa = PBXBuildFile; fileRef = 2AB49E9FDBF545ABB08D0F11 /* slice.caf */; };
 		FFD19956989E4461BC207D1B /* mount.caf in Resources */ = {isa = PBXBuildFile; fileRef = F8A41AA70B8F4DB693C426B2 /* mount.caf */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		DCD78E832DA30DFA005C3778 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		07B9F98317C942DDA779807A /* rain.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = rain.caf; path = BlissAlarm/rain.caf; sourceTree = "<group>"; };
@@ -106,6 +120,7 @@
 		DCACC2C42D8FCCE2004DD610 /* orkney.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = orkney.caf; sourceTree = "<group>"; };
 		DCACC2C52D8FCCE2004DD610 /* radar.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = radar.caf; sourceTree = "<group>"; };
 		DCACC2C62D8FCCE2004DD610 /* reflection.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = reflection.caf; sourceTree = "<group>"; };
+		DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ManagedSettingsUI.framework; path = System/Library/Frameworks/ManagedSettingsUI.framework; sourceTree = SDKROOT; };
 		DCEDACF82D8FD909002223D7 /* chimes.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = chimes.mp3; sourceTree = "<group>"; };
 		DCEDACF92D8FD909002223D7 /* circuit.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = circuit.mp3; sourceTree = "<group>"; };
 		DCEDACFA2D8FD909002223D7 /* orkney.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = orkney.mp3; sourceTree = "<group>"; };
@@ -125,6 +140,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DCE529332DA1EA4500D735C6 /* ManagedSettingsUI.framework in Frameworks */,
 				DC55B0212D96385A004436B8 /* MediaPlayer.framework in Frameworks */,
 				DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */,
 				DC07F5612D8BB36D005F15FF /* ManagedSettings.framework in Frameworks */,
@@ -187,6 +203,7 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */,
 				DC55B0202D96385A004436B8 /* MediaPlayer.framework */,
 				DC07F5622D8BB373005F15FF /* DeviceActivity.framework */,
 				DC07F55F2D8BB363005F15FF /* FamilyControls.framework */,
@@ -283,6 +300,7 @@
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
 				DF80CBC648226FA6FEC25EB8 /* [CP] Embed Pods Frameworks */,
+				DCD78E832DA30DFA005C3778 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
@@ -299,6 +317,7 @@
 		83CBB9F71A601CBA00E9B192 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+				LastSwiftUpdateCheck = 1620;
 				LastUpgradeCheck = 1130;
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
@@ -539,7 +558,7 @@
 					"FB_SONARKIT_ENABLED=1",
 				);
 				INFOPLIST_FILE = BlissAlarm/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -573,7 +592,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 8L789T788W;
 				INFOPLIST_FILE = BlissAlarm/Info.plist;
-				IPHONEOS_DEPLOYMENT_TARGET = 15.6;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.6;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
