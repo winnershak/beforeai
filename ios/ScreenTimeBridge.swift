@@ -76,6 +76,9 @@ class ScreenTimeBridge: NSObject {
   private var savedApplicationTokens = Set<ManagedSettings.ApplicationToken>()
   private var savedCategoryTokens = Set<ManagedSettings.ActivityCategoryToken>()
   private var savedWebDomainTokens = Set<ManagedSettings.WebDomainToken>()
+  private var snoozedSchedules: [String: [String: Any]] = [:]
+  private var snoozeTimers: [String: Timer] = [:]
+  private var scheduleSelections: [String: FamilyActivitySelection] = [:]
   
   // Method to get the activity selection for the monitor
   func getActivitySelection() -> FamilyActivitySelection? {
@@ -103,7 +106,7 @@ class ScreenTimeBridge: NSObject {
   }
   
   @objc
-  func showAppSelectionPicker(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+  func showAppSelectionPicker(_ scheduleId: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
     // Add a small delay to ensure the app is fully mounted
     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
       guard let self = self else { return }
@@ -111,8 +114,11 @@ class ScreenTimeBridge: NSObject {
       // iOS 16+ app selection picker
       self.currentResolve = resolve
       
-      // Store the current selection
-      let currentSelection = self.activitySelection ?? FamilyActivitySelection()
+      let id = scheduleId as String
+      print("📱 Showing app selection picker for schedule: \(id)")
+      
+      // Get the current selection for this schedule, or create a new one
+      let currentSelection = self.scheduleSelections[id] ?? FamilyActivitySelection()
       
       // Create a SwiftUI view that will host our picker
       let pickerView = SelectionPickerView(
@@ -128,7 +134,10 @@ class ScreenTimeBridge: NSObject {
           self.pickerHostingController = nil
         },
         onSelect: { selection in
-          // Record the selection for later use
+          // Record the selection for this specific schedule
+          self.scheduleSelections[id] = selection
+          
+          // Also update the shared selection for backward compatibility
           self.activitySelection = selection
           
           // Save tokens for recovery if needed
@@ -136,7 +145,7 @@ class ScreenTimeBridge: NSObject {
           self.savedCategoryTokens = selection.categoryTokens
           self.savedWebDomainTokens = selection.webDomainTokens
           
-          print("📱 Selected \(selection.applicationTokens.count) applications, \(selection.categoryTokens.count) categories, \(selection.webDomainTokens.count) web domains")
+          print("📱 Selected for schedule \(id): \(selection.applicationTokens.count) applications, \(selection.categoryTokens.count) categories, \(selection.webDomainTokens.count) web domains")
           
           // Prepare data to send back to JS
           var selectedApps: [String] = []
@@ -164,47 +173,79 @@ class ScreenTimeBridge: NSObject {
             print("🌐 Selected web domain: \(domainId)")
           }
           
-          // Dismiss the picker
-          self.pickerHostingController?.dismiss(animated: true) {
-            // Send the result back to React Native
-            if let resolve = self.currentResolve {
-              print("✅ Resolving picker with selection data: apps=\(selectedApps.count), categories=\(selectedCategories.count), domains=\(selectedWebDomains.count)")
-              resolve([
-                "apps": selectedApps,
-                "categories": selectedCategories,
-                "webDomains": selectedWebDomains
-              ])
-              self.currentResolve = nil
-            }
+          // Prepare result object
+          let result: [String: Any] = [
+            "scheduleId": id,
+            "apps": selectedApps,
+            "categories": selectedCategories,
+            "webDomains": selectedWebDomains
+          ]
+          
+          // Resolve with the selection data
+          if let resolve = self.currentResolve {
+            resolve(result)
+            self.currentResolve = nil
           }
+          
+          self.pickerHostingController?.dismiss(animated: true, completion: nil)
+          self.pickerHostingController = nil
         }
       )
       
-      // Create a hosting controller for our SwiftUI view
-      let wrapper = UIHostingController(rootView: pickerView)
+      // Create a hosting controller for the SwiftUI view
+      let hostingController = UIHostingController(rootView: pickerView)
+      self.pickerHostingController = hostingController
       
-      // Create a navigation controller
-      let navigationController = UINavigationController(rootViewController: wrapper)
-      
-      // Store the controller for later access
-      self.pickerHostingController = navigationController
-      
-      // Present the controller
-      if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-         let rootVC = windowScene.windows.first?.rootViewController {
-        rootVC.present(navigationController, animated: true)
+      // Present the hosting controller
+      DispatchQueue.main.async {
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let rootViewController = windowScene.windows.first?.rootViewController {
+          rootViewController.present(hostingController, animated: true, completion: nil)
+        }
       }
     }
   }
   
   @objc
   func applyAppBlockSchedule(_ scheduleData: NSDictionary, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
+    // Extract schedule data
     guard let id = scheduleData["id"] as? String,
-          let startTimeString = scheduleData["startTime"] as? String,
-          let endTimeString = scheduleData["endTime"] as? String,
+          let startTimeStr = scheduleData["startTime"] as? String,
+          let endTimeStr = scheduleData["endTime"] as? String,
+          let blockedApps = scheduleData["blockedApps"] as? [String],
+          let blockedCategories = scheduleData["blockedCategories"] as? [String],
+          let blockedWebDomains = scheduleData["blockedWebDomains"] as? [String],
           let daysOfWeek = scheduleData["daysOfWeek"] as? [Bool],
-          let _ = scheduleData["isActive"] as? Bool else {
-      reject("invalid_data", "Invalid schedule data provided", nil)
+          let isActive = scheduleData["isActive"] as? Bool else {
+      reject("invalid_data", "Invalid schedule data", nil)
+      return
+    }
+    
+    print("📅 Applying app block schedule: \(id)")
+    print("⏰ Start time: \(startTimeStr), End time: \(endTimeStr)")
+    print("📱 Blocked apps: \(blockedApps.count)")
+    print("🔖 Blocked categories: \(blockedCategories.count)")
+    print("🌐 Blocked web domains: \(blockedWebDomains.count)")
+    print("📆 Days of week: \(daysOfWeek)")
+    print("✅ Is active: \(isActive)")
+    
+    // Get the selection for this schedule
+    let selection = self.scheduleSelections[id] ?? self.activitySelection ?? FamilyActivitySelection()
+    
+    // If not active, stop monitoring and remove shields
+    if !isActive {
+      print("🛑 Schedule is not active, stopping monitoring")
+      let center = DeviceActivityCenter()
+      let activityName = DeviceActivityName(id)
+      center.stopMonitoring([activityName])
+      
+      // Remove shields
+      let store = ManagedSettingsStore()
+      store.shield.applications = nil
+      store.shield.applicationCategories = nil
+      store.shield.webDomains = nil
+      
+      resolve(true)
       return
     }
     
@@ -212,9 +253,9 @@ class ScreenTimeBridge: NSObject {
     let dateFormatter = ISO8601DateFormatter()
     dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
     
-    guard let startDate = dateFormatter.date(from: startTimeString),
-          let endDate = dateFormatter.date(from: endTimeString) else {
-      print("Failed to parse dates: \(startTimeString), \(endTimeString)")
+    guard let startDate = dateFormatter.date(from: startTimeStr),
+          let endDate = dateFormatter.date(from: endTimeStr) else {
+      print("Failed to parse dates: \(startTimeStr), \(endTimeStr)")
       reject("invalid_date", "Invalid date format", nil)
       return
     }
@@ -230,11 +271,6 @@ class ScreenTimeBridge: NSObject {
       repeats: true
     )
     
-    // Get the blocked items from the schedule data
-    let blockedApps = scheduleData["blockedApps"] as? [String] ?? []
-    let blockedCategories = scheduleData["blockedCategories"] as? [String] ?? []
-    let blockedWebDomains = scheduleData["blockedWebDomains"] as? [String] ?? []
-    
     print("📊 Schedule data contains: \(blockedApps.count) apps, \(blockedCategories.count) categories, \(blockedWebDomains.count) domains")
     
     // Print the counts for debugging
@@ -243,8 +279,8 @@ class ScreenTimeBridge: NSObject {
     print("📱 Blocked web domains count: \(blockedWebDomains.count)")
     
     // Check if we have a stored selection
-    if let storedSelection = self.activitySelection {
-      print("✅ Using selection with \(storedSelection.applicationTokens.count) apps, \(storedSelection.categoryTokens.count) categories, \(storedSelection.webDomainTokens.count) domains")
+    if !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty || !selection.webDomainTokens.isEmpty {
+      print("✅ Using selection with \(selection.applicationTokens.count) apps, \(selection.categoryTokens.count) categories, \(selection.webDomainTokens.count) domains")
       
       // Create a monitor for this schedule
       let activityName = DeviceActivityName(id)
@@ -254,7 +290,7 @@ class ScreenTimeBridge: NSObject {
       let monitor = AppBlockMonitor(scheduleId: id)
       monitors[id] = monitor
       
-      if storedSelection.applicationTokens.isEmpty && storedSelection.categoryTokens.isEmpty && storedSelection.webDomainTokens.isEmpty {
+      if selection.applicationTokens.isEmpty && selection.categoryTokens.isEmpty && selection.webDomainTokens.isEmpty {
         print("⚠️ Selection is empty")
         resolve([
           "success": false,
@@ -316,17 +352,25 @@ class ScreenTimeBridge: NSObject {
           // when BlissShieldConfigurationDataSource is included in the target
           print("🛡️ Applying shields with custom configuration")
           
-          if !storedSelection.categoryTokens.isEmpty {
-            // Always use .specific with the category tokens
-            store.shield.applicationCategories = .specific(storedSelection.categoryTokens)
+          if !blockedCategories.isEmpty {
+            // Use the stored selection for this schedule
+            if let selection = self.scheduleSelections[id] {
+              store.shield.applicationCategories = .specific(selection.categoryTokens)
+            }
           }
           
-          if !storedSelection.applicationTokens.isEmpty {
-            store.shield.applications = storedSelection.applicationTokens
+          if !blockedApps.isEmpty {
+            // Use the stored selection for this schedule
+            if let selection = self.scheduleSelections[id] {
+              store.shield.applications = selection.applicationTokens
+            }
           }
           
-          if !storedSelection.webDomainTokens.isEmpty {
-            store.shield.webDomains = storedSelection.webDomainTokens
+          if !blockedWebDomains.isEmpty {
+            // Use the stored selection for this schedule
+            if let selection = self.scheduleSelections[id] {
+              store.shield.webDomains = selection.webDomainTokens
+            }
           }
         }
         
@@ -343,6 +387,174 @@ class ScreenTimeBridge: NSObject {
         "error": "No app selection available. Please select apps to block first."
       ])
     }
+  }
+  
+  @objc
+  func removeAllShields(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    // Remove all shields immediately
+    let store = ManagedSettingsStore()
+    store.shield.applications = nil
+    store.shield.applicationCategories = nil
+    store.shield.webDomains = nil
+    print("🛡️ All shields removed")
+    resolve(true)
+  }
+  
+  @objc
+  func stopMonitoringForSchedule(_ scheduleId: NSString, snoozeMinutes: NSNumber, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let id = scheduleId as String
+    let minutes = snoozeMinutes.intValue
+    print("🛑 Stopping monitoring for schedule: \(id) for \(minutes) minutes")
+    
+    // First, make sure we remove all shields immediately
+    let store = ManagedSettingsStore()
+    store.shield.applications = nil
+    store.shield.applicationCategories = nil
+    store.shield.webDomains = nil
+    print("🛡️ All shields removed for snooze")
+    
+    // Stop monitoring for this specific schedule
+    let center = DeviceActivityCenter()
+    let activityName = DeviceActivityName(id)
+    center.stopMonitoring([activityName])
+    
+    // Remove this monitor from active monitors
+    if #available(iOS 16.0, *) {
+      AppBlockMonitor.activeMonitors.removeValue(forKey: id)
+    }
+    
+    // Store the schedule data for reapplying later
+    if let savedSchedules = UserDefaults.standard.object(forKey: "appBlockSchedules") as? String,
+       let data = savedSchedules.data(using: .utf8),
+       let schedules = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]] {
+      
+      // Find the schedule with matching ID
+      if let schedule = schedules.first(where: { ($0["id"] as? String) == id }) {
+        // Store this schedule for reapplying later
+        snoozedSchedules[id] = schedule
+        
+        // Cancel existing timer if any
+        if snoozeTimers[id] != nil {
+          snoozeTimers[id]?.invalidate()
+          snoozeTimers.removeValue(forKey: id)
+        }
+        
+        // Only set a timer if minutes > 0 (for "rest of day" we don't need a timer)
+        if minutes > 0 {
+          // Create a new timer - use RunLoop.main to ensure it works even when app is backgrounded
+          let timer = Timer(timeInterval: TimeInterval(minutes * 60), repeats: false) { [weak self] _ in
+            self?.reapplySchedule(id: id)
+          }
+          RunLoop.main.add(timer, forMode: .common)
+          snoozeTimers[id] = timer
+          
+          print("⏰ Set timer to reapply schedule \(id) after \(minutes) minutes")
+          
+          // Also store the end time in UserDefaults as a backup
+          let endTime = Date().addingTimeInterval(TimeInterval(minutes * 60))
+          UserDefaults.standard.set(endTime.timeIntervalSince1970, forKey: "snoozeEndTime_\(id)")
+        } else {
+          print("⏰ No timer set for 'rest of day' snooze")
+        }
+      }
+    }
+    
+    resolve(true)
+  }
+  
+  // Improved reapplySchedule method
+  private func reapplySchedule(id: String) {
+    print("⏰ Reapplying schedule: \(id)")
+    
+    // Check if we have the schedule data
+    guard let schedule = snoozedSchedules[id] else {
+      print("❌ No saved schedule found for ID: \(id)")
+      return
+    }
+    
+    // Convert schedule to the format expected by applyAppBlockSchedule
+    let scheduleData: [String: Any] = [
+      "id": id,
+      "startTime": schedule["startTime"] as? String ?? "",
+      "endTime": schedule["endTime"] as? String ?? "",
+      "blockedApps": schedule["blockedApps"] as? [String] ?? [],
+      "blockedCategories": schedule["blockedCategories"] as? [String] ?? [],
+      "blockedWebDomains": schedule["blockedWebDomains"] as? [String] ?? [],
+      "daysOfWeek": schedule["daysOfWeek"] as? [Bool] ?? [true, true, true, true, true, true, true],
+      "isActive": true
+    ]
+    
+    // Call applyAppBlockSchedule with this data
+    self.applyAppBlockSchedule(scheduleData as NSDictionary, resolve: { _ in
+      print("✅ Successfully reapplied schedule: \(id)")
+      // Remove from snoozed schedules
+      self.snoozedSchedules.removeValue(forKey: id)
+      // Clean up UserDefaults
+      UserDefaults.standard.removeObject(forKey: "snoozeEndTime_\(id)")
+    }, reject: { _, message, _ in
+      print("❌ Failed to reapply schedule: \(message ?? "Unknown error")")
+    })
+  }
+  
+  // Add a method to check for expired snoozes on app launch
+  @objc
+  func checkForExpiredSnoozes(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    print("🔍 Checking for expired snoozes")
+    
+    // Get all keys that start with "snoozeEndTime_"
+    let userDefaults = UserDefaults.standard
+    let allKeys = userDefaults.dictionaryRepresentation().keys
+    let snoozeKeys = allKeys.filter { $0.starts(with: "snoozeEndTime_") }
+    
+    let now = Date().timeIntervalSince1970
+    var expiredSnoozes = 0
+    
+    for key in snoozeKeys {
+      if let endTimeInterval = userDefaults.object(forKey: key) as? TimeInterval {
+        // Extract schedule ID from the key
+        let scheduleId = key.replacingOccurrences(of: "snoozeEndTime_", with: "")
+        
+        // Check if snooze has expired
+        if endTimeInterval <= now {
+          print("⏰ Found expired snooze for schedule: \(scheduleId)")
+          expiredSnoozes += 1
+          
+          // Reapply this schedule
+          reapplySchedule(id: scheduleId)
+        } else {
+          // Snooze still active, set a new timer for the remaining time
+          let remainingSeconds = endTimeInterval - now
+          print("⏰ Snooze still active for schedule: \(scheduleId), \(Int(remainingSeconds)) seconds remaining")
+          
+          // Cancel existing timer if any
+          if snoozeTimers[scheduleId] != nil {
+            snoozeTimers[scheduleId]?.invalidate()
+            snoozeTimers.removeValue(forKey: scheduleId)
+          }
+          
+          // Create a new timer
+          let timer = Timer(timeInterval: remainingSeconds, repeats: false) { [weak self] _ in
+            self?.reapplySchedule(id: scheduleId)
+          }
+          RunLoop.main.add(timer, forMode: .common)
+          snoozeTimers[scheduleId] = timer
+        }
+      }
+    }
+    
+    resolve(["expiredSnoozes": expiredSnoozes])
+  }
+  
+  @objc
+  func clearAllSelections(_ resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    scheduleSelections.removeAll()
+    activitySelection = nil
+    savedApplicationTokens.removeAll()
+    savedCategoryTokens.removeAll()
+    savedWebDomainTokens.removeAll()
+    
+    print("🧹 Cleared all app selections")
+    resolve(true)
   }
   
   @objc

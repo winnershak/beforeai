@@ -99,34 +99,20 @@ export default function BreatheScreen() {
       
       await AsyncStorage.setItem('appBlockDisabledUntil', endOfDay.toISOString());
       
-      // If on iOS, update Screen Time
-      if (Platform.OS === 'ios' && ScreenTimeBridge) {
-        // Get current schedules
-        const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
-        if (savedSchedules) {
-          const schedules = JSON.parse(savedSchedules);
-          
-          // Disable all schedules temporarily for today
-          for (const schedule of schedules) {
-            const disableData = {
-              id: schedule.id,
-              startTime: new Date(schedule.startTime).toISOString(),
-              endTime: new Date(schedule.endTime).toISOString(),
-              blockedApps: [],
-              blockedCategories: [],
-              blockedWebDomains: [],
-              daysOfWeek: schedule.daysOfWeek,
-              isActive: false
-            };
-            
-            await ScreenTimeBridge.applyAppBlockSchedule(disableData);
-          }
+      // If on iOS, stop monitoring for this specific schedule
+      // Pass a large number of minutes (1440 = 24 hours)
+      if (Platform.OS === 'ios' && ScreenTimeBridge && scheduleId) {
+        try {
+          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 1440);
+          console.log("Monitoring stopped for schedule:", scheduleId);
+        } catch (error) {
+          console.error("Error stopping monitoring:", error);
         }
       }
       
       Alert.alert(
         "Break Time",
-        "Your app blocking is disabled for the rest of today.",
+        "This focus time is disabled for the rest of today. Other focus times will remain active.",
         [{ text: "OK", onPress: () => router.push('/(tabs)') }]
       );
     } catch (error) {
@@ -159,28 +145,14 @@ export default function BreatheScreen() {
       
       await AsyncStorage.setItem('appBlockDisabledUntil', snoozeUntil.toISOString());
       
-      // If on iOS, update Screen Time similar to handleTakeBreak
-      if (Platform.OS === 'ios' && ScreenTimeBridge) {
-        // Get current schedules
-        const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
-        if (savedSchedules) {
-          const schedules = JSON.parse(savedSchedules);
-          
-          // Disable all schedules temporarily
-          for (const schedule of schedules) {
-            const disableData = {
-              id: schedule.id,
-              startTime: new Date(schedule.startTime).toISOString(),
-              endTime: new Date(schedule.endTime).toISOString(),
-              blockedApps: [],
-              blockedCategories: [],
-              blockedWebDomains: [],
-              daysOfWeek: schedule.daysOfWeek,
-              isActive: false
-            };
-            
-            await ScreenTimeBridge.applyAppBlockSchedule(disableData);
-          }
+      // If on iOS, stop monitoring for this specific schedule
+      // Pass the actual minutes for the snooze duration
+      if (Platform.OS === 'ios' && ScreenTimeBridge && scheduleId) {
+        try {
+          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, minutes);
+          console.log("Monitoring stopped for schedule:", scheduleId, "for", minutes, "minutes");
+        } catch (error) {
+          console.error("Error stopping monitoring:", error);
         }
       }
       

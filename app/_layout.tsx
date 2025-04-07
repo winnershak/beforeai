@@ -22,7 +22,7 @@ import ErrorBoundary from './components/ErrorBoundary';
 import * as Linking from 'expo-linking';
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
-import { Platform } from 'react-native';
+import { Platform, NativeModules } from 'react-native';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
 
 import { useColorScheme } from '@/hooks/useColorScheme';
@@ -31,6 +31,8 @@ import { setupAlarms, scheduleAlarmNotification as setupAlarmsScheduleAlarmNotif
 import './utils/expo-sensors-patch';
 import RevenueCatService from './services/RevenueCatService';
 import { handleNotification } from './notifications';
+
+const { ScreenTimeBridge } = NativeModules;
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -424,6 +426,19 @@ export default function AppLayout() {
       checkNotificationPermissions();
     }
   }, [isReady, initialRoute]);
+
+  useEffect(() => {
+    // Check for expired snoozes on iOS
+    if (Platform.OS === 'ios' && ScreenTimeBridge && ScreenTimeBridge.checkForExpiredSnoozes) {
+      ScreenTimeBridge.checkForExpiredSnoozes()
+        .then((result) => {
+          console.log('Checked for expired snoozes:', result);
+        })
+        .catch((error) => {
+          console.error('Error checking for expired snoozes:', error);
+        });
+    }
+  }, []);
 
   if (!loaded || loading || !isReady) {
     return null;

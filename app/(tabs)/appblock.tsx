@@ -267,8 +267,23 @@ export default function AppBlockScreen() {
     setCurrentSchedule(schedule);
     setEditIndex(index);
     
-    // Navigate to the edit screen
-    router.push(`/appblock/edit?id=${schedule.id}`);
+    // Check if the schedule is currently active
+    if (isScheduleCurrentlyActive(schedule)) {
+      // Store the schedule ID in AsyncStorage first
+      AsyncStorage.setItem('currentBlockScheduleId', schedule.id)
+        .then(() => {
+          // Then navigate to breathe screen
+          router.push('/breathe');
+        })
+        .catch(error => {
+          console.error('Error storing schedule ID:', error);
+          // Fall back to edit screen if there's an error
+          router.push(`/appblock/edit?id=${schedule.id}`);
+        });
+    } else {
+      // If not active, go to edit screen as before
+      router.push(`/appblock/edit?id=${schedule.id}`);
+    }
   };
   
   // Delete a schedule

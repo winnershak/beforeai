@@ -176,35 +176,29 @@ export default function EditScheduleScreen() {
   };
   
   // Open app selection picker
-  const openAppSelectionPicker = async () => {
-    if (Platform.OS === 'ios') {
+  const selectApps = async () => {
+    if (Platform.OS === 'ios' && ScreenTimeBridge) {
       try {
-        console.log("📱 Opening app selection picker");
-        if (ScreenTimeBridge) {
-          const selection = await ScreenTimeBridge.showAppSelectionPicker();
-          console.log("📱 App selection result:", JSON.stringify(selection));
+        // Pass the schedule ID to the picker
+        const result = await ScreenTimeBridge.showAppSelectionPicker(schedule.id);
+        
+        if (result && Object.keys(result).length > 0) {
+          console.log('Selected apps:', result);
           
           // Update the schedule with the selected apps
-          if (selection && selection.apps && (selection.apps.length > 0 || selection.categories?.length > 0 || selection.webDomains?.length > 0)) {
-            console.log(`📱 Selected ${selection.apps.length} apps, ${selection.categories?.length || 0} categories, ${selection.webDomains?.length || 0} web domains`);
-            setSchedule({
-              ...schedule,
-              blockedApps: selection.apps,
-              blockedCategories: selection.categories || [],
-              blockedWebDomains: selection.webDomains || []
-            });
-          } else {
-            console.log("⚠️ No apps selected or selection canceled");
-            Alert.alert(
-              "No Apps Selected",
-              "You need to select at least one app to block.",
-              [{ text: "OK" }]
-            );
-          }
+          setSchedule(prev => ({
+            ...prev,
+            blockedApps: result.apps || [],
+            blockedCategories: result.categories || [],
+            blockedWebDomains: result.webDomains || []
+          }));
         }
       } catch (error) {
-        console.error('❌ Error showing app selection picker:', error);
+        console.error('Error selecting apps:', error);
+        Alert.alert('Error', 'Failed to select apps. Please try again.');
       }
+    } else {
+      Alert.alert('Not Available', 'App blocking is only available on iOS.');
     }
   };
   
@@ -406,7 +400,7 @@ export default function EditScheduleScreen() {
           <Text style={styles.formLabel}>Blocked Apps</Text>
           <TouchableOpacity 
             style={styles.selectAppsButton}
-            onPress={openAppSelectionPicker}
+            onPress={selectApps}
           >
             <Text style={styles.selectAppsButtonText}>
               {schedule.blockedApps.length > 0 
