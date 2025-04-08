@@ -119,6 +119,7 @@ class ScreenTimeBridge: NSObject {
       
       // Get the current selection for this schedule, or create a new one
       let currentSelection = self.scheduleSelections[id] ?? FamilyActivitySelection()
+      print("📱 Retrieved selection for schedule \(id): \(currentSelection.applicationTokens.count) apps, \(currentSelection.categoryTokens.count) categories, \(currentSelection.webDomainTokens.count) web domains")
       
       // Create a SwiftUI view that will host our picker
       let pickerView = SelectionPickerView(
@@ -282,102 +283,102 @@ class ScreenTimeBridge: NSObject {
     if !selection.applicationTokens.isEmpty || !selection.categoryTokens.isEmpty || !selection.webDomainTokens.isEmpty {
       print("✅ Using selection with \(selection.applicationTokens.count) apps, \(selection.categoryTokens.count) categories, \(selection.webDomainTokens.count) domains")
       
-      // Create a monitor for this schedule
-      let activityName = DeviceActivityName(id)
-      let center = DeviceActivityCenter()
-      
-      // Create and store the monitor
-      let monitor = AppBlockMonitor(scheduleId: id)
-      monitors[id] = monitor
-      
-      if selection.applicationTokens.isEmpty && selection.categoryTokens.isEmpty && selection.webDomainTokens.isEmpty {
-        print("⚠️ Selection is empty")
+      // Use the stored selection for this schedule if available
+      if let selection = self.scheduleSelections[id] {
+        print("📱 Using stored selection for schedule \(id): \(selection.applicationTokens.count) apps, \(selection.categoryTokens.count) categories, \(selection.webDomainTokens.count) web domains")
+        
+        // Create a monitor for this schedule
+        if #available(iOS 16.0, *) {
+          let monitor = AppBlockMonitor(scheduleId: id)
+          self.monitors[id] = monitor
+          AppBlockMonitor.activeMonitors[id] = monitor
+          
+          // Define the missing variables
+          let activityName = DeviceActivityName(id)
+          let center = DeviceActivityCenter()
+          
+          do {
+            // Start monitoring
+            try center.startMonitoring(
+              activityName,
+              during: schedule
+            )
+            
+            // Apply the restrictions immediately if within the time window
+            let now = Date()
+            let nowComponents = calendar.dateComponents([.hour, .minute], from: now)
+            let nowHour = nowComponents.hour ?? 0
+            let nowMinute = nowComponents.minute ?? 0
+            let startHour = startComponents.hour ?? 0
+            let startMinute = startComponents.minute ?? 0
+            let endHour = endComponents.hour ?? 0
+            let endMinute = endComponents.minute ?? 0
+            
+            // Fix time window detection logic to handle overnight schedules properly
+            var isWithinTimeWindow = false
+            
+            // Convert everything to minutes for easier comparison
+            let nowMinutes = nowHour * 60 + nowMinute
+            let startMinutes = startHour * 60 + startMinute
+            let endMinutes = endHour * 60 + endMinute
+            
+            if (startMinutes < endMinutes) {
+              // Normal schedule (e.g. 9:00 to 17:00)
+              isWithinTimeWindow = nowMinutes >= startMinutes && nowMinutes <= endMinutes
+            } else {
+              // Overnight schedule (e.g. 22:00 to 7:00)
+              isWithinTimeWindow = nowMinutes >= startMinutes || nowMinutes <= endMinutes
+            }
+            
+            print("🕒 Current time: \(nowHour):\(nowMinute)")
+            print("🕒 Start time: \(startHour):\(startMinute)")
+            print("🕒 End time: \(endHour):\(endMinute)")
+            print("🔍 Is within time window: \(isWithinTimeWindow)")
+            
+            // Check if today is a day when this schedule should be active
+            let todayIndex = calendar.component(.weekday, from: now) - 1 // 0 = Sunday
+            let isActiveToday = daysOfWeek.indices.contains(todayIndex) && daysOfWeek[todayIndex]
+            print("📅 Today is day \(todayIndex), active: \(isActiveToday)")
+            
+            isWithinTimeWindow = isWithinTimeWindow && isActiveToday
+            
+            if isWithinTimeWindow {
+              print("🔒 Applying shields immediately")
+              let store = ManagedSettingsStore()
+              
+              // Custom shield configuration is handled by the system automatically
+              // when BlissShieldConfigurationDataSource is included in the target
+              print("🛡️ Applying shields with custom configuration")
+              
+              if !blockedCategories.isEmpty {
+                // Use the stored selection for this schedule
+                store.shield.applicationCategories = .specific(selection.categoryTokens)
+              }
+              
+              if !blockedApps.isEmpty {
+                // Use the stored selection for this schedule
+                store.shield.applications = selection.applicationTokens
+              }
+              
+              if !blockedWebDomains.isEmpty {
+                // Use the stored selection for this schedule
+                store.shield.webDomains = selection.webDomainTokens
+              }
+            }
+            
+            resolve(true)
+          } catch {
+            print("❌ Monitoring error: \(error.localizedDescription)")
+            reject("monitoring_error", "Failed to start monitoring: \(error.localizedDescription)", error as NSError)
+          }
+        }
+      } else {
+        // No stored selection, prompt the user to select apps first
+        print("No stored selection available")
         resolve([
           "success": false,
-          "error": "No apps or categories selected to block. Please select apps first."
+          "error": "No app selection available. Please select apps to block first."
         ])
-        return
-      }
-      
-      do {
-        // Start monitoring
-        try center.startMonitoring(
-          activityName,
-          during: schedule
-        )
-        
-        // Apply the restrictions immediately if within the time window
-        let now = Date()
-        let nowComponents = calendar.dateComponents([.hour, .minute], from: now)
-        let nowHour = nowComponents.hour ?? 0
-        let nowMinute = nowComponents.minute ?? 0
-        let startHour = startComponents.hour ?? 0
-        let startMinute = startComponents.minute ?? 0
-        let endHour = endComponents.hour ?? 0
-        let endMinute = endComponents.minute ?? 0
-        
-        // Fix time window detection logic to handle overnight schedules properly
-        var isWithinTimeWindow = false
-        
-        // Convert everything to minutes for easier comparison
-        let nowMinutes = nowHour * 60 + nowMinute
-        let startMinutes = startHour * 60 + startMinute
-        let endMinutes = endHour * 60 + endMinute
-        
-        if (startMinutes < endMinutes) {
-          // Normal schedule (e.g. 9:00 to 17:00)
-          isWithinTimeWindow = nowMinutes >= startMinutes && nowMinutes <= endMinutes
-        } else {
-          // Overnight schedule (e.g. 22:00 to 7:00)
-          isWithinTimeWindow = nowMinutes >= startMinutes || nowMinutes <= endMinutes
-        }
-        
-        print("🕒 Current time: \(nowHour):\(nowMinute)")
-        print("🕒 Start time: \(startHour):\(startMinute)")
-        print("🕒 End time: \(endHour):\(endMinute)")
-        print("🔍 Is within time window: \(isWithinTimeWindow)")
-        
-        // Check if today is a day when this schedule should be active
-        let todayIndex = calendar.component(.weekday, from: now) - 1 // 0 = Sunday
-        let isActiveToday = daysOfWeek.indices.contains(todayIndex) && daysOfWeek[todayIndex]
-        print("📅 Today is day \(todayIndex), active: \(isActiveToday)")
-        
-        isWithinTimeWindow = isWithinTimeWindow && isActiveToday
-        
-        if isWithinTimeWindow {
-          print("🔒 Applying shields immediately")
-          let store = ManagedSettingsStore()
-          
-          // Custom shield configuration is handled by the system automatically
-          // when BlissShieldConfigurationDataSource is included in the target
-          print("🛡️ Applying shields with custom configuration")
-          
-          if !blockedCategories.isEmpty {
-            // Use the stored selection for this schedule
-            if let selection = self.scheduleSelections[id] {
-              store.shield.applicationCategories = .specific(selection.categoryTokens)
-            }
-          }
-          
-          if !blockedApps.isEmpty {
-            // Use the stored selection for this schedule
-            if let selection = self.scheduleSelections[id] {
-              store.shield.applications = selection.applicationTokens
-            }
-          }
-          
-          if !blockedWebDomains.isEmpty {
-            // Use the stored selection for this schedule
-            if let selection = self.scheduleSelections[id] {
-              store.shield.webDomains = selection.webDomainTokens
-            }
-          }
-        }
-        
-        resolve(true)
-      } catch {
-        print("❌ Monitoring error: \(error.localizedDescription)")
-        reject("monitoring_error", "Failed to start monitoring: \(error.localizedDescription)", error as NSError)
       }
     } else {
       // No stored selection, prompt the user to select apps first

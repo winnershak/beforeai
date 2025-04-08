@@ -24,7 +24,7 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
             backgroundColor: backgroundColor,
             title: ShieldConfiguration.Label(text: title, color: textColor),
             subtitle: ShieldConfiguration.Label(text: subtitle, color: textColor),
-            primaryButtonLabel: ShieldConfiguration.Label(text: "Sleep", color: buttonText),
+            primaryButtonLabel: ShieldConfiguration.Label(text: "Leave", color: buttonText),
             primaryButtonBackgroundColor: buttonBackground
         )
     }
@@ -32,16 +32,16 @@ class ShieldConfigurationExtension: ShieldConfigurationDataSource {
     override func configuration(shielding application: Application) -> ShieldConfiguration {
         let appName = application.localizedDisplayName ?? "This app"
         return makeShieldConfig(
-            title: "🐰 BlissAlarm Sleep Time",
-            subtitle: "Time to rest and recharge.\n\(appName) is paused until morning. 🐰"
+            title: "\n\(appName) is paused by BlissAlarm",
+            subtitle: "Your time is sacred. Time to recharge."
         )
     }
 
     override func configuration(shielding webDomain: WebDomain) -> ShieldConfiguration {
         let domainName = webDomain.domain ?? "This website"
         return makeShieldConfig(
-            title: "🐰 BlissAlarm Sleep Time",
-            subtitle: "Time to rest and recharge.\n\(domainName) is paused until morning. 🐰"
+            title: "\n\(domainName) is paused by BlissAlarm",
+            subtitle: "Your time is sacred. Time to recharge."
         )
     }
 }

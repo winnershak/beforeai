@@ -82,32 +82,6 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
-        {/* Test section for developers */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Developer Tests</Text>
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={testAlarmSound}
-          >
-            <View style={styles.settingContent}>
-              <Ionicons name="volume-high" size={24} color="#FF9500" style={styles.settingIcon} />
-              <Text style={styles.settingText}>Test AlarmSound Module</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingItem}
-            onPress={debugSoundFiles}
-          >
-            <View style={styles.settingContent}>
-              <Ionicons name="search" size={24} color="#4CD964" style={styles.settingIcon} />
-              <Text style={styles.settingText}>Debug Sound Files</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
-        </View>
-
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
           
@@ -140,6 +114,17 @@ export default function SettingsScreen() {
             <View style={styles.settingContent}>
               <Ionicons name="shield-outline" size={24} color="#FF9500" style={styles.settingIcon} />
               <Text style={styles.settingText}>Privacy Policy</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.settingItem}
+            onPress={() => Linking.openURL('https://blissalarm.com')}
+          >
+            <View style={styles.settingContent}>
+              <Ionicons name="globe-outline" size={24} color="#007AFF" style={styles.settingIcon} />
+              <Text style={styles.settingText}>Website</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
@@ -243,5 +228,13 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 17,
     fontWeight: 'bold',
+  },
+  settingItemContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingItemText: {
+    color: '#fff',
+    fontSize: 17,
   },
 }); 
