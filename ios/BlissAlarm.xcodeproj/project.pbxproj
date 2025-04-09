@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 56;
+	objectVersion = 54;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -35,6 +35,7 @@
 		DC07F5602D8BB363005F15FF /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F55F2D8BB363005F15FF /* FamilyControls.framework */; };
 		DC07F5612D8BB36D005F15FF /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5582D8BB0F9005F15FF /* ManagedSettings.framework */; };
 		DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5622D8BB373005F15FF /* DeviceActivity.framework */; };
+		DC1E2DB92DA4EE0F00D849F8 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC1E2DB82DA4EE0E00D849F8 /* StoreKit.framework */; };
 		DC55B0192D94C553004436B8 /* AlarmSound.m in Sources */ = {isa = PBXBuildFile; fileRef = DC55B0162D94C553004436B8 /* AlarmSound.m */; };
 		DC55B01B2D94C6A7004436B8 /* AlarmSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */; };
 		DC55B01E2D9637FB004436B8 /* SystemVolumeControl.m in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */; };
@@ -47,9 +48,6 @@
 		DCACC2CA2D8FCCE2004DD610 /* beacon.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C12D8FCCE2004DD610 /* beacon.caf */; };
 		DCACC2CB2D8FCCE2004DD610 /* radar.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C52D8FCCE2004DD610 /* radar.caf */; };
 		DCACC2CC2D8FCCE2004DD610 /* reflection.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C62D8FCCE2004DD610 /* reflection.caf */; };
-		DCD78EA42DA32C3D005C3778 /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5582D8BB0F9005F15FF /* ManagedSettings.framework */; };
-		DCD78EA52DA32C3D005C3778 /* ManagedSettingsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */; };
-		DCD78EAD2DA32C3D005C3778 /* BlissShieldConfiguration.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DCD78EA32DA32C3D005C3778 /* BlissShieldConfiguration.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		DCE529332DA1EA4500D735C6 /* ManagedSettingsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */; };
 		DCEDACFD2D8FD909002223D7 /* orkney.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACFA2D8FD909002223D7 /* orkney.mp3 */; };
 		DCEDACFE2D8FD909002223D7 /* circuit.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACF92D8FD909002223D7 /* circuit.mp3 */; };
@@ -63,16 +61,6 @@
 		FFD19956989E4461BC207D1B /* mount.caf in Resources */ = {isa = PBXBuildFile; fileRef = F8A41AA70B8F4DB693C426B2 /* mount.caf */; };
 /* End PBXBuildFile section */
 
-/* Begin PBXContainerItemProxy section */
-		DCD78EAB2DA32C3D005C3778 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = DCD78EA22DA32C3D005C3778;
-			remoteInfo = BlissShieldConfiguration;
-		};
-/* End PBXContainerItemProxy section */
-
 /* Begin PBXCopyFilesBuildPhase section */
 		DCD78E832DA30DFA005C3778 /* Embed Foundation Extensions */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -80,7 +68,6 @@
 			dstPath = "";
 			dstSubfolderSpec = 13;
 			files = (
-				DCD78EAD2DA32C3D005C3778 /* BlissShieldConfiguration.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -122,6 +109,7 @@
 		DC07F55E2D8BB2BF005F15FF /* BlissAlarm-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "BlissAlarm-Bridging-Header.h"; sourceTree = "<group>"; };
 		DC07F55F2D8BB363005F15FF /* FamilyControls.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FamilyControls.framework; path = System/Library/Frameworks/FamilyControls.framework; sourceTree = SDKROOT; };
 		DC07F5622D8BB373005F15FF /* DeviceActivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeviceActivity.framework; path = System/Library/Frameworks/DeviceActivity.framework; sourceTree = SDKROOT; };
+		DC1E2DB82DA4EE0E00D849F8 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		DC55B0162D94C553004436B8 /* AlarmSound.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AlarmSound.m; sourceTree = "<group>"; };
 		DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmSound.swift; sourceTree = "<group>"; };
 		DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SystemVolumeControl.m; sourceTree = "<group>"; };
@@ -134,7 +122,6 @@
 		DCACC2C42D8FCCE2004DD610 /* orkney.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = orkney.caf; sourceTree = "<group>"; };
 		DCACC2C52D8FCCE2004DD610 /* radar.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = radar.caf; sourceTree = "<group>"; };
 		DCACC2C62D8FCCE2004DD610 /* reflection.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = reflection.caf; sourceTree = "<group>"; };
-		DCD78EA32DA32C3D005C3778 /* BlissShieldConfiguration.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BlissShieldConfiguration.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ManagedSettingsUI.framework; path = System/Library/Frameworks/ManagedSettingsUI.framework; sourceTree = SDKROOT; };
 		DCEDACF82D8FD909002223D7 /* chimes.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = chimes.mp3; sourceTree = "<group>"; };
 		DCEDACF92D8FD909002223D7 /* circuit.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = circuit.mp3; sourceTree = "<group>"; };
@@ -150,51 +137,18 @@
 		FAC715A2D49A985799AEE119 /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-BlissAlarm/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		DCD78EB02DA32C3D005C3778 /* Exceptions for "BlissShieldConfiguration" folder in "BlissShieldConfiguration" target */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				Info.plist,
-			);
-			target = DCD78EA22DA32C3D005C3778 /* BlissShieldConfiguration */;
-		};
-/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
-
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		DCD78EA62DA32C3D005C3778 /* BlissShieldConfiguration */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				DCD78EB02DA32C3D005C3778 /* Exceptions for "BlissShieldConfiguration" folder in "BlissShieldConfiguration" target */,
-			);
-			explicitFileTypes = {
-			};
-			explicitFolders = (
-			);
-			path = BlissShieldConfiguration;
-			sourceTree = "<group>";
-		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
 /* Begin PBXFrameworksBuildPhase section */
 		13B07F8C1A680F5B00A75B9A /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				DCE529332DA1EA4500D735C6 /* ManagedSettingsUI.framework in Frameworks */,
+				DC1E2DB92DA4EE0F00D849F8 /* StoreKit.framework in Frameworks */,
 				DC55B0212D96385A004436B8 /* MediaPlayer.framework in Frameworks */,
 				DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */,
 				DC07F5612D8BB36D005F15FF /* ManagedSettings.framework in Frameworks */,
 				DC07F5602D8BB363005F15FF /* FamilyControls.framework in Frameworks */,
 				96905EF65AED1B983A6B3ABC /* libPods-BlissAlarm.a in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		DCD78EA02DA32C3D005C3778 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				DCD78EA42DA32C3D005C3778 /* ManagedSettings.framework in Frameworks */,
-				DCD78EA52DA32C3D005C3778 /* ManagedSettingsUI.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -252,6 +206,7 @@
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				DC1E2DB82DA4EE0E00D849F8 /* StoreKit.framework */,
 				DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */,
 				DC55B0202D96385A004436B8 /* MediaPlayer.framework */,
 				DC07F5622D8BB373005F15FF /* DeviceActivity.framework */,
@@ -282,7 +237,6 @@
 				DC07F55B2D8BB29E005F15FF /* ScreenTimeBridge.swift */,
 				13B07FAE1A68108700A75B9A /* BlissAlarm */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
-				DCD78EA62DA32C3D005C3778 /* BlissShieldConfiguration */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				D65327D7A22EEC0BE12398D9 /* Pods */,
@@ -297,7 +251,6 @@
 			isa = PBXGroup;
 			children = (
 				13B07F961A680F5B00A75B9A /* BlissAlarm.app */,
-				DCD78EA32DA32C3D005C3778 /* BlissShieldConfiguration.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -356,32 +309,11 @@
 			buildRules = (
 			);
 			dependencies = (
-				DCD78EAC2DA32C3D005C3778 /* PBXTargetDependency */,
 			);
 			name = BlissAlarm;
 			productName = BlissAlarm;
 			productReference = 13B07F961A680F5B00A75B9A /* BlissAlarm.app */;
 			productType = "com.apple.product-type.application";
-		};
-		DCD78EA22DA32C3D005C3778 /* BlissShieldConfiguration */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = DCD78EB12DA32C3D005C3778 /* Build configuration list for PBXNativeTarget "BlissShieldConfiguration" */;
-			buildPhases = (
-				DCD78E9F2DA32C3D005C3778 /* Sources */,
-				DCD78EA02DA32C3D005C3778 /* Frameworks */,
-				DCD78EA12DA32C3D005C3778 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				DCD78EA62DA32C3D005C3778 /* BlissShieldConfiguration */,
-			);
-			name = BlissShieldConfiguration;
-			productName = BlissShieldConfiguration;
-			productReference = DCD78EA32DA32C3D005C3778 /* BlissShieldConfiguration.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -394,10 +326,6 @@
 				TargetAttributes = {
 					13B07F861A680F5B00A75B9A = {
 						LastSwiftMigration = 1250;
-						ProvisioningStyle = Automatic;
-					};
-					DCD78EA22DA32C3D005C3778 = {
-						CreatedOnToolsVersion = 16.2;
 					};
 				};
 			};
@@ -415,7 +343,6 @@
 			projectRoot = "";
 			targets = (
 				13B07F861A680F5B00A75B9A /* BlissAlarm */,
-				DCD78EA22DA32C3D005C3778 /* BlissShieldConfiguration */,
 			);
 		};
 /* End PBXProject section */
@@ -460,13 +387,6 @@
 				AD51C2B934184F64BF54A61C /* thunder.caf in Resources */,
 				5A58D40690764BC7B780F3AA /* waterfall.caf in Resources */,
 				12FD97B2A442A279CC9B43FE /* PrivacyInfo.xcprivacy in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		DCD78EA12DA32C3D005C3778 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -621,22 +541,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		DCD78E9F2DA32C3D005C3778 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 /* End PBXSourcesBuildPhase section */
-
-/* Begin PBXTargetDependency section */
-		DCD78EAC2DA32C3D005C3778 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = DCD78EA22DA32C3D005C3778 /* BlissShieldConfiguration */;
-			targetProxy = DCD78EAB2DA32C3D005C3778 /* PBXContainerItemProxy */;
-		};
-/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
@@ -670,6 +575,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourusername.blissalarm;
 				PRODUCT_NAME = BlissAlarm;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BlissAlarm/BlissAlarm-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -704,6 +610,7 @@
 				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
 				PRODUCT_BUNDLE_IDENTIFIER = com.yourusername.blissalarm;
 				PRODUCT_NAME = BlissAlarm;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_OBJC_BRIDGING_HEADER = "BlissAlarm/BlissAlarm-Bridging-Header.h";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -766,10 +673,7 @@
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
@@ -824,103 +728,11 @@
 				);
 				LIBRARY_SEARCH_PATHS = "$(SDKROOT)/usr/lib/swift\"$(inherited)\"";
 				MTL_ENABLE_DEBUG_INFO = NO;
-				OTHER_LDFLAGS = (
-					"$(inherited)",
-					" ",
-				);
+				OTHER_LDFLAGS = "$(inherited)  ";
 				REACT_NATIVE_PATH = "${PODS_ROOT}/../../node_modules/react-native";
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
-			};
-			name = Release;
-		};
-		DCD78EAE2DA32C3D005C3778 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = BlissShieldConfiguration/BlissShieldConfiguration.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = 8L789T788W;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = BlissShieldConfiguration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = BlissShieldConfiguration;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_DEBUG";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourusername.blissalarm.BlissShieldConfiguration;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
-			};
-			name = Debug;
-		};
-		DCD78EAF2DA32C3D005C3778 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CODE_SIGN_ENTITLEMENTS = BlissShieldConfiguration/BlissShieldConfiguration.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				CODE_SIGN_STYLE = Automatic;
-				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = 8L789T788W;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = BlissShieldConfiguration/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = BlissShieldConfiguration;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-					"@executable_path/../../Frameworks",
-				);
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MARKETING_VERSION = 1.0;
-				MTL_FAST_MATH = YES;
-				OTHER_SWIFT_FLAGS = "$(inherited) -D EXPO_CONFIGURATION_RELEASE";
-				PRODUCT_BUNDLE_IDENTIFIER = com.yourusername.blissalarm.BlissShieldConfiguration;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SKIP_INSTALL = YES;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -941,15 +753,6 @@
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,
 				83CBBA211A601CBA00E9B192 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		DCD78EB12DA32C3D005C3778 /* Build configuration list for PBXNativeTarget "BlissShieldConfiguration" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				DCD78EAE2DA32C3D005C3778 /* Debug */,
-				DCD78EAF2DA32C3D005C3778 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

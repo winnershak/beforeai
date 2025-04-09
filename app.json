@@ -53,9 +53,8 @@
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.developer.usernotifications.time-sensitive": true,
-        "com.apple.developer.usernotifications.critical-alerts": true,
         "com.apple.developer.in-app-purchase": true,
-        "com.apple.security.application-groups": []
+        "aps-environment": "production"
       }
     },
     "plugins": [

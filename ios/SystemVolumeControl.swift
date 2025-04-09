@@ -19,7 +19,8 @@ class SystemVolumeControl: NSObject {
       if self.volumeView == nil {
         self.volumeView = MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
         if let volumeView = self.volumeView, 
-           let window = UIApplication.shared.windows.first {
+           let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+           let window = windowScene.windows.first {
           window.addSubview(volumeView)
         }
       }
