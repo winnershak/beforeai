@@ -29,8 +29,11 @@
         "UIBackgroundModes": [
           "audio",
           "fetch",
-          "remote-notification",
-          "processing"
+          "remote-notification"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "com.yourusername.blissalarm.refresh",
+          "com.yourusername.blissalarm.processing"
         ],
         "NSCameraUsageDescription": "$(PRODUCT_NAME) needs access to your Camera.",
         "NSMicrophoneUsageDescription": "This app uses the microphone for...",
@@ -53,7 +56,6 @@
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.developer.usernotifications.time-sensitive": true,
-        "com.apple.developer.in-app-purchase": true,
         "aps-environment": "production"
       }
     },

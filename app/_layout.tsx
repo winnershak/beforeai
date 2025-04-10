@@ -276,21 +276,25 @@ export default function AppLayout() {
   }, []);
 
   useEffect(() => {
-    const registerBackgroundTasks = async () => {
+    // Delay background task registration
+    const timer = setTimeout(async () => {
       try {
-        await BackgroundFetch.registerTaskAsync('ALARM_TASK', {
-          minimumInterval: 60, // 1 minute minimum
-          stopOnTerminate: false,
-          startOnBoot: true,
-        });
+        // Check if the app is fully initialized before registering tasks
+        const appState = AppState.currentState;
+        if (appState !== 'active') {
+          console.log('App not active, delaying background task registration');
+          return; // Don't register if app isn't fully active
+        }
         
-        console.log('Background tasks registered successfully');
+        // Register your background tasks here
+        await registerBackgroundTask();
+        console.log('Background tasks registered');
       } catch (error) {
         console.error('Error registering background tasks:', error);
       }
-    };
+    }, 10000); // Increase to 10 seconds
     
-    registerBackgroundTasks();
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -394,9 +398,14 @@ export default function AppLayout() {
   // Configure audio session at app start
   useEffect(() => {
     if (Platform.OS === 'ios') {
-      // Initialize the audio session properly for silent mode playback
-      AlarmSoundModule.configureAudio();
-      console.log('Configured audio session for silent mode on app startup');
+      // Delay audio configuration to avoid startup crashes
+      const timer = setTimeout(() => {
+        // Initialize the audio session properly for silent mode playback
+        AlarmSoundModule.configureAudio();
+        console.log('Configured audio session for silent mode on app startup');
+      }, 3000); // Delay by 3 seconds
+      
+      return () => clearTimeout(timer);
     }
   }, []);
 
@@ -429,14 +438,36 @@ export default function AppLayout() {
 
   useEffect(() => {
     // Check for expired snoozes on iOS
-    if (Platform.OS === 'ios' && ScreenTimeBridge && ScreenTimeBridge.checkForExpiredSnoozes) {
-      ScreenTimeBridge.checkForExpiredSnoozes()
-        .then((result) => {
-          console.log('Checked for expired snoozes:', result);
-        })
-        .catch((error) => {
-          console.error('Error checking for expired snoozes:', error);
-        });
+    if (Platform.OS === 'ios') {
+      try {
+        // First check if the module exists
+        if (NativeModules.ScreenTimeBridge) {
+          // Then check if the method exists
+          const bridge = NativeModules.ScreenTimeBridge;
+          if (typeof bridge.checkForExpiredSnoozes === 'function') {
+            // Delay the ScreenTimeBridge check
+            setTimeout(() => {
+              try {
+                bridge.checkForExpiredSnoozes()
+                  .then((result: any) => {
+                    console.log('Checked for expired snoozes:', result);
+                  })
+                  .catch((error: Error) => {
+                    console.error('Error checking for expired snoozes:', error);
+                  });
+              } catch (e) {
+                console.error('Error calling checkForExpiredSnoozes:', e);
+              }
+            }, 2000); // Delay by 2 seconds
+          } else {
+            console.log('checkForExpiredSnoozes is not available');
+          }
+        } else {
+          console.log('ScreenTimeBridge module not available');
+        }
+      } catch (error) {
+        console.error('Error accessing ScreenTimeBridge:', error);
+      }
     }
   }, []);
 

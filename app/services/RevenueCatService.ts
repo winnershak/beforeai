@@ -89,11 +89,25 @@ class RevenueCatService {
         return isPremium === 'true';
       }
       
-      // For production, check actual subscription status and handle undefined
-      const status = await IAPService.checkSubscriptionStatus();
-      return status === true;
+      // For production, add a safety timeout and better error handling
+      try {
+        // Add a timeout to prevent hanging
+        const timeoutPromise = new Promise<false>((resolve) => {
+          setTimeout(() => resolve(false), 3000);
+        });
+        
+        const status = await Promise.race([
+          IAPService.checkSubscriptionStatus(),
+          timeoutPromise
+        ]);
+        
+        return status === true;
+      } catch (error) {
+        console.error('Error checking subscription status:', error);
+        return false;
+      }
     } catch (error) {
-      console.error('Error checking subscription status:', error);
+      console.error('Error in isSubscribed:', error);
       return false;
     }
   }

@@ -82,7 +82,6 @@
       <string>audio</string>
       <string>fetch</string>
       <string>remote-notification</string>
-      <string>processing</string>
     </array>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
@@ -111,16 +110,14 @@
     <string>Light</string>
     <key>UIViewControllerBasedStatusBarAppearance</key>
     <false/>
-    <key>NSLocalNetworkUsageDescription</key>
-    <string>Bliss Alarm needs access to the local network for development and connecting to devices</string>
-    <key>NSBonjourServices</key>
-    <array>
-      <string>_expo._tcp</string>
-      <string>_http._tcp</string>
-    </array>
     <key>LSApplicationQueriesSchemes</key>
     <array>
       <string>prefs</string>
+    </array>
+    <key>BGTaskSchedulerPermittedIdentifiers</key>
+    <array>
+      <string>com.yourusername.blissalarm.refresh</string>
+      <string>com.yourusername.blissalarm.processing</string>
     </array>
   </dict>
 </plist>
