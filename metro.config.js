@@ -25,8 +25,8 @@ config.server = {
   ...config.server,
   enhanceMiddleware: (middleware) => {
     return (req, res, next) => {
-      // Fix URL handling for iOS 18
-      if (req.url.includes('&platform=ios')) {
+      // Fix URL handling for iOS
+      if (req.url && req.url.includes('&platform=ios')) {
         req.url = req.url.replace('&platform=ios', '');
       }
       return middleware(req, res, next);

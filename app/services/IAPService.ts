@@ -3,8 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Your product IDs
 const PRODUCTS = {
-  MONTHLY: 'blissmonthly',
-  YEARLY: 'blissyearly',
+  MONTHLY: 'blissmonth',
+  YEARLY: 'blissyear',
 };
 
 // Add a debug log to confirm the updated values

@@ -56,7 +56,7 @@
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.developer.usernotifications.time-sensitive": true,
-        "aps-environment": "production"
+        "aps-environment": "development"
       }
     },
     "plugins": [
@@ -125,6 +125,9 @@
         "android.permission.WAKE_LOCK"
       ],
       "package": "com.yourusername.blissalarm"
+    },
+    "developmentClient": {
+      "silentLaunch": false
     }
   }
 }

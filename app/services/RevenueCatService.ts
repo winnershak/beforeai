@@ -1,34 +1,58 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import IAPService from './IAPService';
+import getStoreKit from './SafeStoreKit';
 
-// This is a wrapper around IAPService that maintains the same interface
-// as your original RevenueCatService for backward compatibility
+// This is a wrapper around RevenueCat for backward compatibility
 class RevenueCatService {
-  async initialize() {
-    return IAPService.initialize();
-  }
-
-  async checkSubscriptionStatus(): Promise<boolean> {
-    const result = await IAPService.checkSubscriptionStatus();
-    return result === true;
-  }
-
-  async getSubscriptionPackages() {
-    return IAPService.getProducts();
-  }
-
-  async purchasePackage(selectedPackage: any) {
+  async initialize(): Promise<boolean> {
     try {
-      // Use real purchase flow
-      return await IAPService.purchaseProduct(selectedPackage.identifier);
+      // In production, don't initialize StoreKit
+      if (!__DEV__) {
+        console.log('Production build: Bypassing RevenueCat initialization');
+        return true;
+      }
+      
+      // In development, initialize safely
+      return await getStoreKit().initialize();
     } catch (error) {
-      console.error('Error in purchasePackage:', error);
+      console.warn('RevenueCat initialization failed:', error);
       return false;
     }
   }
 
-  async restorePurchases() {
-    return IAPService.restorePurchases();
+  async isSubscribed(): Promise<boolean> {
+    try {
+      // Always check local storage first for safety
+      const isPremium = await AsyncStorage.getItem('isPremium');
+      return isPremium === 'true';
+    } catch (error) {
+      console.error('Error in isSubscribed:', error);
+      return false;
+    }
+  }
+
+  // Only call this when explicitly needed
+  async verifySubscription(): Promise<boolean> {
+    return await getStoreKit().isSubscribed();
+  }
+
+  // For backward compatibility
+  async purchaseProduct(productId: string): Promise<boolean> {
+    return await getStoreKit().purchase(productId);
+  }
+
+  // For backward compatibility
+  async restorePurchases(): Promise<boolean> {
+    return await getStoreKit().restore();
+  }
+
+  async checkSubscriptionStatus(): Promise<boolean> {
+    const result = await getStoreKit().isSubscribed();
+    return result === true;
+  }
+
+  async getSubscriptionPackages() {
+    const storeKit = getStoreKit();
+    return storeKit.getProducts();
   }
 
   async getSubscriptionDetails() {
@@ -49,7 +73,7 @@ class RevenueCatService {
       return {
         expirationDate,
         latestPurchaseDate: new Date(),
-        productIdentifier: subscriptionType === 'yearly' ? 'blissyearly' : 'blissmonthly',
+        productIdentifier: subscriptionType === 'yearly' ? 'blissyear' : 'blissmonth',
         isYearly: subscriptionType === 'yearly'
       };
     } catch (error) {
@@ -81,37 +105,6 @@ class RevenueCatService {
     return storedPremium === 'true';
   }
 
-  async isSubscribed(): Promise<boolean> {
-    try {
-      // For development builds, check the premium flag
-      if (__DEV__) {
-        const isPremium = await AsyncStorage.getItem('isPremium');
-        return isPremium === 'true';
-      }
-      
-      // For production, add a safety timeout and better error handling
-      try {
-        // Add a timeout to prevent hanging
-        const timeoutPromise = new Promise<false>((resolve) => {
-          setTimeout(() => resolve(false), 3000);
-        });
-        
-        const status = await Promise.race([
-          IAPService.checkSubscriptionStatus(),
-          timeoutPromise
-        ]);
-        
-        return status === true;
-      } catch (error) {
-        console.error('Error checking subscription status:', error);
-        return false;
-      }
-    } catch (error) {
-      console.error('Error in isSubscribed:', error);
-      return false;
-    }
-  }
-
   async getSubscriptionType(): Promise<'monthly' | 'yearly' | null> {
     try {
       // For development builds, just return a default
@@ -125,7 +118,7 @@ class RevenueCatService {
       }
       
       // For production, use the existing method
-      const isSubscribed = await IAPService.checkSubscriptionStatus();
+      const isSubscribed = await getStoreKit().isSubscribed();
       if (!isSubscribed) return null;
       
       // You'll need to implement a way to determine subscription type

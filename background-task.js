@@ -47,4 +47,21 @@ export const registerBackgroundTask = async () => {
     console.error('Error in registerBackgroundTask:', error);
   }
   */
+};
+
+// Add error handling to any network requests
+const safelyFetchData = async (url) => {
+  try {
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    
+    return await response.json();
+  } catch (error) {
+    console.warn('Network request failed:', error);
+    return null; // Return default value
+  }
 }; 

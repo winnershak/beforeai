@@ -49,9 +49,15 @@ TaskManager.defineTask(TETRIS_TASK, async () => {
 });
 
 // Function to register all background tasks
-export async function registerBackgroundTask() {
-  // Don't request permissions immediately
+export const registerBackgroundTask = async () => {
   try {
+    // Check if we're in production before registering tasks
+    if (__DEV__) {
+      console.log('Skipping background task registration in development');
+      return;
+    }
+    
+    // Don't request permissions immediately
     await BackgroundFetch.registerTaskAsync(ALARM_CHECK_TASK, {
       minimumInterval: 900, // 15 minutes in seconds
       stopOnTerminate: false,
@@ -71,12 +77,11 @@ export async function registerBackgroundTask() {
     });
     
     console.log('Background tasks registered successfully');
-    return true;
   } catch (error) {
-    console.error('Error registering background tasks:', error);
-    return false;
+    console.log('Failed to register background task:', error);
+    // Continue app execution even if this fails
   }
-}
+};
 
 // Export without executing
 export default {}; 

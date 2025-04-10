@@ -119,5 +119,15 @@
       <string>com.yourusername.blissalarm.refresh</string>
       <string>com.yourusername.blissalarm.processing</string>
     </array>
+    <key>NSBonjourServices</key>
+    <array>
+      <string>_reactdevmenu._tcp</string>
+    </array>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Developer mode uses local network to connect to development server</string>
+    <key>IS_PRODUCTION</key>
+    <false/>
+    <key>RCTDisableExceptionsManager</key>
+    <true/>
   </dict>
 </plist>

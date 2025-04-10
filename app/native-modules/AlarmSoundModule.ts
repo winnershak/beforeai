@@ -7,6 +7,7 @@ interface AlarmSoundInterface {
   playAlarmSound(soundName: string, volume: number): Promise<boolean>;
   stopAlarmSound(): Promise<boolean>;
   debugSoundFiles(): Promise<any>;
+  cleanup?(): void;
 }
 
 // Create a default implementation for non-iOS platforms
@@ -42,6 +43,13 @@ const AlarmSoundModuleSafe = {
       return AlarmSound.stopAlarmSound();
     }
     return Promise.resolve(false);
+  },
+
+  cleanup: () => {
+    if (Platform.OS === 'ios' && AlarmSound.cleanup) {
+      return AlarmSound.cleanup();
+    }
+    return;
   },
 
   debugSoundFiles: () => AlarmSoundModule.debugSoundFiles(),

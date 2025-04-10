@@ -16,4 +16,6 @@ RCT_EXTERN_METHOD(stopAlarmSound:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(debugSoundFiles:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(cleanup)
+
 @end 

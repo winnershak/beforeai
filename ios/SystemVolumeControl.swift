@@ -8,9 +8,15 @@ class SystemVolumeControl: NSObject {
   private var originalVolume: Float = 0.5
   
   @objc
-  func setSystemVolume(_ volume: Float, 
-                       resolver: @escaping RCTPromiseResolveBlock,
-                       rejecter: @escaping RCTPromiseRejectBlock) {
+  func setSystemVolume(_ volume: NSNumber, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    // PRODUCTION SAFETY: Don't modify volume at startup in production
+    let isProduction = Bundle.main.object(forInfoDictionaryKey: "IS_PRODUCTION") as? Bool ?? false
+    if isProduction {
+      print("Production build: Bypassing volume control for stability")
+      resolver(true)
+      return
+    }
+    
     DispatchQueue.main.async {
       // Store original volume to restore later if needed
       self.originalVolume = AVAudioSession.sharedInstance().outputVolume
@@ -29,7 +35,7 @@ class SystemVolumeControl: NSObject {
       if let volumeView = self.volumeView,
          let volumeSlider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
         // Set the volume
-        volumeSlider.value = volume
+        volumeSlider.value = volume.floatValue
         resolver(true)
       } else {
         rejecter("error", "Could not find volume slider", nil)
@@ -40,7 +46,7 @@ class SystemVolumeControl: NSObject {
   @objc
   func restoreOriginalVolume(_ resolver: @escaping RCTPromiseResolveBlock,
                              rejecter: @escaping RCTPromiseRejectBlock) {
-    self.setSystemVolume(self.originalVolume, resolver: resolver, rejecter: rejecter)
+    self.setSystemVolume(NSNumber(value: self.originalVolume), resolver: resolver, rejecter: rejecter)
   }
   
   @objc
