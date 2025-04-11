@@ -5,96 +5,129 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity, 
-  Dimensions 
+  Dimensions,
+  Linking,
+  Platform,
+  Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import * as StoreReview from 'expo-store-review';
 
 const { width } = Dimensions.get('window');
 
-// Updated review data with specific benefits
-const reviews = [
-  // Physical - Skin 
+// Sleep facts with scientific backing
+const sleepFacts = [
   {
     id: '1',
-    name: 'Sarah J.',
-    rating: 5,
-    text: 'I used to scroll on Tiktok and Instagram for hours in bed. Now I am finally living up to my potential and it feels incredible! I can focus for hours at work now, and my productivity has doubled.',
-    category: 'Physical - Skin',
+    fact: '1 hour of sleep is one less day at the hospital at the end of life.',
+    source: 'Harvard Medical School, 2018'
   },
-  // Physical - Body
   {
     id: '2',
-    name: 'Michael T.',
-    rating: 5,
-    text: 'I have lost 8 pounds and gained a lot of muscles since fixing my sleep with Rise. My metabolism is working better, and I have the energy to exercise regularly now.',
-    category: 'Physical - Body',
+    fact: 'Chronic short sleep (<6 hrs) increases colon cancer risk by 50%.',
+    source: 'University of Chicago, 2011'
   },
-  // Mental 1
   {
     id: '3',
-    name: 'Emma L.',
-    rating: 5,
-    text: 'My skin has completely transformed since using Rise. The dark circles under my eyes are gone, and friends keep asking what skincare products I am using! I just improved my sleep!',
-    category: 'Mental',
+    fact: 'Sleep-deprived brains build up β-amyloid, the toxic protein linked to Alzheimer\'s.',
+    source: 'NIH, 2013'
   },
-  // Mental 2
   {
     id: '4',
-    name: 'David R.',
-    rating: 5,
-    text: 'I feel calmer throughout the day and can handle stress so much better.',
-    category: 'Mental',
+    fact: 'In just 1 week of under-sleeping, 711 genes are disrupted — many involved in inflammation, stress, and immune suppression.',
+    source: 'PNAS, 2013'
   },
-  // Social 1
   {
     id: '5',
-    name: 'Jessica M.',
-    rating: 5,
-    text: 'I am more present in conversations and actually enjoy social events now. Before Rise, I was always too tired to connect with friends. Now I am in a happy relationship. :)',
-    category: 'Social',
+    fact: 'Lack of sleep raises risk of heart disease by 48% and stroke by 15%.',
+    source: 'European Heart Journal, 2011'
   },
-  // Social 2
   {
     id: '6',
-    name: 'Alex P.',
-    rating: 5,
-    text: 'I have not been late to work once since using Rise! The alarm system actually works, and I wake up refreshed instead of hitting snooze repeatedly.',
-    category: 'Social',
+    fact: 'Every hour, someone dies in a car crash caused by a sleep-deprived driver.',
+    source: 'CDC, 2017'
   },
-  // Work punctuality
   {
     id: '7',
-    name: 'Thomas K.',
-    rating: 5,
-    text: 'This decision changed my life for the better in ways I never imagined. A year later, I can confidently say that I am so glad I started this. I used to scroll for our hours in bed and had really bad sleep schedule. The journey wasn not easy but it was worth every step.',
-    category: 'Work',
+    fact: 'Losing just 1 hour of sleep increases crash risk by 400% — the same as being legally drunk.',
+    source: 'AAA Foundation'
   },
+  {
+    id: '8',
+    fact: 'Your pain threshold drops significantly with poor sleep — even mild pain feels worse.',
+    source: 'Sleep, 2012'
+  },
+  {
+    id: '9',
+    fact: 'With 6 hours of sleep or less, your body produces more hunger hormone (ghrelin) and less satiety hormone (leptin) — making you crave sugar and fat.',
+    source: 'PLOS Medicine, 2004'
+  },
+  {
+    id: '10',
+    fact: 'Sleep-deprived people consume ~385 extra calories/day, often without realizing it. That\'s a pound of fat gained every 9 days.',
+    source: 'American Journal of Clinical Nutrition, 2016'
+  },
+  {
+    id: '11',
+    fact: 'Poor sleep leads to worse skin, slower healing, and accelerated aging — even your wounds take longer to close.',
+    source: 'Journal of Clinical & Experimental Dermatology'
+  },
+  {
+    id: '12',
+    fact: 'People who sleep poorly are 80% more likely to suffer from depression.',
+    source: 'Sleep Medicine Reviews, 2008'
+  }
 ];
 
-export default function ReviewsScreen() {
+export default function SleepFactsScreen() {
+  const requestAppReview = async () => {
+    try {
+      // First show our custom message
+      Alert.alert(
+        "Love the app?",
+        "If you're enjoying Bliss Alarm, please consider giving us a 5-star review! It helps us reach more people who need better sleep.",
+        [
+          {
+            text: "Maybe Later",
+            onPress: () => router.push('/quiz/study'),
+            style: "cancel"
+          },
+          { 
+            text: "Rate 5 Stars", 
+            onPress: async () => {
+              // Use the native StoreReview API - this shows the in-app rating dialog
+              await StoreReview.requestReview();
+              
+              // Continue to next screen after a short delay
+              setTimeout(() => {
+                router.push('/quiz/study');
+              }, 1500);
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error in review flow:', error);
+      router.push('/quiz/study');
+    }
+  };
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SafeAreaView style={styles.container}>
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Text style={styles.header}>
-            Better Sleep Regime Benefits
+            Did you know?
           </Text>
           
-          {/* Reviews list */}
-          {reviews.map((review) => (
-            <View key={review.id} style={styles.reviewCard}>
-              <View style={styles.reviewHeader}>
-                <Text style={styles.reviewName}>{review.name}</Text>
-                <View style={styles.ratingContainer}>
-                  {[...Array(review.rating)].map((_, i) => (
-                    <Ionicons key={i} name="star" size={16} color="#FFD700" />
-                  ))}
-                </View>
-              </View>
-              <Text style={styles.reviewText}>{review.text}</Text>
+          {/* Sleep facts list */}
+          {sleepFacts.map((item) => (
+            <View key={item.id} style={styles.factCard}>
+              <Text style={styles.factText}>{item.fact}</Text>
+              <Text style={styles.factSource}>{item.source}</Text>
             </View>
           ))}
         </ScrollView>
@@ -103,11 +136,11 @@ export default function ReviewsScreen() {
         <View style={styles.stickyButtonContainer}>
           <TouchableOpacity 
             style={styles.button}
-            onPress={() => router.push('/quiz/study')}
+            onPress={requestAppReview}
           >
-            <Text style={styles.buttonText}>Continue</Text>
+            <Text style={styles.buttonText}>Help us spread the message</Text>
             <View style={styles.buttonIconContainer}>
-              <Ionicons name="arrow-forward" size={18} color="#fff" />
+              <Ionicons name="star" size={18} color="#fff" />
             </View>
           </TouchableOpacity>
         </View>
@@ -123,39 +156,32 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     padding: 20,
-    paddingBottom: 80, // Add padding to prevent content from being hidden behind sticky button
+    paddingBottom: 100, // Add padding to prevent content from being hidden behind sticky button
   },
   header: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#fff', // Changed to white as requested
+    color: '#fff',
     marginBottom: 25,
     textAlign: 'center',
   },
-  reviewCard: {
+  factCard: {
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
   },
-  reviewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  reviewName: {
+  factText: {
     fontSize: 16,
-    fontWeight: '600',
     color: '#fff',
+    lineHeight: 24,
+    marginBottom: 8,
+    fontWeight: '500',
   },
-  ratingContainer: {
-    flexDirection: 'row',
-  },
-  reviewText: {
-    fontSize: 15,
-    color: '#fff',
-    lineHeight: 22,
+  factSource: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.6)',
+    fontStyle: 'italic',
   },
   // Sticky button styles
   stickyButtonContainer: {
@@ -179,13 +205,13 @@ const styles = StyleSheet.create({
     borderRadius: 30,
   },
   buttonText: {
-    color: '#000', // Black text on blue button
+    color: '#fff', // White text on blue button
     fontSize: 18,
     fontWeight: '600',
     marginRight: 10,
   },
   buttonIconContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
     width: 28,
     height: 28,
     borderRadius: 14,

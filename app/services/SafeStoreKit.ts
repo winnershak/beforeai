@@ -50,14 +50,25 @@ class SafeStoreKit {
     try {
       console.log('Initializing StoreKit...');
       if (InAppPurchases) {
-        await InAppPurchases.connectAsync();
+        try {
+          await InAppPurchases.connectAsync();
+          this.initialized = true;
+        } catch (connectError) {
+          console.warn('StoreKit connection failed, but continuing:', connectError);
+          // Still mark as initialized to avoid repeated attempts
+          this.initialized = true;
+        }
+      } else {
+        // If InAppPurchases is null, still mark as initialized
+        this.initialized = true;
       }
-      this.initialized = true;
       this.initPromise = null;
       return true;
     } catch (error) {
       console.error('StoreKit initialization failed:', error);
       this.initPromise = null;
+      // Mark as initialized anyway to prevent repeated failures
+      this.initialized = true;
       return false;
     }
   }

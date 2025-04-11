@@ -1,5 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions, Image, ImageBackground } from 'react-native';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  Dimensions, 
+  Image, 
+  ImageBackground,
+  Modal,
+  TextInput,
+  Alert
+} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,8 +21,15 @@ import { CacheManager } from 'react-native-expo-image-cache';
 const { width, height } = Dimensions.get('window');
 const isSmallDevice = width < 375;
 
+// App Store reviewer credentials
+const REVIEWER_USERNAME = "appreview";
+const REVIEWER_PASSWORD = "blissalarm2023";
+
 export default function QuizIntro() {
   const [loading, setLoading] = useState(true);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const backgroundImage = require('../../assets/images/10.png');
   
   // Preload the background image
@@ -47,6 +65,27 @@ export default function QuizIntro() {
     
     checkQuizStatus();
   }, []);
+
+  const handleLogin = async () => {
+    // Check if credentials match App Store reviewer credentials
+    if (username === REVIEWER_USERNAME && password === REVIEWER_PASSWORD) {
+      try {
+        // Set user as premium and quiz as completed
+        await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        await AsyncStorage.setItem('subscriptionType', 'yearly');
+        
+        // Navigate to main app
+        router.replace('/(tabs)');
+      } catch (error) {
+        console.error('Error setting premium status:', error);
+        Alert.alert('Error', 'Failed to log in. Please try again.');
+      }
+    } else {
+      // Show error for incorrect credentials
+      Alert.alert('Invalid Credentials', 'The username or password is incorrect.');
+    }
+  };
 
   if (loading) {
     return (
@@ -86,10 +125,70 @@ export default function QuizIntro() {
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </View>
               </TouchableOpacity>
+              
+              {/* Subtle login button for existing users and reviewers */}
+              <TouchableOpacity 
+                style={styles.loginButton}
+                onPress={() => setShowLoginModal(true)}
+              >
+                <Text style={styles.loginText}>Already have an account? Log in</Text>
+              </TouchableOpacity>
             </View>
           </SafeAreaView>
         </View>
       </ImageBackground>
+      
+      {/* Login Modal */}
+      <Modal
+        visible={showLoginModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowLoginModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Log In</Text>
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Username"
+              placeholderTextColor="#999"
+              value={username}
+              onChangeText={setUsername}
+              autoCapitalize="none"
+            />
+            
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor="#999"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => {
+                  setShowLoginModal(false);
+                  setUsername('');
+                  setPassword('');
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.loginModalButton}
+                onPress={handleLogin}
+              >
+                <Text style={styles.loginModalButtonText}>Log In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </>
   );
 }
@@ -192,5 +291,77 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 4,
+  },
+  loginButton: {
+    marginTop: 20,
+    padding: 10,
+  },
+  loginText: {
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 20,
+    width: width * 0.85,
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 20,
+  },
+  input: {
+    backgroundColor: '#2C2C2E',
+    width: '100%',
+    padding: 15,
+    borderRadius: 10,
+    color: '#fff',
+    marginBottom: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 10,
+  },
+  cancelButton: {
+    padding: 15,
+    borderRadius: 10,
+    width: '48%',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+  },
+  cancelButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  loginModalButton: {
+    backgroundColor: '#0A84FF',
+    padding: 15,
+    borderRadius: 10,
+    width: '48%',
+    alignItems: 'center',
+  },
+  loginModalButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
   },
 }); 
