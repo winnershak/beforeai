@@ -5,6 +5,8 @@ import DeviceActivity
 import SwiftUI
 import React
 import ManagedSettingsUI
+import BackgroundTasks
+import UserNotifications
 
 // Add this class to handle the device activity events
 @available(iOS 16.0, *)
@@ -407,6 +409,14 @@ class ScreenTimeBridge: NSObject {
     let minutes = snoozeMinutes.intValue
     print("🛑 Stopping monitoring for schedule: \(id) for \(minutes) minutes")
     
+    // If minutes is 0, immediately reapply the schedule instead of snoozing
+    if minutes == 0 {
+      print("⏰ Immediately reapplying schedule: \(id)")
+      reapplySchedule(id: id)
+      resolve(true)
+      return
+    }
+    
     // First, make sure we remove all shields immediately
     let store = ManagedSettingsStore()
     store.shield.applications = nil
@@ -454,6 +464,23 @@ class ScreenTimeBridge: NSObject {
           // Also store the end time in UserDefaults as a backup
           let endTime = Date().addingTimeInterval(TimeInterval(minutes * 60))
           UserDefaults.standard.set(endTime.timeIntervalSince1970, forKey: "snoozeEndTime_\(id)")
+          
+          // Schedule a local notification as a backup reminder
+          let content = UNMutableNotificationContent()
+          content.title = "App Block Snooze Ending"
+          content.body = "Your app block snooze is about to expire"
+          content.sound = UNNotificationSound.default
+          
+          // Schedule notification for 1 minute before snooze ends
+          let triggerTime = max(1, minutes * 60 - 60)
+          let trigger = UNTimeIntervalNotificationTrigger(timeInterval: TimeInterval(triggerTime), repeats: false)
+          let request = UNNotificationRequest(identifier: "snooze-end-\(id)", content: content, trigger: trigger)
+          
+          UNUserNotificationCenter.current().add(request) { error in
+            if let error = error {
+                print("❌ Error scheduling snooze notification: \(error)")
+            }
+          }
         } else {
           print("⏰ No timer set for 'rest of day' snooze")
         }
@@ -467,12 +494,36 @@ class ScreenTimeBridge: NSObject {
   private func reapplySchedule(id: String) {
     print("⏰ Reapplying schedule: \(id)")
     
-    // Check if we have the schedule data
-    guard let schedule = snoozedSchedules[id] else {
-      print("❌ No saved schedule found for ID: \(id)")
-      return
+    // First, check if we have the schedule data in memory
+    if let schedule = snoozedSchedules[id] {
+      applyScheduleFromMemory(id: id, schedule: schedule)
+    } else {
+      // If not in memory, try to load from UserDefaults
+      loadAndApplyScheduleFromStorage(id: id)
     }
     
+    // Clean up UserDefaults regardless
+    UserDefaults.standard.removeObject(forKey: "snoozeEndTime_\(id)")
+    
+    // Also remove any app-wide snooze flags
+    UserDefaults.standard.removeObject(forKey: "appBlockDisabledUntil")
+  }
+  
+  // New helper method to load schedule from storage
+  private func loadAndApplyScheduleFromStorage(id: String) {
+    if let savedSchedules = UserDefaults.standard.object(forKey: "appBlockSchedules") as? String,
+       let data = savedSchedules.data(using: .utf8),
+       let schedules = try? JSONSerialization.jsonObject(with: data, options: []) as? [[String: Any]],
+       let schedule = schedules.first(where: { ($0["id"] as? String) == id }) {
+      
+      applyScheduleFromMemory(id: id, schedule: schedule)
+    } else {
+      print("❌ Could not find schedule data in storage for ID: \(id)")
+    }
+  }
+  
+  // New helper method to apply a schedule from memory
+  private func applyScheduleFromMemory(id: String, schedule: [String: Any]) {
     // Convert schedule to the format expected by applyAppBlockSchedule
     let scheduleData: [String: Any] = [
       "id": id,
@@ -490,8 +541,6 @@ class ScreenTimeBridge: NSObject {
       print("✅ Successfully reapplied schedule: \(id)")
       // Remove from snoozed schedules
       self.snoozedSchedules.removeValue(forKey: id)
-      // Clean up UserDefaults
-      UserDefaults.standard.removeObject(forKey: "snoozeEndTime_\(id)")
     }, reject: { _, message, _ in
       print("❌ Failed to reapply schedule: \(message ?? "Unknown error")")
     })

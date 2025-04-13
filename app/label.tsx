@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -6,30 +6,31 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 export default function LabelScreen() {
   const params = useLocalSearchParams();
   const [label, setLabel] = useState(params.currentLabel as string || '');
+  
+  // Log all params for debugging
+  useEffect(() => {
+    console.log('Label screen params:', JSON.stringify(params));
+  }, [params]);
 
   const handleSubmit = async () => {
     try {
-      // Get existing alarms
-      const existingAlarms = await AsyncStorage.getItem('alarms');
-      if (existingAlarms) {
-        const alarms = JSON.parse(existingAlarms);
-        
-        // Update only the label for the current alarm
-        const updatedAlarms = alarms.map((alarm: any) => 
-          alarm.id === params.alarmId 
-            ? { ...alarm, label: label }
-            : alarm
-        );
-        
-        // Save updated alarms when return is pressed
-        await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
-        
-        // Return to previous screen with updated label
-        router.back();
-        router.setParams({ currentLabel: label });
-      }
+      console.log(`Saving label: "${label}"`);
+      
+      // For first-time alarms, we just need to save the label globally
+      // The new-alarm screen will pick it up when creating the alarm
+      await AsyncStorage.setItem('pendingLabel', label);
+      
+      // Also save as currentLabel for backward compatibility
+      await AsyncStorage.setItem('currentLabel', label);
+      
+      console.log('Label saved to pendingLabel and currentLabel');
+      
+      // Navigate back to new-alarm
+      router.back();
+      
     } catch (error) {
-      console.error('Error updating label:', error);
+      console.error('Error saving label:', error);
+      router.back();
     }
   };
 

@@ -250,6 +250,49 @@ export default function AppLayout() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
+        // Check if there's an active snooze that has expired
+        const snoozeEndTimeStr = await AsyncStorage.getItem('snoozeEndTime');
+        const manuallyEnded = await AsyncStorage.getItem('manuallyEndedSnooze');
+        
+        if (snoozeEndTimeStr && !manuallyEnded) {
+          const snoozeEndTime = new Date(snoozeEndTimeStr);
+          const now = new Date();
+          
+          if (now >= snoozeEndTime) {
+            // Snooze has expired, clean up and reapply blocks
+            await AsyncStorage.removeItem('snoozeEndTime');
+            await AsyncStorage.removeItem('appBlockDisabledUntil');
+            
+            // Get the schedule ID if available
+            const scheduleId = await AsyncStorage.getItem('snoozedScheduleId');
+            if (scheduleId && Platform.OS === 'ios' && ScreenTimeBridge) {
+              console.log(`Snooze expired for schedule: ${scheduleId}, reapplying blocks`);
+              
+              // First try to directly reapply the specific schedule
+              try {
+                // This will force the schedule to be reapplied immediately
+                await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
+                console.log(`Successfully reapplied schedule: ${scheduleId}`);
+              } catch (error) {
+                console.error('Error reapplying specific schedule:', error);
+                
+                // Fall back to checking all expired snoozes
+                ScreenTimeBridge.checkForExpiredSnoozes()
+                  .then((result: any) => {
+                    console.log(`Checked for expired snoozes: ${JSON.stringify(result)}`);
+                  })
+                  .catch((err: Error) => console.error('Error checking snoozes:', err));
+              }
+              
+              // Clean up the schedule ID
+              await AsyncStorage.removeItem('snoozedScheduleId');
+            }
+          }
+        } else if (manuallyEnded) {
+          // Clean up if we manually ended
+          await AsyncStorage.removeItem('manuallyEndedSnooze');
+        }
+        
         // Check if there's a completed alarm flag for the active alarm
         const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
         if (activeAlarmJson) {
@@ -267,6 +310,15 @@ export default function AppLayout() {
         
         // Just stop any sounds and continue normal app flow
         stopAlarmSound();
+
+        // Check for expired snoozes when app becomes active
+        ScreenTimeBridge.checkForExpiredSnoozes()
+          .then((result: any) => {
+            if (result.expiredSnoozes > 0) {
+              console.log(`Reapplied ${result.expiredSnoozes} expired snoozes`);
+            }
+          })
+          .catch((err: Error) => console.error('Error checking snoozes:', err));
       }
     });
     

@@ -981,6 +981,55 @@ export default function NewAlarmScreen() {
     resetState();
   }, []);
 
+  // Add this to your useEffect in new-alarm.tsx where you initialize the component
+  useEffect(() => {
+    const checkPendingLabel = async () => {
+      try {
+        const pendingLabel = await AsyncStorage.getItem('pendingLabel');
+        if (pendingLabel) {
+          console.log('Found pending label:', pendingLabel);
+          setLabel(pendingLabel);
+          // Clear it after using
+          await AsyncStorage.removeItem('pendingLabel');
+        }
+      } catch (error) {
+        console.error('Error checking for pending label:', error);
+      }
+    };
+    
+    checkPendingLabel();
+  }, []);
+
+  // Add this useEffect to check for the label when the component is focused
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadLabel = async () => {
+        try {
+          // Check for pendingLabel first (highest priority)
+          const pendingLabel = await AsyncStorage.getItem('pendingLabel');
+          if (pendingLabel) {
+            console.log('Found pending label:', pendingLabel);
+            setLabel(pendingLabel);
+            await AsyncStorage.removeItem('pendingLabel');
+            return;
+          }
+          
+          // Then check for currentLabel
+          const currentLabel = await AsyncStorage.getItem('currentLabel');
+          if (currentLabel) {
+            console.log('Found current label:', currentLabel);
+            setLabel(currentLabel);
+            await AsyncStorage.removeItem('currentLabel');
+          }
+        } catch (error) {
+          console.error('Error loading label:', error);
+        }
+      };
+      
+      loadLabel();
+    }, [])
+  );
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>

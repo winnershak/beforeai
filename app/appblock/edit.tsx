@@ -236,14 +236,23 @@ export default function EditScheduleScreen() {
   // Save the schedule
   const saveSchedule = async () => {
     console.log("💾 Saving schedule:", JSON.stringify(schedule));
+    
+    // Ensure all required arrays exist
+    const updatedSchedule = {
+      ...schedule,
+      blockedApps: schedule.blockedApps || [],
+      blockedCategories: schedule.blockedCategories || [],
+      blockedWebDomains: schedule.blockedWebDomains || []
+    };
+    
     let newSchedules: AppBlockSchedule[];
     
     if (isNew) {
-      newSchedules = [...schedules, schedule];
+      newSchedules = [...schedules, updatedSchedule];
       console.log("📝 Creating new schedule");
     } else {
       newSchedules = schedules.map(s => 
-        s.id === schedule.id ? schedule : s
+        s.id === updatedSchedule.id ? updatedSchedule : s
       );
       console.log("📝 Updating existing schedule");
     }
@@ -253,7 +262,7 @@ export default function EditScheduleScreen() {
       console.log("✅ Schedule saved to AsyncStorage");
       
       console.log("🔒 Applying app block schedule");
-      await applyAppBlockSchedule(schedule);
+      await applyAppBlockSchedule(updatedSchedule);
       console.log("✅ App block applied, navigating back");
       
       router.push('/(tabs)/appblock');
@@ -305,10 +314,12 @@ export default function EditScheduleScreen() {
                 }
               }
               
-              // Navigate back
-              router.back();
+              // Navigate to app blocking screen instead of back
+              router.push('/(tabs)/appblock');
             } catch (err) {
               console.error('Error deleting schedule:', err);
+              // Still navigate even if there's an error
+              router.push('/(tabs)/appblock');
             }
           }
         }

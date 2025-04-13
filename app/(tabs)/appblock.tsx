@@ -146,11 +146,15 @@ export default function AppBlockScreen() {
           const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
           if (savedSchedules) {
             const parsed = JSON.parse(savedSchedules);
-            // Convert string dates back to Date objects
+            // Convert string dates back to Date objects AND ensure all arrays exist
             const schedules = parsed.map((schedule: any) => ({
               ...schedule,
               startTime: new Date(schedule.startTime),
-              endTime: new Date(schedule.endTime)
+              endTime: new Date(schedule.endTime),
+              // Ensure these arrays exist
+              blockedApps: Array.isArray(schedule.blockedApps) ? schedule.blockedApps : [],
+              blockedWebDomains: Array.isArray(schedule.blockedWebDomains) ? schedule.blockedWebDomains : [],
+              blockedCategories: Array.isArray(schedule.blockedCategories) ? schedule.blockedCategories : []
             }));
             setSchedules(schedules);
           } else {
@@ -627,12 +631,20 @@ export default function AppBlockScreen() {
                     ))}
                   </View>
                   
-                  {schedule.blockedApps.length > 0 && (
+                  {(schedule.blockedApps.length > 0 || schedule.blockedWebDomains.length > 0) && (
                     <View style={styles.appsContainer}>
                       <View style={styles.appsHeader}>
                         <Ionicons name="apps" size={18} color="#0A84FF" />
                         <Text style={styles.appsHeaderText}>
-                          {schedule.blockedApps.length} apps blocked
+                          {schedule.blockedApps && schedule.blockedApps.length > 0 ? 
+                            `${schedule.blockedApps.length} apps` : 
+                            "All apps"}
+                          {schedule.blockedWebDomains && schedule.blockedWebDomains.length > 0 ? 
+                            `, ${schedule.blockedWebDomains.length} websites` : 
+                            ""}
+                          {schedule.blockedCategories && schedule.blockedCategories.length > 0 ? 
+                            " + categories" : 
+                            ""}
                         </Text>
                       </View>
                     </View>
