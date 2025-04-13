@@ -62,6 +62,10 @@ export default function AlarmRingScreen() {
   const snoozeTimeout = useRef<NodeJS.Timeout | null>(null);
   let soundInstance: Audio.Sound | null = null;
 
+  // Add these state variables at the component level
+  const [soundName, setSoundName] = useState((params.sound as string) || 'beacon');
+  const [volume, setVolume] = useState(Number(params.soundVolume) || 1);
+
   console.log('AlarmRingScreen params:', params);
 
   // Update the useEffect that runs when the component mounts
@@ -79,21 +83,6 @@ export default function AlarmRingScreen() {
     
     // Set flag that alarm screen is showing (for notification handling)
     AsyncStorage.setItem('alarmScreenShowing', 'true');
-    
-    // Ensure audio session is properly configured for silent mode
-    (async () => {
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          staysActiveInBackground: true,
-          interruptionModeIOS: 1,
-          playsInSilentModeIOS: true, // Critical for silent mode
-        });
-        console.log('Audio mode configured for silent mode');
-      } catch (error) {
-        console.error('Error setting audio mode:', error);
-      }
-    })();
     
     // Start vibration
     if (params.vibration !== 'false') {
@@ -380,7 +369,35 @@ export default function AlarmRingScreen() {
         }
       }
     };
-  }, [params]);
+  }, []);
+
+  // This useEffect will handle sound playback
+  useEffect(() => {
+    console.log('Sound management useEffect running');
+    
+    const playSound = async () => {
+      try {
+        if (Platform.OS === 'ios') {
+          console.log('Playing sound with AlarmSoundModule:', soundName, volume);
+          await AlarmSoundModule.playAlarmSound(soundName, volume);
+          setIsPlaying(true);
+        }
+      } catch (error) {
+        console.error('Failed to play alarm sound:', error);
+      }
+    };
+
+    playSound();
+    
+    return () => {
+      console.log('Sound management useEffect cleanup');
+      if (Platform.OS === 'ios') {
+        AlarmSoundModule.stopAlarmSound().catch((err: Error) => 
+          console.error('Error stopping sound:', err)
+        );
+      }
+    };
+  }, [soundName, volume]);
 
   const stopSound = async () => {
     try {

@@ -95,6 +95,12 @@ class AlarmSound: NSObject {
   
   @objc
   func playAlarmSound(_ soundName: String, volume: Float, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    // If sound is already playing, stop it first
+    if audioPlayer != nil {
+      audioPlayer?.stop()
+      audioPlayer = nil
+    }
+    
     // Capture resolver and rejecter before async block to avoid escaping issues
     let capturedResolver = resolver
     let capturedRejecter = rejecter
@@ -291,5 +297,10 @@ class AlarmSound: NSObject {
     } catch {
       print("Failed to deactivate audio session: \(error)")
     }
+  }
+  
+  @objc
+  func isPlayingAlarmSound(_ resolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) {
+    resolver(audioPlayer != nil && audioPlayer!.isPlaying)
   }
 } 

@@ -12,6 +12,8 @@ import { TaskManagerTaskBody } from 'expo-task-manager';
 import { AppState, AppStateStatus } from 'react-native';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
 
+
+
 // Add these variables back at the top level
 let isAlarmActive = false;
 let isHandlingNotification = false;
@@ -173,6 +175,13 @@ export const playAlarmSound = async (soundName: string, soundVolume: number) => 
 // Update the stopAlarmSound function to ensure complete cleanup
 export const stopAlarmSound = async () => {
   try {
+    // Check if alarm screen is showing
+    const alarmScreenShowing = await AsyncStorage.getItem('alarmScreenShowing');
+    if (alarmScreenShowing === 'true') {
+      console.log('Alarm screen is showing - not stopping sound from notifications.ts');
+      return;
+    }
+    
     console.log('Stopping alarm sound');
     isAlarmActive = false;
     

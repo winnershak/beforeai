@@ -8,6 +8,7 @@ interface AlarmSoundInterface {
   stopAlarmSound(): Promise<boolean>;
   debugSoundFiles(): Promise<any>;
   cleanup?(): void;
+  isPlayingAlarmSound(): Promise<boolean>;
 }
 
 // Create a default implementation for non-iOS platforms
@@ -16,6 +17,7 @@ const AlarmSoundDefault: AlarmSoundInterface = {
   playAlarmSound: () => Promise.resolve(false),
   stopAlarmSound: () => Promise.resolve(false),
   debugSoundFiles: () => Promise.resolve({ error: 'Not implemented on this platform' }),
+  isPlayingAlarmSound: () => Promise.resolve(false),
 };
 
 // Export the native module on iOS, or the default implementation on other platforms
@@ -53,6 +55,8 @@ const AlarmSoundModuleSafe = {
   },
 
   debugSoundFiles: () => AlarmSoundModule.debugSoundFiles(),
+
+  isPlayingAlarmSound: () => AlarmSoundModule.isPlayingAlarmSound(),
 };
 
 export default AlarmSoundModuleSafe; 

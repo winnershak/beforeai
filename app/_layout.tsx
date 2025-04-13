@@ -378,11 +378,16 @@ export default function AppLayout() {
   }, []);
 
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
-        // App has come to the foreground
-        cancelAllNotifications();
-        console.log('App active - cancelled all notifications');
+        // Check if alarm screen is showing before cancelling notifications
+        const alarmScreenShowing = await AsyncStorage.getItem('alarmScreenShowing');
+        if (alarmScreenShowing !== 'true') {
+          console.log('App active - cancelled all notifications');
+          cancelAllNotifications();
+        } else {
+          console.log('App active but alarm screen is showing - keeping notifications');
+        }
       }
     });
 
