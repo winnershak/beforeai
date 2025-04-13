@@ -535,8 +535,10 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
     // Schedule the actual notification with the unique ID
     const scheduledNotificationId = await Notifications.scheduleNotificationAsync({
       content: {
-        title: 'Wake Up!',
-        body: alarm.label || 'Time to wake up!',
+        title: alarm.label || 'Wake Up!',
+        body: 'Time to wake up!',
+        badge: 0,  // Set to 0 to avoid badge
+        categoryIdentifier: 'alarmV2',
         data: {
           alarmId: alarm.id,
           sound: alarm.sound,
@@ -564,8 +566,9 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
       const backupNotificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: 'Wake Up!',
-          body: `Your alarm is still ringing (${i})`,
+          body: alarm.label ? `${alarm.label} is still ringing (${i})` : `Your alarm is still ringing (${i})`,
           sound: `${alarm.sound.toLowerCase()}.caf`,
+          categoryIdentifier: 'alarmV2',
           data: {
             alarmId: alarm.id,
             sound: alarm.sound,
@@ -876,5 +879,24 @@ export const handleNotificationResponse = async (response: any) => {
     console.error('Error handling notification response:', error);
   }
 };
+
+// Add this near the top of your notifications.ts file, before other notification functions
+// This ensures iOS shows your notification titles correctly
+if (Platform.OS === 'ios') {
+  (async () => {
+    try {
+      await Notifications.setNotificationCategoryAsync('alarmV2', [
+        {
+          identifier: 'alarmV2',
+          buttonTitle: 'Open',
+          options: { opensAppToForeground: true },
+        }
+      ]);
+      console.log('Successfully registered notification category');
+    } catch (error) {
+      console.error('Failed to register notification category:', error);
+    }
+  })();
+}
 
 export default {};

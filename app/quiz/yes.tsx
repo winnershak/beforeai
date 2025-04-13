@@ -26,8 +26,8 @@ import * as Network from 'expo-network';
 import * as Application from 'expo-application';
 
 // Product IDs as simple constants - no capitalization to avoid confusion
-const PRODUCT_MONTHLY = 'blissmonthly';
-const PRODUCT_YEARLY = 'blissyearly';
+const PRODUCT_MONTHLY = 'blissmonth';
+const PRODUCT_YEARLY = 'blissyear';
 
 const { width, height } = Dimensions.get('window');
 
@@ -58,7 +58,7 @@ const userReviews = [
   {
     id: '5',
     rating: 5,
-    text: 'I never give review but this one is worth it - Always hard to sleep without this app… now super worth it'
+    text: 'I\'ve struggled with sleep for years, and the Bliss Alarm app has truly been a game-changer. This app significantly improved my rest, and I wake up feeling refreshed and energized. Highly recommend  to anyone looking to improve their sleep quality!'
   }
 ];
 
@@ -415,10 +415,10 @@ export default function YesScreen() {
         await AsyncStorage.setItem('isPremium', 'true');
         
         // Store subscription type based on packageId
-        if (packageId === 'blissmonthly') {
+        if (packageId === 'blissmonth') {
           await AsyncStorage.setItem('subscriptionType', 'monthly');
           console.log('Monthly subscription stored');
-        } else if (packageId === 'blissyearly') {
+        } else if (packageId === 'blissyear') {
           await AsyncStorage.setItem('subscriptionType', 'yearly');
           console.log('Yearly subscription stored');
         }

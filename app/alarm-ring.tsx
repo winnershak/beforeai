@@ -68,6 +68,15 @@ export default function AlarmRingScreen() {
   useEffect(() => {
     console.log('AlarmRingScreen mounted');
     
+    // Check if returning from a failed mission
+    if (params.missionFailed === 'true') {
+      console.log('Returning from failed mission');
+      setMissionFailed(true);
+      
+      // Make sure hasMission is also set to true when returning from a failed mission
+      setHasMission(true);
+    }
+    
     // Set flag that alarm screen is showing (for notification handling)
     AsyncStorage.setItem('alarmScreenShowing', 'true');
     
@@ -170,14 +179,11 @@ export default function AlarmRingScreen() {
         
         console.log('Loading sound with params:', params);
         
-        // Require a valid sound name - no fallbacks
-        if (!params.sound) {
-          throw new Error('No sound specified in alarm parameters');
-        }
-        
-        // Get sound name and volume from params
+        // Use a default sound if none specified
         const soundName = params.sound as string || 'beacon';
         const volume = Number(params.soundVolume) || 1;
+        
+        console.log('Using sound:', soundName, 'at volume:', volume);
         
         // Start vibration pattern if enabled
         startVibration();
@@ -526,7 +532,11 @@ export default function AlarmRingScreen() {
         console.log('Starting mission:', mission);
         
         // Different navigation based on mission type
-        switch (mission.toLowerCase()) {
+        const missionLower = mission.toLowerCase();
+        
+        console.log('Mission type (lowercase):', missionLower);
+        
+        switch (missionLower) {
           case 'tetris':
             router.replace('/final-tetris');
             break;
@@ -537,6 +547,8 @@ export default function AlarmRingScreen() {
             router.replace('/final-typing');
             break;
           case 'qr':
+          case 'qr/barcode': 
+            // Use push instead of replace to keep alarm-ring in the navigation stack
             router.replace('/final-qr');
             break;
           case 'wordle':

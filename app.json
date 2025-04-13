@@ -128,6 +128,10 @@
     },
     "developmentClient": {
       "silentLaunch": false
+    },
+    "logLevel": "info",
+    "developer": {
+      "enableLogging": true
     }
   }
 }

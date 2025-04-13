@@ -1,6 +1,6 @@
 import React from 'react';
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ImageBackground, Dimensions, Modal } from 'react-native';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -12,6 +12,7 @@ const isSmallDevice = width < 375;
 
 export default function QuizQuestion7() {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [showSkipWarning, setShowSkipWarning] = useState(false);
 
   const handleOptionSelect = (option: string) => {
     setSelectedOption(option);
@@ -79,13 +80,48 @@ export default function QuizQuestion7() {
             <View style={styles.footer}>
               <TouchableOpacity 
                 style={styles.skipButton}
-                onPress={() => router.push('/quiz/question8')}
+                onPress={() => setShowSkipWarning(true)}
               >
                 <Text style={styles.skipButtonText}>Skip</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
         </View>
+        
+        {/* Skip Warning Modal */}
+        <Modal
+          transparent={true}
+          visible={showSkipWarning}
+          animationType="fade"
+          onRequestClose={() => setShowSkipWarning(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Are you sure?</Text>
+              <Text style={styles.modalText}>
+                Your answers help us to create you a better sleep experience.
+              </Text>
+              <View style={styles.modalButtons}>
+                <TouchableOpacity 
+                  style={styles.skipModalButton}
+                  onPress={() => {
+                    setShowSkipWarning(false);
+                    router.push('/quiz/question8');
+                  }}
+                >
+                  <Text style={styles.skipModalButtonText}>Skip</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={styles.cancelButton}
+                  onPress={() => setShowSkipWarning(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ImageBackground>
     </>
   );
@@ -180,5 +216,66 @@ const styles = StyleSheet.create({
     color: '#888',  // Lighter gray text
     fontSize: 14,
     fontWeight: '400',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 24,
+    width: '85%',
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 8,
+  },
+  modalText: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    borderTopWidth: 0.5,
+    borderTopColor: 'rgba(150, 150, 150, 0.3)',
+    paddingTop: 16,
+  },
+  cancelButton: {
+    backgroundColor: 'transparent',
+    padding: 10,
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#0A84FF',
+    fontSize: 17,
+    fontWeight: '500',
+  },
+  skipModalButton: {
+    backgroundColor: 'transparent',
+    padding: 10,
+    borderRadius: 8,
+    width: '48%',
+    alignItems: 'center',
+  },
+  skipModalButtonText: {
+    color: '#FF453A',
+    fontSize: 17,
+    fontWeight: '500',
   },
 }); 

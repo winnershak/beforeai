@@ -302,11 +302,11 @@ export default function FinalWordleGame() {
           playsInSilentModeIOS: true,
           shouldDuckAndroid: true,
           interruptionModeAndroid: 1, // DoNotMix = 1
-          playThroughEarpieceAndroid: false,
+          // playThroughEarpieceAndroid: false,
         });
         
         const { sound } = await Audio.Sound.createAsync(
-          require('../assets/sounds/success.mp3'),
+          require('../assets/sounds/mount.caf'),
           { volume: 1.0 }
         );
         setCompleteSound(sound);

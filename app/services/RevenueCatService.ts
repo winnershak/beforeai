@@ -51,8 +51,27 @@ class RevenueCatService {
   }
 
   async getSubscriptionPackages() {
-    const storeKit = getStoreKit();
-    return storeKit.getProducts();
+    try {
+      const storeKit = getStoreKit();
+      const products = await storeKit.getProducts();
+      
+      // Check if products is an array before mapping
+      if (!products || !Array.isArray(products)) {
+        console.warn('getProducts did not return an array:', products);
+        return []; // Return empty array instead of failing
+      }
+      
+      // Properly label products as subscriptions
+      return products.map((product: any) => ({
+        ...product,
+        type: 'subscription',
+        // Add any other subscription-specific properties
+        subscriptionPeriod: product.productIdentifier.includes('year') ? 'yearly' : 'monthly'
+      }));
+    } catch (error) {
+      console.error('Error getting subscription packages:', error);
+      return []; // Return empty array on error
+    }
   }
 
   async getSubscriptionDetails() {
@@ -127,6 +146,39 @@ class RevenueCatService {
     } catch (error) {
       console.error('Error getting subscription type:', error);
       return null;
+    }
+  }
+
+  async getProductType(productId: string): Promise<'subscription'> {
+    // All our products are subscriptions
+    return 'subscription';
+  }
+
+  async validateReceiptSilently(): Promise<boolean> {
+    try {
+      // Instead of trying to use a method that doesn't exist,
+      // we'll use methods we know exist in the SafeStoreKit interface
+      const storeKit = getStoreKit();
+      
+      // First check if the user is subscribed (this method definitely exists)
+      const isSubscribed = await storeKit.isSubscribed();
+      
+      if (isSubscribed) {
+        return true;
+      }
+      
+      // If not subscribed, try to restore purchases silently
+      // This is a common pattern that doesn't require user authentication in most cases
+      try {
+        const restored = await storeKit.restore();
+        return restored;
+      } catch (restoreError) {
+        console.log('Silent restore failed:', restoreError);
+        return false;
+      }
+    } catch (error) {
+      console.warn('Silent receipt validation failed:', error);
+      return false;
     }
   }
 }

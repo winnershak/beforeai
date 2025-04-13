@@ -86,8 +86,8 @@ export default function SleepFactsScreen() {
     try {
       // First show our custom message
       Alert.alert(
-        "Love the app?",
-        "If you're enjoying Bliss Alarm, please consider giving us a 5-star review! It helps us reach more people who need better sleep.",
+        "Help others sleep better.",
+        "It helps us reach more people to spread the message of better sleep.",
         [
           {
             text: "Maybe Later",

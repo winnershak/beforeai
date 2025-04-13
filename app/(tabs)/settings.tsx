@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import RevenueCatService from '../services/RevenueCatService';
 import AlarmSoundModule from '../native-modules/AlarmSoundModule';
 import Constants from 'expo-constants';
+import * as Notifications from 'expo-notifications';
 
 export default function SettingsScreen() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<{
@@ -49,6 +50,35 @@ export default function SettingsScreen() {
     }
   };
 
+  const sendTestNotification = async () => {
+    try {
+      const permissions = await Notifications.requestPermissionsAsync();
+      if (permissions.status !== 'granted') {
+        Alert.alert("Permissions Required", "Notifications are not enabled.");
+        return;
+      }
+
+      const id = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "🔔 Bliss Alarm Test",
+          body: "If you're seeing this, everything works.",
+          categoryIdentifier: 'alarm',
+          sound: 'default',
+        },
+        trigger: { 
+          seconds: 3,
+          type: 'timeInterval'
+        } as Notifications.TimeIntervalTriggerInput,
+      });
+
+      console.log("✅ Notification scheduled with ID:", id);
+      Alert.alert("Notification Sent", "It should appear in 3 seconds.");
+    } catch (error) {
+      console.error("❌ Failed to send test notification:", error);
+      Alert.alert("Error", "Could not send test notification.");
+    }
+  };
+
   useEffect(() => {
     const getSubscriptionInfo = async () => {
       try {
@@ -69,6 +99,26 @@ export default function SettingsScreen() {
     };
     
     getSubscriptionInfo();
+  }, []);
+
+  useEffect(() => {
+    // Set up notification handler
+    Notifications.setNotificationHandler({
+      handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: false,
+      }),
+    });
+
+    // Register category to avoid iOS suppressing content
+    Notifications.setNotificationCategoryAsync('alarm', [
+      {
+        identifier: 'default',
+        buttonTitle: 'Open',
+        options: { opensAppToForeground: true },
+      },
+    ]);
   }, []);
 
   const navigateTo = (route: string) => {
@@ -125,6 +175,17 @@ export default function SettingsScreen() {
             <View style={styles.settingContent}>
               <Ionicons name="globe-outline" size={24} color="#007AFF" style={styles.settingIcon} />
               <Text style={styles.settingText}>Website</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.settingItem} 
+            onPress={sendTestNotification}
+          >
+            <View style={styles.settingContent}>
+              <Ionicons name="notifications-outline" size={24} color="#FF2D55" style={styles.settingIcon} />
+              <Text style={styles.settingText}>Send Test Notification</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>

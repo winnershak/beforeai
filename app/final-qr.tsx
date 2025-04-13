@@ -1,55 +1,79 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Alert, Animated } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, SafeAreaView, Alert, Animated, Platform, Vibration } from 'react-native';
 import { useRouter, useLocalSearchParams, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Camera } from 'react-native-vision-camera';
 import { useCameraDevice, useCodeScanner } from 'react-native-vision-camera';
 import { stopAlarmSound } from './notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Haptics from 'expo-haptics';
 
 export default function FinalQRScanner() {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
   const router = useRouter();
   const params = useLocalSearchParams();
   const device = useCameraDevice('back');
   const [hasScanned, setHasScanned] = useState(false);
-  const scanLineAnimation = useRef(new Animated.Value(0)).current;
-  const animationRef = useRef<Animated.CompositeAnimation | null>(null);
-  const [showCompletion, setShowCompletion] = useState(false);
-  const [showFailure, setShowFailure] = useState(false);
   const [timeExpired, setTimeExpired] = useState(false);
   const [targetQRCode, setTargetQRCode] = useState<string | null>(null);
-  const [wrongQRCode, setWrongQRCode] = useState(false);
+  const timerAnimation = useRef(new Animated.Value(0)).current;
+  const timerRef = useRef<Animated.CompositeAnimation | null>(null);
+  const isNavigating = useRef(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const [showWrongQR, setShowWrongQR] = useState(false);
+
+  const TIMER_DURATION = 20000;
 
   useEffect(() => {
-    const getBarCodeScannerPermissions = async () => {
-      try {
-        const cameraPermission = await Camera.requestCameraPermission();
-        setHasPermission(cameraPermission === 'granted');
-      } catch (error) {
-        console.error('Error requesting camera permissions:', error);
-        setHasPermission(false);
-      }
-    };
+    if (!hasScanned && !timeExpired) {
+      startTimer();
+    }
+    return () => cleanupTimer();
+  }, [hasScanned, timeExpired]);
 
-    getBarCodeScannerPermissions();
-    startScanAnimation();
-
-    // Start timer for mission
-    const timer = setTimeout(() => {
-      if (!hasScanned) {
+  const startTimer = () => {
+    cleanupTimer();
+    timerAnimation.setValue(0);
+    timerRef.current = Animated.timing(timerAnimation, {
+      toValue: 1,
+      duration: TIMER_DURATION,
+      useNativeDriver: false,
+    });
+    timerRef.current.start(({ finished }) => {
+      if (finished) {
         setTimeExpired(true);
-        handleMissionFailed('Time expired');
+        if (!isNavigating.current) {
+          isNavigating.current = true;
+          router.replace({
+            pathname: '/alarm-ring',
+            params: {
+              alarmId: params.alarmId,
+              missionFailed: 'true'
+            }
+          });
+        }
       }
-    }, 20000);
+    });
+  };
 
-    return () => {
-      if (animationRef.current) {
-        animationRef.current.stop();
-      }
-      clearTimeout(timer);
-    };
-  }, []);
+  const cleanupTimer = () => {
+    if (timerRef.current) {
+      timerRef.current.stop();
+      timerAnimation.setValue(0);
+    }
+  };
+
+  const handleExitScanner = () => {
+    if (!isNavigating.current) {
+      isNavigating.current = true;
+      router.replace({
+        pathname: '/alarm-ring',
+        params: {
+          alarmId: params.alarmId,
+          missionFailed: 'true'
+        }
+      });
+    }
+  };
 
   useEffect(() => {
     const loadTargetQRCode = async () => {
@@ -70,19 +94,21 @@ export default function FinalQRScanner() {
             if (alarm) {
               console.log('Alarm mission:', JSON.stringify(alarm.mission));
               
-              if (alarm.mission && alarm.mission.settings) {
-                console.log('Mission settings:', JSON.stringify(alarm.mission.settings));
-                
-                // Check for targetCode in settings
-                if (alarm.mission.settings.targetCode) {
-                  const code = alarm.mission.settings.targetCode;
-                  console.log('Found target QR code in settings:', code);
-                  setTargetQRCode(code);
-                } else {
-                  console.log('No targetCode in mission settings');
-                }
+              // Check different possible locations for the target code
+              let targetCode = null;
+              
+              if (alarm.mission && alarm.mission.settings && alarm.mission.settings.targetCode) {
+                targetCode = alarm.mission.settings.targetCode;
+                console.log('Found target QR code in mission settings:', targetCode);
+              } else if (params.targetCode) {
+                targetCode = params.targetCode;
+                console.log('Found target QR code in params:', targetCode);
+              }
+              
+              if (targetCode) {
+                setTargetQRCode(targetCode);
               } else {
-                console.log('No mission or settings in alarm');
+                console.log('No targetCode found in mission settings or params');
               }
             }
           }
@@ -93,193 +119,59 @@ export default function FinalQRScanner() {
     };
     
     loadTargetQRCode();
-  }, [params.alarmId]);
-
-  const startScanAnimation = () => {
-    scanLineAnimation.setValue(0);
-    animationRef.current = Animated.loop(
-      Animated.timing(scanLineAnimation, {
-        toValue: 1,
-        duration: 2000,
-        useNativeDriver: false,
-      })
-    );
-    animationRef.current.start();
-  };
-
-  const handleSuccess = async () => {
-    try {
-      // Stop the alarm sound
-      await stopAlarmSound();
-      
-      // Update trophies and stats
-      try {
-        // Update mission-specific count
-        const missionName = 'QR/Barcode';
-        const missionCountKey = `qrCount`; // Use a simple key for QR
-        const missionCount = await AsyncStorage.getItem(missionCountKey);
-        const newMissionCount = missionCount ? parseInt(missionCount) + 1 : 1;
-        await AsyncStorage.setItem(missionCountKey, newMissionCount.toString());
-        
-        // Update mission breakdown
-        const breakdownJson = await AsyncStorage.getItem('missionBreakdown');
-        let breakdown = breakdownJson ? JSON.parse(breakdownJson) : {};
-        breakdown[missionName] = newMissionCount;
-        await AsyncStorage.setItem('missionBreakdown', JSON.stringify(breakdown));
-        
-        // Add XP (50 XP for completing mission)
-        const currentXP = await AsyncStorage.getItem('userXP');
-        const newXP = currentXP ? parseInt(currentXP) + 50 : 50;
-        await AsyncStorage.setItem('userXP', newXP.toString());
-        
-        // Update streak
-        const currentDate = new Date().toISOString().split('T')[0]; // Today's date
-        const lastCompletionDate = await AsyncStorage.getItem('lastCompletionDate');
-        const currentStreak = await AsyncStorage.getItem('currentStreak');
-        let newStreak = 1;
-        
-        if (currentStreak) {
-          const yesterdayDate = new Date();
-          yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-          const yesterday = yesterdayDate.toISOString().split('T')[0];
-          
-          if (lastCompletionDate === yesterday) {
-            // Completed yesterday, increment streak
-            newStreak = parseInt(currentStreak) + 1;
-          } else if (lastCompletionDate === currentDate) {
-            // Already completed today, maintain streak
-            newStreak = parseInt(currentStreak);
-          }
-        }
-        
-        await AsyncStorage.setItem('currentStreak', newStreak.toString());
-        await AsyncStorage.setItem('lastCompletionDate', currentDate);
-        
-        console.log(`Updated stats for ${missionName}: count=${newMissionCount}, streak=${newStreak}`);
-      } catch (error) {
-        console.error('Error updating stats:', error);
-      }
-      
-      // Navigate to success screen
-      router.replace({
-        pathname: '/',
-        params: {
-          missionComplete: 'true',
-          alarmId: params.alarmId
-        }
-      });
-    } catch (error) {
-      console.error('Error handling success:', error);
-      // Still navigate even if there's an error
-      router.replace('/');
-    }
-  };
-
-  const handleFailure = () => {
-    // Navigate back to alarm screen
-    router.back();
-  };
+  }, [params.alarmId, params.targetCode]);
 
   const codeScanner = useCodeScanner({
     codeTypes: ['qr', 'ean-13', 'ean-8'],
     onCodeScanned: (codes) => {
-      if (codes.length > 0 && !hasScanned && codes[0].value) {
-        const data = codes[0].value;
-        handleBarCodeScanned({ type: codes[0].type || 'unknown', data });
+      if (codes.length > 0 && !hasScanned && !timeExpired && !isNavigating.current && codes[0].value) {
+        setHasScanned(true);
+        isNavigating.current = true;
+        if (Platform.OS === 'ios') {
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        } else {
+          Vibration.vibrate(200);
+        }
+        console.log('Scanned code:', codes[0].value);
+        console.log('Target code:', targetQRCode);
+        
+        if (targetQRCode) {
+          const scannedCode = codes[0].value.trim();
+          const target = targetQRCode.trim();
+          
+          console.log('Comparing:', scannedCode, 'with', target);
+          
+          if (scannedCode === target) {
+            console.log('✅ QR code match!');
+            stopAlarmSound();
+            // Use navigate instead of replace for better horizontal transitions
+            console.log('Navigating to scan complete screen using proper navigation');
+            router.navigate('/mission/scan-complete');
+          } else {
+            console.log('❌ Wrong QR code!');
+            console.log('Navigating to QR failure screen');
+            router.navigate({
+              pathname: '/mission/qr-failure',
+              params: {
+                alarmId: params.alarmId
+              }
+            });
+          }
+        } else {
+          console.log('No target code set, accepting any code');
+          stopAlarmSound();
+          // Navigate to new success screen
+          console.log('Navigating to scan complete screen');
+          router.navigate('/mission/scan-complete');
+        }
       }
     }
   });
-
-  const handleBarCodeScanned = ({ type, data }: { type: string; data: string }) => {
-    if (hasScanned) return;
-    
-    setHasScanned(true);
-    console.log(`Bar code with type ${type} and data ${data} has been scanned!`);
-    
-    // If we have a target QR code, validate against it
-    if (targetQRCode && targetQRCode.trim() !== '') {
-      console.log('Comparing scanned code:', data);
-      console.log('With target code:', targetQRCode);
-      
-      // Trim both strings and compare
-      const normalizedScanned = data.trim();
-      const normalizedTarget = targetQRCode.trim();
-      
-      if (normalizedScanned === normalizedTarget) {
-        console.log('QR code match! Mission successful');
-        setShowCompletion(true);
-        
-        // Navigate to success screen after delay
-        setTimeout(() => {
-          handleSuccess();
-        }, 2000);
-      } else {
-        console.log('QR code does not match target. Mission failed');
-        console.log(`Scanned (${normalizedScanned.length}): "${normalizedScanned}"`);
-        console.log(`Target (${normalizedTarget.length}): "${normalizedTarget}"`);
-        
-        // Show wrong QR code message instead of time expired
-        setShowFailure(true);
-        
-        // Navigate back to alarm screen after delay
-        setTimeout(() => {
-          handleMissionFailed('Wrong QR code');
-        }, 2000);
-      }
-    } else {
-      // If no target code is set, accept any QR code
-      console.log('No target QR code set, accepting any code');
-      setShowCompletion(true);
-      
-      // Navigate to success screen after delay
-      setTimeout(() => {
-        handleSuccess();
-      }, 2000);
-    }
-  };
-
-  const handleMissionFailed = (reason: string) => {
-    console.log('Mission failed:', reason);
-    
-    // Navigate back to alarm-ring after a delay
-    router.replace({
-      pathname: '/alarm-ring',
-      params: { alarmId: params.alarmId }
-    });
-  };
-
-  if (hasPermission === null) {
-    return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Requesting camera permission...</Text>
-      </View>
-    );
-  }
-  
-  if (hasPermission === false) {
-    return (
-      <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>No access to camera</Text>
-        <TouchableOpacity 
-          style={styles.permissionButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.permissionButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   if (!device) {
     return (
       <View style={styles.permissionContainer}>
         <Text style={styles.permissionText}>Camera not available</Text>
-        <TouchableOpacity 
-          style={styles.permissionButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.permissionButtonText}>Go Back</Text>
-        </TouchableOpacity>
       </View>
     );
   }
@@ -287,38 +179,45 @@ export default function FinalQRScanner() {
   return (
     <>
       <Stack.Screen 
-        options={{
-          headerShown: false,
-          gestureEnabled: false,
-          animation: 'fade'
-        }} 
-      />
+  options={{
+    headerShown: false,
+    gestureEnabled: false,
+    animation: 'none',         // for subtle transition (or use 'default' for horizontal slide)
+    presentation: 'card'       // fixes the "modal slide-up" behavior
+  }} 
+/>
       <SafeAreaView style={styles.container}>
-        {showCompletion ? (
-          <View style={styles.completionContainer}>
-            <Text style={styles.completionText}>WELL DONE!</Text>
-            <Text style={styles.completionSubText}>Alarm Dismissed</Text>
-          </View>
-        ) : showFailure ? (
-          <View style={styles.completionContainer}>
-            <Text style={styles.completionText}>Wrong QR Code!</Text>
-            <Text style={styles.completionSubText}>Try Again</Text>
-          </View>
-        ) : timeExpired ? (
+        {timeExpired ? (
           <View style={styles.completionContainer}>
             <Text style={styles.completionText}>Time's Up!</Text>
             <Text style={styles.completionSubText}>Try Again</Text>
+            <TouchableOpacity 
+              style={styles.exitButton}
+              onPress={handleExitScanner}
+            >
+              <Text style={styles.exitButtonText}>Exit Scanner</Text>
+            </TouchableOpacity>
           </View>
         ) : (
           <>
             <View style={styles.header}>
-              <Text style={styles.title}>Scan any QR code</Text>
-              <Text style={styles.subtitle}>
-                Scan any QR code to dismiss the alarm
-              </Text>
+              <Text style={styles.title}>Scan QR Code</Text>
             </View>
 
             <View style={styles.scannerContainer}>
+              <View style={styles.timerContainer}>
+                <Animated.View 
+                  style={[
+                    styles.timerLine,
+                    {
+                      width: timerAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['100%', '0%'],
+                      }),
+                    }
+                  ]} 
+                />
+              </View>
               <Camera
                 style={StyleSheet.absoluteFillObject}
                 device={device}
@@ -335,13 +234,6 @@ export default function FinalQRScanner() {
                 </Text>
               </View>
             </View>
-
-            <TouchableOpacity 
-              style={styles.backButton}
-              onPress={handleFailure}
-            >
-              <Ionicons name="arrow-back" size={24} color="#FFF" />
-            </TouchableOpacity>
           </>
         )}
       </SafeAreaView>
@@ -354,54 +246,64 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  scannerContainer: {
+    flex: 1,
+    position: 'relative',
+  },
   header: {
-    position: 'absolute',
-    top: 60,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    zIndex: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#FFF',
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#AAA',
-    textAlign: 'center',
-  },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: 10,
+    padding: 20,
+  },
+  title: {
+    fontSize: 22,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  text: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+    margin: 20,
+  },
+  timerContainer: {
+    height: 3,
+    backgroundColor: '#333',
+    width: '100%',
+    position: 'absolute',
+    top: 0,
+    zIndex: 1,
+  },
+  timerLine: {
+    height: '100%',
+    backgroundColor: '#ff3b30',
   },
   completionContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#000',
+    backgroundColor: '#111',
   },
   completionText: {
-    color: '#fff',
     fontSize: 48,
-    fontWeight: 'bold',
-    marginBottom: 10,
+    fontWeight: '700',
+    color: '#00ff00',
+    marginBottom: 30,
   },
   completionSubText: {
     color: '#666',
     fontSize: 24,
+  },
+  retryButton: {
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 30,
+    paddingVertical: 15,
+    borderRadius: 12,
+  },
+  retryButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
   },
   permissionContainer: {
     flex: 1,
@@ -426,10 +328,6 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  scannerContainer: {
-    flex: 1,
-    position: 'relative',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -456,5 +354,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 20,
     textAlign: 'center',
+  },
+  exitButton: {
+    backgroundColor: '#333',
+    padding: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 30,
+    width: '80%',
+  },
+  exitButtonText: {
+    color: '#fff',
+    fontSize: 17,
+    fontWeight: '600',
   },
 }); 
