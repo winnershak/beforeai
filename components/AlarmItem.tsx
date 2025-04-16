@@ -98,12 +98,6 @@ export function AlarmItem({ alarm, formattedDays, onToggle, onDelete, onDuplicat
         </Link>
 
         <View style={styles.rightControls}>
-          <TouchableOpacity 
-            onPress={() => setShowOptions(!showOptions)}
-            style={styles.optionsButton}
-          >
-            <Ionicons name="ellipsis-vertical" size={20} color="#666" />
-          </TouchableOpacity>
           <Switch
             value={alarm.enabled}
             onValueChange={onToggle}
@@ -214,9 +208,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     height: '100%',
-  },
-  optionsButton: {
-    padding: 8,
   },
   optionsMenu: {
     position: 'absolute',

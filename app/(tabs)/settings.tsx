@@ -50,35 +50,6 @@ export default function SettingsScreen() {
     }
   };
 
-  const sendTestNotification = async () => {
-    try {
-      const permissions = await Notifications.requestPermissionsAsync();
-      if (permissions.status !== 'granted') {
-        Alert.alert("Permissions Required", "Notifications are not enabled.");
-        return;
-      }
-
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: "🔔 Bliss Alarm Test",
-          body: "If you're seeing this, everything works.",
-          categoryIdentifier: 'alarm',
-          sound: 'default',
-        },
-        trigger: { 
-          seconds: 3,
-          type: 'timeInterval'
-        } as Notifications.TimeIntervalTriggerInput,
-      });
-
-      console.log("✅ Notification scheduled with ID:", id);
-      Alert.alert("Notification Sent", "It should appear in 3 seconds.");
-    } catch (error) {
-      console.error("❌ Failed to send test notification:", error);
-      Alert.alert("Error", "Could not send test notification.");
-    }
-  };
-
   useEffect(() => {
     const getSubscriptionInfo = async () => {
       try {
@@ -178,17 +149,6 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingItem} 
-            onPress={sendTestNotification}
-          >
-            <View style={styles.settingContent}>
-              <Ionicons name="notifications-outline" size={24} color="#FF2D55" style={styles.settingIcon} />
-              <Text style={styles.settingText}>Send Test Notification</Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
         </View>
 
         {subscriptionDetails && subscriptionDetails.expirationDate && (
@@ -216,6 +176,16 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Important Information</Text>
+          <View style={styles.warningBanner}>
+            <Text style={styles.warningIcon}>⚠️</Text>
+            <Text style={styles.warningText}>
+              For reliable alarm functionality, please keep the app running in the background rather than swiping it away completely.
+            </Text>
+          </View>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -297,5 +267,25 @@ const styles = StyleSheet.create({
   settingItemText: {
     color: '#fff',
     fontSize: 17,
+  },
+  warningBanner: {
+    backgroundColor: '#FFF8E1',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFA000',
+    padding: 12,
+    marginTop: 8,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  warningIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#5D4037',
+    lineHeight: 20,
   },
 }); 

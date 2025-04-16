@@ -327,38 +327,29 @@ export default function NewAlarmScreen() {
         };
       }
 
-      // Create mission object if missionType exists AND we're not creating a brand new alarm
-      let missionObj = null;
-      if (missionType && (isEditing || params.fromMissionSelector === 'true')) {
-        // Create a unique ID for the mission
-        const missionId = `mission_${Date.now()}`;
-        
-        // Set icon based on mission type
-        let missionIcon = 'calculator'; // Default
-        if (missionType === 'Math') missionIcon = 'calculator';
-        else if (missionType === 'Typing') missionIcon = 'keyboard';
-        else if (missionType === 'Photo') missionIcon = 'camera';
-        else if (missionType === 'QR/Barcode') missionIcon = 'qrcode';
-        else if (missionType === 'Wordle') missionIcon = 'grid';
-        
-        // Create mission object
-        missionObj = {
-          id: missionId,
+      // Create mission object if a mission type is selected
+      let missionObject = null;
+      if (missionType && missionType !== 'null' && missionType !== 'undefined') {
+        // Create a new mission object
+        missionObject = {
+          id: `mission_${Date.now()}`,
           name: missionType,
-          icon: missionIcon,
-          settings: missionSettings
+          icon: getMissionIcon(missionType),
+          settings: missionSettings || null
         };
         
-        console.log('NewAlarm: Created mission object:', missionObj);
+        console.log('NewAlarm: Created mission object:', missionObject);
+      } else {
+        console.log('NewAlarm: No mission type selected, mission will be null');
       }
 
-      console.log('NewAlarm: Final mission object:', missionObj);
+      console.log('NewAlarm: Final mission object:', missionObject);
 
       // Schedule notification first
       const notificationId = await scheduleAlarmNotification({
         id: isEditing ? currentAlarmId : `alarm_${Date.now()}`,
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
-        mission: missionObj,
+        mission: missionObject,
         sound: sound,
         soundVolume: soundVolume,
       });
@@ -374,7 +365,7 @@ export default function NewAlarmScreen() {
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         enabled: true,
         label: label || '',
-        mission: missionObj, // This will be null for new alarms
+        mission: missionObject,
         sound: normalizedSound,
         soundVolume: soundVolume,
         vibration: vibrationEnabled,

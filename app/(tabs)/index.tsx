@@ -431,12 +431,32 @@ const getNextAlarmText = (alarms: Alarm[]): string => {
   }
 };
 
+// Update your clearScheduledAlarmRing function
+const clearScheduledAlarmRing = (alarmId: string) => {
+  try {
+    console.log(`Attempting to clear scheduled alarm ring for: ${alarmId}`);
+    
+    // Check if global.alarmTimers exists and has this alarm
+    if (typeof global.alarmTimers !== 'undefined' && global.alarmTimers[alarmId]) {
+      console.log(`Found timer for alarm ${alarmId}, clearing it now`);
+      clearTimeout(global.alarmTimers[alarmId]);
+      delete global.alarmTimers[alarmId];
+      console.log(`Successfully cleared timer for alarm: ${alarmId}`);
+    } else {
+      console.log(`No timer found for alarm: ${alarmId}`);
+    }
+  } catch (error) {
+    console.error('Error clearing scheduled alarm ring:', error);
+  }
+};
+
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const router = useRouter();
   const params = useLocalSearchParams();
   const [isCreatingAlarm, setIsCreatingAlarm] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showWarningBanner, setShowWarningBanner] = useState(true);
 
   // Keep the loadAlarms effect
   useEffect(() => {
@@ -552,10 +572,32 @@ export default function TabOneScreen() {
   };
 
   const deleteAlarm = async (id: string) => {
-    await cancelAlarmNotification(id);
-    const updatedAlarms = alarms.filter(alarm => alarm.id !== id);
-    setAlarms(updatedAlarms);
-    await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+    try {
+      // 1. Cancel all notifications for this alarm
+      await cancelAlarmNotification(id);
+      
+      // 2. Clear any scheduled alarm ring screens
+      clearScheduledAlarmRing(id);
+      
+      // 3. Clear any active alarm state in AsyncStorage
+      const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
+      if (activeAlarmJson) {
+        const activeAlarm = JSON.parse(activeAlarmJson);
+        if (activeAlarm && activeAlarm.alarmId === id) {
+          await AsyncStorage.removeItem('activeAlarm');
+          console.log(`Cleared active alarm state for: ${id}`);
+        }
+      }
+      
+      // 4. Update the alarms list and storage
+      const updatedAlarms = alarms.filter(alarm => alarm.id !== id);
+      setAlarms(updatedAlarms);
+      await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+      
+      console.log(`Alarm ${id} completely deleted with all resources`);
+    } catch (error) {
+      console.error('Error deleting alarm:', error);
+    }
   };
 
   const duplicateAlarm = async (alarm: Alarm) => {
@@ -683,6 +725,21 @@ export default function TabOneScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      {showWarningBanner && (
+        <View style={styles.warningBanner}>
+          <Text style={styles.warningIcon}>⚠️</Text>
+          <Text style={styles.warningText}>
+            For reliable alarm functionality, please keep the app running in the background.
+          </Text>
+          <TouchableOpacity 
+            onPress={() => setShowWarningBanner(false)}
+            style={styles.dismissButton}
+          >
+            <Ionicons name="close" size={20} color="#5D4037" />
+          </TouchableOpacity>
+        </View>
+      )}
+      
       {/* Notification Permission Banner */}
       {!notificationsEnabled && (
         <TouchableOpacity 
@@ -907,5 +964,28 @@ const styles = StyleSheet.create({
   permissionText: {
     color: '#CCCCCC',
     fontSize: 14,
+  },
+  warningBanner: {
+    backgroundColor: '#FFF8E1',
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFA000',
+    padding: 12,
+    marginHorizontal: 16,
+    marginVertical: 8,
+    borderRadius: 6,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  warningIcon: {
+    fontSize: 20,
+    marginRight: 10,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
+    color: '#5D4037',
+  },
+  dismissButton: {
+    padding: 5,
   },
 });

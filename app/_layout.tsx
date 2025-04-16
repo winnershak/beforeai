@@ -31,6 +31,8 @@ import { setupAlarms, scheduleAlarmNotification as setupAlarmsScheduleAlarmNotif
 import './utils/expo-sensors-patch';
 import RevenueCatService from './services/RevenueCatService';
 import { handleNotification } from './notifications';
+import { TouchableOpacity } from 'react-native';
+import Ionicons from '@expo/vector-icons/Ionicons';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -507,7 +509,7 @@ export default function AppLayout() {
         <StatusBar style="light" />
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack
-            screenOptions={{
+            screenOptions={({ navigation }) => ({
               headerStyle: {
                 backgroundColor: '#1C1C1E',  // Dark background
               },
@@ -515,7 +517,16 @@ export default function AppLayout() {
               headerTitleStyle: {
                 color: '#fff',               // White title text
               },
-            }}
+              // Custom back button with no title
+              headerLeft: navigation.canGoBack() ? () => (
+                <TouchableOpacity 
+                  onPress={() => navigation.goBack()}
+                  style={{ marginLeft: 10 }}
+                >
+                  <Ionicons name="arrow-back" size={24} color="#fff" />
+                </TouchableOpacity>
+              ) : undefined,
+            })}
           >
             <Stack.Screen
               name="(tabs)"
@@ -561,6 +572,14 @@ export default function AppLayout() {
                 gestureEnabled: false, // Prevent swiping to dismiss
                 animation: 'fade',
               }} 
+            />
+            <Stack.Screen
+              name="sounds"
+              options={{
+                headerTitle: "Select Sound",
+                headerShown: true,
+                headerBackTitle: "",
+              }}
             />
           </Stack>
         </ThemeProvider>

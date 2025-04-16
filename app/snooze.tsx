@@ -97,12 +97,9 @@ export default function SnoozeScreen() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="chevron-back" size={24} color="#fff" />
-          </TouchableOpacity>
+        {/* <View style={styles.header}>
           <Text style={styles.headerTitle}>Snooze</Text>
-        </View>
+        </View> */}
 
         <View style={styles.content}>
           <View style={styles.section}>
@@ -228,9 +225,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 20,
     paddingTop: 60,
-  },
-  backButton: {
-    marginRight: 10,
   },
   headerTitle: {
     color: '#fff',

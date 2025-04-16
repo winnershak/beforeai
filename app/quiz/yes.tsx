@@ -1,3 +1,6 @@
+
+
+
 import React, { useEffect, useState } from 'react';
 import { 
   View, 
@@ -177,7 +180,7 @@ export default function YesScreen() {
     // Default values
     const defaults = {
       monthly: { price: '$12.99' },
-      yearly: { price: '$79.99' }
+      yearly: { price: '$49.99' }
     };
     
     // Find by product ID directly
@@ -568,7 +571,7 @@ export default function YesScreen() {
                           <Text style={styles.savingsText}>Save 50%</Text>
                         </View>
                         <View style={styles.planRightContent}>
-                          <Text style={styles.planDaily}>$0.22</Text>
+                          <Text style={styles.planDaily}>$0.14</Text>
                           <Text style={styles.perDayText}>per day</Text>
                         </View>
                       </View>
@@ -624,11 +627,14 @@ export default function YesScreen() {
               </TouchableOpacity>
               
               <View style={styles.guaranteesContainer}>
-                <Text style={styles.guaranteeText}>
-                  🔄 Cancel anytime
-                </Text>
-                <Text style={styles.guaranteeText}>
-                  💰 Money back guarantee
+                <Text style={styles.termsText}>
+                  <Text onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
+                    Terms of Use
+                  </Text>
+                  {' • '}
+                  <Text onPress={() => Linking.openURL('https://ringed-lifeboat-16e.notion.site/Bliss-Alarm-Privacy-Policy-Support-18df35a984814023857f01d66b34afb5')}>
+                    Privacy Policy
+                  </Text>
                 </Text>
               </View>
             </View>
@@ -788,9 +794,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     marginTop: 10,
   },
-  guaranteeText: {
-    fontSize: 16,
-    color: '#FFFFFF',
+  termsText: {
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.5)',
     textAlign: 'center',
   },
   reviewsContainer: {

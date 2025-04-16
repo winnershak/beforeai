@@ -24,7 +24,7 @@
     },
     "ios": {
       "bundleIdentifier": "com.yourusername.blissalarm",
-      "supportsTablet": true,
+      "supportsTablet": false,
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",

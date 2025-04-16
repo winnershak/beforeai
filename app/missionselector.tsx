@@ -23,7 +23,7 @@ const missions = [
     id: 'wordle',
     name: 'Wordle',
     emoji: '🎲',
-    description: 'Guess the word to turn off the alarm',
+    description: 'Guess the word to turn off the alarm (Once per day)',
     needsConfig: false
   },
   {

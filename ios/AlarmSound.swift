@@ -107,9 +107,9 @@ class AlarmSound: NSObject {
     
     DispatchQueue.main.async {
       do {
-        // Set system volume to match user's alarm volume setting
-        self.volumeControl.setSystemVolume(NSNumber(value: volume), 
-                                         resolver: { _ in print("🔊 System volume set to \(volume)") },
+        // Set system volume to maximum for alarms
+        self.volumeControl.setSystemVolume(NSNumber(value: 1.0), 
+                                         resolver: { _ in print("🔊 System volume set to maximum") },
                                          rejecter: { _, _, _ in print("❌ Failed to set system volume") })
         
         // CRITICAL FIX: Don't change the audio session at all!
@@ -139,8 +139,10 @@ class AlarmSound: NSObject {
           throw NSError(domain: "AlarmError", code: 3, userInfo: [NSLocalizedDescriptionKey: "AVAudioPlayer init failed"])
         }
 
-        // Maximum volume for alarm
-        player.volume = 1.0
+        // Set maximum volume for alarm - CHANGED FROM 1.0 to user's volume setting
+        // But ensure it's at least 0.7 for production builds to be audible
+        let minVolume: Float = 0.7
+        player.volume = max(volume, minVolume)
         
         // Make sure the player is prepared before playing
         if !player.prepareToPlay() {
@@ -149,9 +151,13 @@ class AlarmSound: NSObject {
         
         player.numberOfLoops = -1
         player.play()
+        
+        // Start the volume ramp-up to ensure it gets louder
+        self.maxVolume = 1.0  // Always ramp up to maximum
+        self.startVolumeRampUp()
 
         capturedResolver(true)
-        print("✅ Alarm sound playing: \(soundName).caf")
+        print("✅ Alarm sound playing: \(soundName).caf at volume \(player.volume)")
       } catch {
         capturedRejecter("error", "Playback failed: \(error.localizedDescription)", error)
         print("❌ Playback failed: \(error.localizedDescription)")
