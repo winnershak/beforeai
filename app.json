@@ -49,14 +49,14 @@
           "Mode": "Default"
         },
         "NSAppTransportSecurity": {
-          "NSAllowsArbitraryLoads": true
+          "NSAllowsArbitraryLoads": false
         }
       },
-      "buildNumber": "4",
+      "buildNumber": "63",
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.developer.usernotifications.time-sensitive": true,
-        "aps-environment": "development"
+        "aps-environment": "production"
       }
     },
     "plugins": [
@@ -125,9 +125,6 @@
         "android.permission.WAKE_LOCK"
       ],
       "package": "com.yourusername.blissalarm"
-    },
-    "developmentClient": {
-      "silentLaunch": false
     },
     "logLevel": "info",
     "developer": {

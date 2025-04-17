@@ -33,6 +33,8 @@ import RevenueCatService from './services/RevenueCatService';
 import { handleNotification } from './notifications';
 import { TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
+import * as Network from 'expo-network';
+import { Alert } from 'react-native';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -195,35 +197,24 @@ export default function AppLayout() {
   }, []);
 
   useEffect(() => {
-    const checkFirstLaunch = async () => {
+    const checkAccess = async () => {
       try {
-        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-        
-        // Check subscription status instead of premium flag
         const isSubscribed = await RevenueCatService.isSubscribed();
-        
-        console.log('Initial check - Quiz completed:', quizCompleted, 'Subscribed:', isSubscribed);
-        
+
         if (isSubscribed) {
-          console.log('User is subscribed, going to tabs');
           setInitialRoute('(tabs)');
-        } else if (quizCompleted !== 'true') {
-          console.log('Quiz not completed and not subscribed, showing quiz');
-          setInitialRoute('quiz');
         } else {
-          console.log('Quiz completed but not subscribed, showing yes screen');
           setInitialRoute('quiz/yes');
         }
-        
-        setLoading(false);
-      } catch (error) {
-        console.error('Error checking first launch:', error);
-        setInitialRoute('quiz');
+      } catch (e) {
+        console.error('RevenueCat failed', e);
+        setInitialRoute('quiz/yes');
+      } finally {
         setLoading(false);
       }
     };
-    
-    checkFirstLaunch();
+
+    checkAccess();
   }, []);
 
   useEffect(() => {
@@ -497,6 +488,67 @@ export default function AppLayout() {
           console.error('Error checking for expired snoozes:', error);
         });
     }
+  }, []);
+
+  // Add this useEffect to check subscription status with offline support
+  useEffect(() => {
+    const checkSubscriptionStatus = async () => {
+      try {
+        // Check network connectivity first
+        const networkState = await Network.getNetworkStateAsync();
+        
+        if (networkState.isInternetReachable) {
+          // Online - verify with RevenueCat
+          const isSubscribed = await RevenueCatService.isSubscribed();
+          
+          // Update local storage with server result
+          if (isSubscribed) {
+            await AsyncStorage.setItem('isPremium', 'true');
+            await AsyncStorage.setItem('lastVerifiedSubscription', new Date().toISOString());
+          } else {
+            await AsyncStorage.removeItem('isPremium');
+            // No need to redirect here - we'll handle access control at app startup
+          }
+        } else {
+          // Offline - use local data with time limit
+          const lastVerified = await AsyncStorage.getItem('lastVerifiedSubscription');
+          const isPremium = await AsyncStorage.getItem('isPremium');
+          
+          if (isPremium === 'true' && lastVerified) {
+            // Allow offline grace period (7 days)
+            const lastVerifiedDate = new Date(lastVerified);
+            const now = new Date();
+            const diffDays = Math.floor((now.getTime() - lastVerifiedDate.getTime()) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 7) {
+              // Offline for too long, require verification
+              console.log('Offline grace period expired, verification needed');
+              // Don't remove premium status, just show a reminder
+              Alert.alert(
+                "Verification Needed",
+                "Please connect to the internet to verify your subscription."
+              );
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking subscription status:', error);
+      }
+    };
+    
+    // Check when app becomes active
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') {
+        checkSubscriptionStatus();
+      }
+    });
+    
+    // Initial check
+    checkSubscriptionStatus();
+    
+    return () => {
+      subscription.remove();
+    };
   }, []);
 
   if (!loaded || loading || !isReady) {

@@ -1,7 +1,4 @@
-
-
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -91,6 +88,7 @@ export default function YesScreen() {
   const [selectedPlan, setSelectedPlan] = useState('yearly'); // 'monthly' or 'yearly'
   const [loading, setLoading] = useState(false);
   const [packages, setPackages] = useState<any[]>([]);
+  const hasStartedPurchase = useRef(false);
   
   // Fetch the person's name from AsyncStorage using the correct key
   useEffect(() => {
@@ -205,6 +203,9 @@ export default function YesScreen() {
 
   // Function to handle subscription
   const handleSubscription = async () => {
+    if (hasStartedPurchase.current) return;
+    hasStartedPurchase.current = true;
+
     try {
       setLoading(true);
       
@@ -223,19 +224,33 @@ export default function YesScreen() {
           InAppPurchases.setPurchaseListener(({ responseCode, results, errorCode }) => {
             if (responseCode === InAppPurchases.IAPResponseCode.OK) {
               console.log('Direct purchase successful!');
-              // Simple direct approach - no promises or nested callbacks
-              AsyncStorage.setItem('isPremium', 'true');
-              AsyncStorage.setItem('quizCompleted', 'true');
-              console.log('Purchase successful, navigating to alarms...');
-              // Navigate after a small delay to ensure storage is updated
-              setTimeout(() => {
-                router.replace('/(tabs)');
-              }, 300);
+              // Verify we have valid results before proceeding
+              if (results && results.length > 0) {
+                const purchase = results[0];
+                // Verify this is one of our subscription products
+                if (purchase.productId === PRODUCT_MONTHLY || purchase.productId === PRODUCT_YEARLY) {
+                  // Simple direct approach - no promises or nested callbacks
+                  AsyncStorage.setItem('isPremium', 'true');
+                  AsyncStorage.setItem('quizCompleted', 'true');
+                  console.log('Purchase successful, navigating to alarms...');
+                  // Navigate after a small delay to ensure storage is updated
+                  setTimeout(() => {
+                    router.replace('/(tabs)');
+                  }, 300);
+                } else {
+                  console.log('Invalid product purchased:', purchase.productId);
+                  Alert.alert('Purchase Error', 'Invalid product purchased. Please try again.');
+                  setLoading(false);
+                }
+              } else {
+                console.log('No purchase results returned');
+                setLoading(false);
+              }
             } else {
               console.log('Purchase failed with code:', responseCode);
               Alert.alert('Purchase Failed', 'Please try again later.');
+              setLoading(false);
             }
-            setLoading(false);
           });
           
           // Purchase the product
@@ -245,39 +260,25 @@ export default function YesScreen() {
           const purchaseCheckTimer = setTimeout(async () => {
             console.log('Backup purchase check timer fired');
             console.log('Checking subscription status directly...');
-            const isPremium = await RevenueCatService.isSubscribed();
-            console.log('RevenueCat subscription check result:', isPremium);
-            if (isPremium) {
-              console.log('Purchase was successful, navigating...');
-              await AsyncStorage.setItem('isPremium', 'true');
-              await AsyncStorage.setItem('quizCompleted', 'true');
-              router.replace('/(tabs)');
-            } else {
-              console.log('No subscription detected in backup check');
+            try {
+              const isPremium = await RevenueCatService.isSubscribed();
+              console.log('RevenueCat subscription check result:', isPremium);
               
-              // Try a second approach - directly check receipt
-              try {
-                console.log('Attempting direct receipt validation...');
-                const receipt = await InAppPurchases.getPurchaseHistoryAsync();
-                console.log('Receipt history:', JSON.stringify(receipt));
-                
-                // Only care about ACTIVE purchases
-                const hasActivePurchase = receipt && receipt.results && receipt.results.some(
-                  purchase => purchase.productId === productId
-                );
-                if (hasActivePurchase) {
-                  console.log('Found purchases in history, treating as success');
-                  await AsyncStorage.setItem('isPremium', 'true');
-                  await AsyncStorage.setItem('quizCompleted', 'true');
-                  router.replace('/(tabs)');
-                } else {
-                  console.log('No purchases found in history');
-                }
-              } catch (e) {
-                console.log('Error checking purchase history:', e);
+              if (isPremium) {
+                console.log('Purchase was successful, navigating...');
+                await AsyncStorage.setItem('isPremium', 'true');
+                await AsyncStorage.setItem('quizCompleted', 'true');
+                router.replace('/(tabs)');
+              } else {
+                console.log('No subscription detected in backup check');
+                setLoading(false);
+                Alert.alert("Subscription Required", "Please complete your purchase to continue.");
               }
+            } catch (error) {
+              console.error('Error in subscription check:', error);
+              setLoading(false);
             }
-          }, 2000); // Check 2 seconds after purchase attempt
+          }, 2000);
           
           return; // Exit early if direct purchase is initiated
         }
@@ -347,10 +348,23 @@ export default function YesScreen() {
         console.error('Error during direct purchase:', purchaseError);
         Alert.alert("Purchase Error", "There was an error processing your purchase. Please try again.");
       }
+
+      // At the end of the function, before navigation:
+      const isSubscribed = await RevenueCatService.isSubscribed();
+      if (isSubscribed) {
+        await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        router.replace('/(tabs)');
+      } else {
+        Alert.alert("Still Waiting", "We couldn't confirm your subscription yet. Please wait or try again.");
+      }
     } catch (error) {
       console.error('Error during subscription:', error);
       Alert.alert("Error", `An unexpected error occurred: ${(error as Error).message || 'Unknown error'}`);
     } finally {
+      setTimeout(() => {
+        hasStartedPurchase.current = false;
+      }, 3000); // cooldown
       setLoading(false);
     }
   };
@@ -363,6 +377,9 @@ export default function YesScreen() {
       
       if (restored) {
         const details = await RevenueCatService.getSubscriptionDetails();
+        await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        
         Alert.alert(
           "Subscription Restored", 
           `Your subscription has been restored.`,
@@ -375,11 +392,11 @@ export default function YesScreen() {
         );
       } else {
         Alert.alert("No Active Subscription", "We couldn't find any active subscriptions to restore.");
+        setLoading(false);
       }
     } catch (error) {
       console.error('Error restoring subscription:', error);
       Alert.alert("Error", "An error occurred while restoring your subscription.");
-    } finally {
       setLoading(false);
     }
   };

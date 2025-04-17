@@ -456,7 +456,6 @@ export default function TabOneScreen() {
   const params = useLocalSearchParams();
   const [isCreatingAlarm, setIsCreatingAlarm] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [showWarningBanner, setShowWarningBanner] = useState(true);
 
   // Keep the loadAlarms effect
   useEffect(() => {
@@ -725,21 +724,6 @@ export default function TabOneScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {showWarningBanner && (
-        <View style={styles.warningBanner}>
-          <Text style={styles.warningIcon}>⚠️</Text>
-          <Text style={styles.warningText}>
-            For reliable alarm functionality, please keep the app running in the background.
-          </Text>
-          <TouchableOpacity 
-            onPress={() => setShowWarningBanner(false)}
-            style={styles.dismissButton}
-          >
-            <Ionicons name="close" size={20} color="#5D4037" />
-          </TouchableOpacity>
-        </View>
-      )}
-      
       {/* Notification Permission Banner */}
       {!notificationsEnabled && (
         <TouchableOpacity 
@@ -964,28 +948,5 @@ const styles = StyleSheet.create({
   permissionText: {
     color: '#CCCCCC',
     fontSize: 14,
-  },
-  warningBanner: {
-    backgroundColor: '#FFF8E1',
-    borderLeftWidth: 4,
-    borderLeftColor: '#FFA000',
-    padding: 12,
-    marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  warningIcon: {
-    fontSize: 20,
-    marginRight: 10,
-  },
-  warningText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#5D4037',
-  },
-  dismissButton: {
-    padding: 5,
   },
 });
