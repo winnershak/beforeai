@@ -96,6 +96,13 @@ export default function SettingsScreen() {
     router.push(route);
   };
 
+  const handleGroupPlanPurchase = () => {
+    // Use the href approach which is more reliable for cross-stack navigation
+    router.push({
+      pathname: "/settings/group-plan",
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -146,6 +153,20 @@ export default function SettingsScreen() {
             <View style={styles.settingContent}>
               <Ionicons name="globe-outline" size={24} color="#007AFF" style={styles.settingIcon} />
               <Text style={styles.settingText}>Website</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.settingRow}
+            onPress={handleGroupPlanPurchase}
+          >
+            <View style={styles.settingLeft}>
+              <Ionicons name="people" size={24} color="#0A84FF" />
+              <View style={styles.settingTextContainer}>
+                <Text style={styles.settingText}>Group Plan</Text>
+                <Text style={styles.settingDescription}>Share with friends & family</Text>
+              </View>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
@@ -287,5 +308,25 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#5D4037',
     lineHeight: 20,
+  },
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#2C2C2E',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  settingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  settingTextContainer: {
+    marginLeft: 16,
+  },
+  settingDescription: {
+    color: '#999',
+    fontSize: 14,
   },
 }); 

@@ -129,6 +129,9 @@
     "logLevel": "info",
     "developer": {
       "enableLogging": true
+    },
+    "web": {
+      "bundler": "metro"
     }
   }
 }

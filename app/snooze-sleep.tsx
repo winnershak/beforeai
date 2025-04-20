@@ -143,13 +143,32 @@ export default function SnoozeSleep() {
       await AsyncStorage.removeItem('appBlockDisabledUntil');
       await AsyncStorage.removeItem('snoozeEndTime');
       
+      // Get the snoozed schedule ID if available
+      const scheduleId = await AsyncStorage.getItem('snoozedScheduleId');
+      if (scheduleId && Platform.OS === 'ios' && ScreenTimeBridge) {
+        console.log(`Manually ending snooze, reapplying block for schedule: ${scheduleId}`);
+        
+        // Reapply the block by stopping the snooze with 0 minutes
+        try {
+          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
+          console.log('Successfully reapplied block');
+        } catch (error) {
+          console.error('Error reapplying block:', error);
+        }
+        
+        // Clean up the stored schedule ID
+        await AsyncStorage.removeItem('snoozedScheduleId');
+      }
+      
       // Store that we manually ended the snooze
       await AsyncStorage.setItem('manuallyEndedSnooze', 'true');
       
-      // Navigate back to tabs
-      router.push('/(tabs)');
+      // Navigate specifically to the app blocking tab
+      router.push('/(tabs)/appblock');
     } catch (error) {
       console.error('Error ending break:', error);
+      // Still navigate even if there's an error
+      router.push('/(tabs)/appblock');
     }
   };
   
