@@ -369,34 +369,43 @@ export default function YesScreen() {
     }
   };
 
-  // Function to restore purchases
+  // Function to properly restore purchases
   const handleRestore = async () => {
     try {
       setLoading(true);
+      console.log('Attempting to restore purchases...');
+      
+      // Use the EXISTING restorePurchases method
       const restored = await RevenueCatService.restorePurchases();
       
       if (restored) {
-        const details = await RevenueCatService.getSubscriptionDetails();
-        await AsyncStorage.setItem('isPremium', 'true');
-        await AsyncStorage.setItem('quizCompleted', 'true');
+        console.log('Subscription successfully restored!');
         
-        Alert.alert(
-          "Subscription Restored", 
-          `Your subscription has been restored.`,
-          [
-            {
-              text: "Continue",
-              onPress: () => router.push('/(tabs)')
-            }
-          ]
-        );
+        // Get subscription details to verify it's active
+        const details = await RevenueCatService.getSubscriptionDetails();
+        
+        // Check that details are valid and subscription is active
+        if (details && details.expirationDate > new Date()) {
+          // If valid, mark as premium
+          await AsyncStorage.setItem('isPremium', 'true');
+          await AsyncStorage.setItem('quizCompleted', 'true');
+          
+          Alert.alert(
+            "Subscription Restored", 
+            `Your subscription has been restored.`,
+            [{ text: "Continue", onPress: () => router.push('/(tabs)') }]
+          );
+        } else {
+          // Subscription exists but might be expired
+          Alert.alert("Expired Subscription", "Your previous subscription appears to have expired. Please purchase a new subscription.");
+        }
       } else {
         Alert.alert("No Active Subscription", "We couldn't find any active subscriptions to restore.");
-        setLoading(false);
       }
     } catch (error) {
       console.error('Error restoring subscription:', error);
       Alert.alert("Error", "An error occurred while restoring your subscription.");
+    } finally {
       setLoading(false);
     }
   };
