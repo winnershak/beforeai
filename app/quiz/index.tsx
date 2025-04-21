@@ -87,10 +87,6 @@ export default function QuizIntro() {
     }
   };
 
-  const handleEnterGroupCode = () => {
-    router.push('/enter-code');
-  };
-
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -128,13 +124,6 @@ export default function QuizIntro() {
                 <View style={styles.buttonIconContainer}>
                   <Ionicons name="arrow-forward" size={18} color="#fff" />
                 </View>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.groupCodeButton}
-                onPress={handleEnterGroupCode}
-              >
-                <Text style={styles.groupCodeText}>I have a group code</Text>
               </TouchableOpacity>
               
               {/* Subtle login button for existing users and reviewers */}
@@ -374,14 +363,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  groupCodeButton: {
-    marginTop: 16,
-    padding: 10,
-  },
-  groupCodeText: {
-    color: '#0A84FF',
-    fontSize: 16,
-    fontWeight: '500',
   },
 }); 

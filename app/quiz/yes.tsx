@@ -636,7 +636,7 @@ export default function YesScreen() {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.restoreButton}
+                style={[styles.restoreButton, { marginTop: 8, marginBottom: 4 }]}
                 onPress={handleRestore}
                 disabled={loading}
               >
@@ -644,6 +644,11 @@ export default function YesScreen() {
               </TouchableOpacity>
               
               <View style={styles.guaranteesContainer}>
+                <View style={styles.securityContainer}>
+                  <Text style={styles.securityText}>
+                    🛡️ Cancel Anytime. 24/7 support.
+                  </Text>
+                </View>
                 <Text style={styles.termsText}>
                   <Text onPress={() => Linking.openURL('https://www.apple.com/legal/internet-services/itunes/dev/stdeula/')}>
                     Terms of Use
@@ -796,10 +801,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   restoreButton: {
+    paddingVertical: 8,
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    marginBottom: 15,
   },
   restoreText: {
     color: '#FFFFFF',
@@ -807,12 +810,11 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
   guaranteesContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    marginTop: 10,
+    marginTop: 2,
+    alignItems: 'center',
   },
   termsText: {
-    fontSize: 14,
+    fontSize: 12,
     color: 'rgba(255, 255, 255, 0.5)',
     textAlign: 'center',
   },
@@ -955,5 +957,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 149, 0, 0.25)',
     borderWidth: 2,
     borderColor: '#FF9500',
+  },
+  securityContainer: {
+    alignItems: 'center',
+    marginBottom: 6,
+  },
+  securityText: {
+    fontSize: 14,
+    color: '#999',
+    fontWeight: '500',
   },
 }); 

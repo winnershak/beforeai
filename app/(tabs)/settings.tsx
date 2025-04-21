@@ -156,20 +156,6 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={styles.settingRow}
-            onPress={handleGroupPlanPurchase}
-          >
-            <View style={styles.settingLeft}>
-              <Ionicons name="people" size={24} color="#0A84FF" />
-              <View style={styles.settingTextContainer}>
-                <Text style={styles.settingText}>Group Plan</Text>
-                <Text style={styles.settingDescription}>Share with friends & family</Text>
-              </View>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#666" />
-          </TouchableOpacity>
         </View>
 
         {subscriptionDetails && subscriptionDetails.expirationDate && (

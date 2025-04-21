@@ -10,7 +10,8 @@ import {
   Linking,
   Alert,
   NativeModules,
-  TextInput
+  TextInput,
+  Modal
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,8 +19,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Notifications from 'expo-notifications';
 
-const { ScreenTimeBridge } = NativeModules;
+const { ScreenTimeBridge, SleepNotificationModule } = NativeModules;
 
 // Define the app block schedule type
 interface AppBlockSchedule {
@@ -47,6 +49,9 @@ export default function AppBlockScreen() {
   const [snoozeEndTime, setSnoozeEndTime] = useState<Date | null>(null);
   const [snoozeTimeLeft, setSnoozeTimeLeft] = useState('');
   const snoozeTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [reminderTime, setReminderTime] = useState(new Date());
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [isReminderEnabled, setIsReminderEnabled] = useState(false);
   
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
@@ -508,6 +513,71 @@ export default function AppBlockScreen() {
     }
   };
   
+  // Add this function to your AppBlockScreen component
+  const addSleepReminder = () => {
+    // Navigate to new alarm screen with sleep reminder preset
+    router.push({
+      pathname: '/new-alarm',
+      params: { 
+        preset: 'sleep-reminder',
+        hour: '22', // 10:00 PM default
+        minute: '00',
+        label: 'Sleep Reminder'
+      }
+    });
+  };
+  
+  const openTimePicker = () => {
+    setShowTimeModal(true);
+  };
+  
+  const saveTime = async () => {
+    try {
+      // Request permissions
+      const { status } = await Notifications.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Notifications permission is required.');
+        return;
+      }
+      
+      // Use our native module directly with simplified parameters
+      await SleepNotificationModule.scheduleSleepReminder(
+        reminderTime.getHours(),
+        reminderTime.getMinutes()
+      );
+      
+      // Update UI state
+      setShowTimeModal(false);
+      setIsReminderEnabled(true);
+      
+      // Confirm to user
+      Alert.alert(
+        'Reminder Set',
+        `Sleep reminder set for ${reminderTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})} daily.`
+      );
+    } catch (error) {
+      console.error('Error setting reminder:', error);
+      Alert.alert('Error', 'Failed to set reminder. Please try again.');
+    }
+  };
+  
+  const toggleReminder = async (value: boolean) => {
+    setIsReminderEnabled(value);
+    
+    if (!value) {
+      // Cancel notification using our Swift module
+      try {
+        await SleepNotificationModule.cancelSleepReminder();
+        Alert.alert('Reminder Disabled', 'Your sleep reminder has been turned off');
+      } catch (error) {
+        console.error('Error canceling notification:', error);
+      }
+    } else if (!showTimeModal) {
+      // If enabling, open the time picker
+      openTimePicker();
+    }
+  };
+  
   return (
     <>
       <Stack.Screen 
@@ -525,6 +595,77 @@ export default function AppBlockScreen() {
       />
       
       <View style={styles.container}>
+        {/* Sleep Reminder Card - TOP POSITION */}
+        <View style={styles.sleepReminderCard}>
+          <View style={styles.sleepReminderHeader}>
+            <View style={styles.reminderTitleContainer}>
+              <Ionicons name="bed-outline" size={24} color="#0A84FF" />
+              <Text style={styles.sleepReminderTitle}>Sleep Reminder</Text>
+            </View>
+            <Switch
+              value={isReminderEnabled}
+              onValueChange={toggleReminder}
+              trackColor={{ false: '#3A3A3C', true: '#34C759' }}
+              thumbColor="#FFFFFF"
+            />
+          </View>
+          
+          {isReminderEnabled && (
+            <TouchableOpacity 
+              style={styles.timeButton}
+              onPress={openTimePicker}
+            >
+              <Ionicons name="time-outline" size={20} color="#FFFFFF" />
+              <Text style={styles.sleepTimeText}>
+                {reminderTime.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'})}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color="#8E8E93" />
+            </TouchableOpacity>
+          )}
+          
+          {/* Time Picker Modal */}
+          <Modal
+            animationType="slide"
+            transparent={true}
+            visible={showTimeModal}
+            onRequestClose={() => setShowTimeModal(false)}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <View style={styles.modalHeader}>
+                  <TouchableOpacity
+                    onPress={() => setShowTimeModal(false)}
+                    style={styles.closeButton}
+                  >
+                    <Ionicons name="close" size={24} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <Text style={styles.modalTitle}>Set Sleep Time</Text>
+                  <TouchableOpacity
+                    onPress={saveTime}
+                    style={styles.saveButton}
+                  >
+                    <Text style={styles.saveButtonText}>Save</Text>
+                  </TouchableOpacity>
+                </View>
+                
+                <View style={styles.pickerContainer}>
+                  <DateTimePicker
+                    value={reminderTime}
+                    mode="time"
+                    is24Hour={false}
+                    display="spinner"
+                    onChange={(event, selectedDate) => {
+                      if (selectedDate) setReminderTime(selectedDate);
+                    }}
+                    style={styles.sleepTimePicker}
+                    textColor="#FFFFFF"
+                  />
+                </View>
+              </View>
+            </View>
+          </Modal>
+        </View>
+        
         {/* Instructions - Only show when we know permissions are missing */}
         {!hasScreenTimeAccess && !isCheckingPermissions && (
           <View style={styles.instructionCard}>
@@ -693,7 +834,7 @@ export default function AppBlockScreen() {
               is24Hour={false}
               display="spinner"
               onChange={onTimeChange}
-              style={styles.timePicker}
+              style={styles.sleepTimePicker}
               textColor="#FFFFFF"
             />
           </View>
@@ -902,7 +1043,7 @@ const styles = StyleSheet.create({
     color: '#0A84FF',
     fontWeight: 'bold',
   },
-  timePicker: {
+  sleepTimePicker: {
     height: 200,
     width: '100%',
   },
@@ -966,5 +1107,87 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#fff',
     fontWeight: '600',
+  },
+  sleepReminderCard: {
+    backgroundColor: '#2C2C2E',
+    borderRadius: 16,
+    padding: 16,
+    margin: 16,
+    marginTop: 20,
+    marginBottom: 24,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sleepReminderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  reminderTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sleepReminderTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  timeButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3A3A3C',
+    borderRadius: 10,
+    padding: 12,
+    justifyContent: 'space-between',
+  },
+  sleepTimeText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
+    marginLeft: 8,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalContent: {
+    backgroundColor: '#1C1C1E',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 30,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  saveButton: {
+    padding: 4,
+  },
+  saveButtonText: {
+    color: '#0A84FF',
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  pickerContainer: {
+    paddingVertical: 20,
   },
 }); 

@@ -551,6 +551,29 @@ export default function AppLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    Notifications.setNotificationHandler({
+      handleNotification: async (notification) => {
+        // Special handling for sleep reminders
+        if (notification.request.content.data?.isSleepReminder) {
+          // Preserve the original notification content
+          return {
+            shouldShowAlert: true,
+            shouldPlaySound: true,
+            shouldSetBadge: false,
+          };
+        }
+        
+        // Your existing notification handling for other notifications
+        return {
+          shouldShowAlert: true,
+          shouldPlaySound: true,
+          shouldSetBadge: false,
+        };
+      },
+    });
+  }, []);
+
   if (!loaded || loading || !isReady) {
     return null;
   }

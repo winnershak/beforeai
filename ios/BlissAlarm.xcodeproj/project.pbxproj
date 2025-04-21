@@ -41,6 +41,8 @@
 		DC55B01E2D9637FB004436B8 /* SystemVolumeControl.m in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */; };
 		DC55B01F2D9637FB004436B8 /* SystemVolumeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */; };
 		DC55B0212D96385A004436B8 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC55B0202D96385A004436B8 /* MediaPlayer.framework */; };
+		DC942DF62DB60809005710B6 /* SleepNotificationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC942DF52DB60809005710B6 /* SleepNotificationModule.swift */; };
+		DC942DF72DB60809005710B6 /* SleepNotificationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = DC942DF42DB60809005710B6 /* SleepNotificationModule.m */; };
 		DCACC2A42D8F7FC0004DD610 /* test.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2A32D8F7FC0004DD610 /* test.mp3 */; };
 		DCACC2C72D8FCCE2004DD610 /* chimes.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C22D8FCCE2004DD610 /* chimes.caf */; };
 		DCACC2C82D8FCCE2004DD610 /* circuit.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C32D8FCCE2004DD610 /* circuit.caf */; };
@@ -115,6 +117,8 @@
 		DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SystemVolumeControl.m; sourceTree = "<group>"; };
 		DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVolumeControl.swift; sourceTree = "<group>"; };
 		DC55B0202D96385A004436B8 /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
+		DC942DF42DB60809005710B6 /* SleepNotificationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SleepNotificationModule.m; sourceTree = "<group>"; };
+		DC942DF52DB60809005710B6 /* SleepNotificationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepNotificationModule.swift; sourceTree = "<group>"; };
 		DCACC2A32D8F7FC0004DD610 /* test.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = test.mp3; sourceTree = "<group>"; };
 		DCACC2C12D8FCCE2004DD610 /* beacon.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = beacon.caf; sourceTree = "<group>"; };
 		DCACC2C22D8FCCE2004DD610 /* chimes.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = chimes.caf; sourceTree = "<group>"; };
@@ -228,6 +232,8 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
+				DC942DF42DB60809005710B6 /* SleepNotificationModule.m */,
+				DC942DF52DB60809005710B6 /* SleepNotificationModule.swift */,
 				DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */,
 				DC55B0162D94C553004436B8 /* AlarmSound.m */,
 				DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */,
@@ -535,6 +541,8 @@
 				DC55B01F2D9637FB004436B8 /* SystemVolumeControl.swift in Sources */,
 				13B07FBC1A68108700A75B9A /* AppDelegate.mm in Sources */,
 				13B07FC11A68108700A75B9A /* main.m in Sources */,
+				DC942DF62DB60809005710B6 /* SleepNotificationModule.swift in Sources */,
+				DC942DF72DB60809005710B6 /* SleepNotificationModule.m in Sources */,
 				B18059E884C0ABDD17F3DC3D /* ExpoModulesProvider.swift in Sources */,
 				DC55B01B2D94C6A7004436B8 /* AlarmSound.swift in Sources */,
 				40B8EEF7B0444E96B09BBBC7 /* noop-file.swift in Sources */,
