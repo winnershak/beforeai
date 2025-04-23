@@ -171,7 +171,26 @@ export default function AppBlockScreen() {
         }
       };
       
+      // Add this function to load reminder settings
+      const loadReminderSettings = async () => {
+        try {
+          const reminderEnabled = await AsyncStorage.getItem('sleepReminderEnabled');
+          const reminderTimeStr = await AsyncStorage.getItem('sleepReminderTime');
+          
+          if (reminderEnabled === 'true') {
+            setIsReminderEnabled(true);
+          }
+          
+          if (reminderTimeStr) {
+            setReminderTime(new Date(reminderTimeStr));
+          }
+        } catch (error) {
+          console.error('Error loading reminder settings:', error);
+        }
+      };
+      
       loadSchedules();
+      loadReminderSettings();
       checkSnoozeStatus();
       
       // No cleanup needed
@@ -550,6 +569,10 @@ export default function AppBlockScreen() {
       setShowTimeModal(false);
       setIsReminderEnabled(true);
       
+      // Save settings to AsyncStorage
+      await AsyncStorage.setItem('sleepReminderEnabled', 'true');
+      await AsyncStorage.setItem('sleepReminderTime', reminderTime.toISOString());
+      
       // Confirm to user
       Alert.alert(
         'Reminder Set',
@@ -568,6 +591,7 @@ export default function AppBlockScreen() {
       // Cancel notification using our Swift module
       try {
         await SleepNotificationModule.cancelSleepReminder();
+        await AsyncStorage.setItem('sleepReminderEnabled', 'false');
         Alert.alert('Reminder Disabled', 'Your sleep reminder has been turned off');
       } catch (error) {
         console.error('Error canceling notification:', error);
@@ -575,6 +599,48 @@ export default function AppBlockScreen() {
     } else if (!showTimeModal) {
       // If enabling, open the time picker
       openTimePicker();
+    }
+  };
+  
+  // Add this function to handle ending the snooze
+  const handleEndSnooze = async () => {
+    try {
+      // Clear the snooze timestamp
+      await AsyncStorage.removeItem('appBlockDisabledUntil');
+      setIsSnoozeActive(false);
+      setSnoozeEndTime(null);
+      setSnoozeTimeLeft('');
+      
+      // Clear any existing timer
+      if (snoozeTimerRef.current) {
+        clearInterval(snoozeTimerRef.current);
+        snoozeTimerRef.current = null;
+      }
+      
+      // Get all schedules that might be snoozed
+      const schedulesJson = await AsyncStorage.getItem('appBlockSchedules');
+      if (schedulesJson) {
+        const schedules = JSON.parse(schedulesJson);
+        
+        // For each active schedule, reapply it
+        for (const schedule of schedules) {
+          if (schedule.isActive && Platform.OS === 'ios' && ScreenTimeBridge) {
+            try {
+              // Use stopMonitoringForSchedule with 0 minutes to immediately reapply
+              await ScreenTimeBridge.stopMonitoringForSchedule(schedule.id, 0);
+              console.log(`Reapplied block for schedule: ${schedule.id}`);
+            } catch (error) {
+              console.error(`Error reapplying block for schedule ${schedule.id}:`, error);
+            }
+          }
+        }
+      }
+      
+      // Show confirmation to user
+      Alert.alert('Snooze Ended', 'App blocking has been reactivated.');
+    } catch (error) {
+      console.error('Error ending snooze:', error);
+      Alert.alert('Error', 'Failed to end snooze. Please try again.');
     }
   };
   
@@ -725,20 +791,16 @@ export default function AppBlockScreen() {
                 {isSnoozeActive && isCurrentlyActive && (
                   <View style={styles.snoozeInfoContainer}>
                     <View style={styles.snoozeInfoContent}>
-                      <Ionicons name="time-outline" size={16} color="#0A84FF" style={{marginRight: 8}} />
+                      <Ionicons name="time-outline" size={20} color="#0A84FF" />
                       <Text style={styles.snoozeInfoText}>
-                        Paused · Resuming in {snoozeTimeLeft}
+                        {' Snoozed for '}{snoozeTimeLeft}
                       </Text>
                     </View>
                     <TouchableOpacity 
                       style={styles.snoozeEndButton}
-                      onPress={async () => {
-                        await AsyncStorage.removeItem('appBlockDisabledUntil');
-                        setIsSnoozeActive(false);
-                        checkSnoozeStatus();
-                      }}
+                      onPress={handleEndSnooze}
                     >
-                      <Text style={styles.snoozeEndButtonText}>End</Text>
+                      <Text style={styles.snoozeEndButtonText}>End Now</Text>
                     </TouchableOpacity>
                   </View>
                 )}

@@ -202,97 +202,100 @@ export default function EditScheduleScreen() {
     }
   };
   
-  // Apply the app blocking schedule
-  const applyAppBlockSchedule = async (scheduleToApply: AppBlockSchedule) => {
-    if (Platform.OS === 'ios') {
-      try {
-        console.log("🔒 Starting to apply app block schedule");
-        if (ScreenTimeBridge) {
-          // First, remove any existing schedule with this ID to avoid duplicates
-          try {
-            await ScreenTimeBridge.removeSchedule(scheduleToApply.id);
-            console.log("Removed existing schedule with ID:", scheduleToApply.id);
-          } catch (removeError) {
-            // It's okay if this fails - might be a new schedule
-            console.log("No existing schedule to remove or error removing:", removeError);
-          }
-          
-          // Convert the schedule to a format that can be passed to Swift
-          const scheduleData = {
-            id: scheduleToApply.id,
-            startTime: scheduleToApply.startTime.toISOString(),
-            endTime: scheduleToApply.endTime.toISOString(),
-            blockedApps: scheduleToApply.blockedApps,
-            blockedCategories: scheduleToApply.blockedCategories,
-            blockedWebDomains: scheduleToApply.blockedWebDomains,
-            daysOfWeek: scheduleToApply.daysOfWeek,
-            isActive: scheduleToApply.isActive
-          };
-          
-          // Apply the schedule
-          const result = await ScreenTimeBridge.applyAppBlockSchedule(scheduleData);
-          console.log("Schedule applied successfully:", result);
-          return result;
-        } else {
-          console.error("ScreenTimeBridge not available");
-          return false;
-        }
-      } catch (error) {
-        console.error("Error applying app block schedule:", error);
-        throw error;
-      }
-    } else {
-      console.log("App blocking not available on this platform");
-      return false;
-    }
-  };
-  
-  // Save the schedule
+  // Save the schedule with improved error handling and data validation
   const saveSchedule = async () => {
     try {
-      // Load existing schedules
-      const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
-      let schedulesList: AppBlockSchedule[] = [];
+      console.log("Saving schedule with ID:", schedule.id);
       
-      if (savedSchedules) {
-        // Parse existing schedules
-        const parsed = JSON.parse(savedSchedules);
-        schedulesList = parsed.map((s: any) => ({
-          ...s,
-          startTime: new Date(s.startTime),
-          endTime: new Date(s.endTime)
-        }));
+      // First, completely remove the existing schedule from ScreenTime
+      if (Platform.OS === 'ios' && ScreenTimeBridge) {
+        try {
+          // Get the existing schedule to see what apps were previously blocked
+          const savedSchedulesJson = await AsyncStorage.getItem('appBlockSchedules');
+          if (savedSchedulesJson) {
+            const existingSchedules = JSON.parse(savedSchedulesJson);
+            const existingSchedule = existingSchedules.find((s: any) => s.id === schedule.id);
+            
+            if (existingSchedule) {
+              console.log("Found existing schedule, removing it completely");
+              
+              // First deactivate the schedule by setting isActive to false
+              const deactivatedSchedule = {
+                ...existingSchedule,
+                isActive: false
+              };
+              
+              // Apply the deactivated schedule to remove all blocks
+              await ScreenTimeBridge.applyAppBlockSchedule(deactivatedSchedule);
+              console.log("Deactivated existing schedule");
+              
+              // Then completely remove the schedule
+              await ScreenTimeBridge.removeSchedule(schedule.id);
+              console.log("Removed existing schedule from ScreenTime");
+            }
+          }
+        } catch (error) {
+          console.log("Error removing existing schedule:", error);
+        }
       }
       
-      // Check if we're editing an existing schedule or creating a new one
-      if (!isNew) {
-        // Find and replace the existing schedule
-        const existingIndex = schedulesList.findIndex(s => s.id === schedule.id);
+      // Create a clean copy of the schedule with proper date serialization
+      const updatedSchedule = {
+        ...schedule,
+        startTime: schedule.startTime.toISOString(),
+        endTime: schedule.endTime.toISOString(),
+        blockedApps: schedule.blockedApps || [],
+        blockedCategories: schedule.blockedCategories || [],
+        blockedWebDomains: schedule.blockedWebDomains || []
+      };
+      
+      // Update AsyncStorage
+      const savedSchedulesJson = await AsyncStorage.getItem('appBlockSchedules');
+      let allSchedules = [];
+      
+      if (savedSchedulesJson) {
+        // Parse existing schedules
+        allSchedules = JSON.parse(savedSchedulesJson);
+        
+        // Find the index of the schedule we're editing
+        const existingIndex = allSchedules.findIndex((s: any) => s.id === schedule.id);
+        
         if (existingIndex !== -1) {
-          // Replace the existing schedule with the updated one
-          schedulesList[existingIndex] = schedule;
+          // Replace the existing schedule
+          console.log(`Replacing schedule at index ${existingIndex}`);
+          allSchedules[existingIndex] = updatedSchedule;
         } else {
-          // If somehow the schedule wasn't found, add it
-          schedulesList.push(schedule);
+          // Add as new schedule
+          console.log("Adding new schedule");
+          allSchedules.push(updatedSchedule);
         }
       } else {
-        // Add the new schedule
-        schedulesList.push(schedule);
+        // No existing schedules
+        allSchedules = [updatedSchedule];
       }
       
-      // Save the updated schedules list
-      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(schedulesList));
+      // Save updated schedules to storage
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(allSchedules));
+      console.log("Saved schedules to AsyncStorage");
       
-      // Apply the app blocking schedule if on iOS
-      if (Platform.OS === 'ios') {
-        await applyAppBlockSchedule(schedule);
+      // Apply the updated schedule to ScreenTime if active
+      if (schedule.isActive && Platform.OS === 'ios' && ScreenTimeBridge) {
+        try {
+          // Small delay to ensure previous removal is complete
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+          await ScreenTimeBridge.applyAppBlockSchedule(updatedSchedule);
+          console.log("Applied updated schedule to ScreenTime");
+        } catch (error) {
+          console.error("Error applying to ScreenTime:", error);
+        }
       }
       
-      // Navigate specifically to the app blocking page
-      router.push('/(tabs)/appblock');
+      // Navigate to app blocking tab and force a refresh
+      router.replace('/(tabs)/appblock');
     } catch (error) {
-      console.error('Error saving app block schedule:', error);
-      Alert.alert('Error', 'Failed to save schedule. Please try again.');
+      console.error("Error saving schedule:", error);
+      Alert.alert("Error", "Failed to save schedule. Please try again.");
     }
   };
   

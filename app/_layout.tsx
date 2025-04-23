@@ -428,8 +428,22 @@ export default function AppLayout() {
         // Check if alarm screen is showing before cancelling notifications
         const alarmScreenShowing = await AsyncStorage.getItem('alarmScreenShowing');
         if (alarmScreenShowing !== 'true') {
-          console.log('App active - cancelled all notifications');
-          cancelAllNotifications();
+          console.log('App active - cancelling only alarm notifications');
+          
+          // Get all scheduled notifications
+          const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
+          
+          // Cancel only non-sleep reminder notifications
+          for (const notification of scheduledNotifications) {
+            const data = notification.content.data as any;
+            const isSleepReminder = 
+              notification.identifier === "SleepReminder" || 
+              (data && data.notificationType === "sleepReminder");
+            
+            if (!isSleepReminder) {
+              await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+            }
+          }
         } else {
           console.log('App active but alarm screen is showing - keeping notifications');
         }

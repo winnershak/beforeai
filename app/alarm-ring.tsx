@@ -89,9 +89,22 @@ export default function AlarmRingScreen() {
       startVibration();
     }
     
-    // Cancel ALL notifications when alarm screen is opened to prevent duplicates
-    console.log('Cancelling all scheduled notifications when alarm screen opened');
-    cancelAllNotifications();
+    // Cancel only alarm notifications when alarm screen is opened to prevent duplicates
+    console.log('Cancelling only alarm notifications when alarm screen opened');
+    Notifications.getAllScheduledNotificationsAsync().then(notifications => {
+      notifications.forEach(notification => {
+        const data = notification.content.data as any;
+        const isSleepReminder = 
+          notification.identifier === "SleepReminder" || 
+          (data && data.notificationType === "sleepReminder");
+        
+        if (!isSleepReminder) {
+          Notifications.cancelScheduledNotificationAsync(notification.identifier);
+        }
+      });
+    }).catch(error => {
+      console.error('Error filtering notifications:', error);
+    });
     
     // Load alarm data
     if (loadAlarmRef.current) {
