@@ -284,15 +284,17 @@ export default function EditScheduleScreen() {
           // Small delay to ensure previous removal is complete
           await new Promise(resolve => setTimeout(resolve, 300));
           
-          await ScreenTimeBridge.applyAppBlockSchedule(updatedSchedule);
-          console.log("Applied updated schedule to ScreenTime");
+          // Apply the schedule
+          const result = await ScreenTimeBridge.applyAppBlockSchedule(updatedSchedule);
+          console.log("Applied updated schedule to ScreenTime:", result);
+          
+          // Navigate to app blocking tab and force a refresh
+          router.replace('/(tabs)/appblock');
         } catch (error) {
           console.error("Error applying to ScreenTime:", error);
+          Alert.alert("Error", "Failed to apply app blocking schedule. Please try again.");
         }
       }
-      
-      // Navigate to app blocking tab and force a refresh
-      router.replace('/(tabs)/appblock');
     } catch (error) {
       console.error("Error saving schedule:", error);
       Alert.alert("Error", "Failed to save schedule. Please try again.");

@@ -27,4 +27,11 @@ RCT_EXTERN_METHOD(checkForExpiredSnoozes:(RCTPromiseResolveBlock)resolve
 RCT_EXTERN_METHOD(clearAllSelections:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
+RCT_EXTERN_METHOD(
+  registerScheduleForBackgroundMonitoring:(NSString *)scheduleId
+  withSchedule:(NSDictionary *)schedule
+  resolver:(RCTPromiseResolveBlock)resolve
+  rejecter:(RCTPromiseRejectBlock)reject
+)
+
 @end 

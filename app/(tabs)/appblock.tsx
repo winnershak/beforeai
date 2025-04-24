@@ -482,17 +482,66 @@ export default function AppBlockScreen() {
     }
   };
   
-  // Add a function to apply all schedules
+  // Add this function to apply all schedules
   const applyAllSchedules = async () => {
     for (const schedule of schedules) {
-      await applyAppBlockSchedule(schedule);
+      if (schedule.isActive) {
+        await applyAppBlockSchedule(schedule);
+      }
     }
   };
   
-  // Apply all schedules when the app loads
+  // Update the registerSchedulesWithSystem function to fix date format issues
+  const registerSchedulesWithSystem = async () => {
+    if (Platform.OS === 'ios' && ScreenTimeBridge) {
+      console.log("Registering active schedules with the system");
+      
+      for (const schedule of schedules) {
+        if (schedule.isActive) {
+          try {
+            // Check if the method exists
+            if (typeof ScreenTimeBridge.registerScheduleForBackgroundMonitoring !== 'function') {
+              console.log("Background monitoring registration not available");
+              continue;
+            }
+            
+            // Format dates in a way that Swift can reliably parse
+            const startTime = schedule.startTime.toISOString();
+            const endTime = schedule.endTime.toISOString();
+            
+            console.log(`Registering schedule with dates: start=${startTime}, end=${endTime}`);
+            
+            // Convert schedule to the format needed for registration
+            const scheduleData = {
+              id: schedule.id,
+              startTime: startTime,
+              endTime: endTime,
+              blockedApps: schedule.blockedApps || [],
+              blockedCategories: schedule.blockedCategories || [],
+              blockedWebDomains: schedule.blockedWebDomains || [],
+              daysOfWeek: schedule.daysOfWeek,
+              isActive: true
+            };
+            
+            // Register with the system
+            await ScreenTimeBridge.registerScheduleForBackgroundMonitoring(schedule.id, scheduleData);
+            console.log(`Registered schedule ${schedule.id} with the system`);
+          } catch (error) {
+            console.error(`Error registering schedule ${schedule.id}:`, error);
+            // Continue with other schedules even if one fails
+          }
+        }
+      }
+    }
+  };
+  
+  // Call this after applying schedules
   useEffect(() => {
     if (schedules.length > 0 && hasScreenTimeAccess) {
-      applyAllSchedules();
+      applyAllSchedules().then(() => {
+        // After applying schedules, register them with the system
+        registerSchedulesWithSystem();
+      });
     }
   }, [schedules, hasScreenTimeAccess]);
   

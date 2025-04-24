@@ -8,9 +8,8 @@ class SleepNotificationModule: NSObject {
   func scheduleSleepReminder(_ hour: Int, minute: Int, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     
     let content = UNMutableNotificationContent()
-    content.title = "🛌 Time to Sleep"
-    content.body = "Put down your phone. You need rest."
-    content.subtitle = "Sleep Reminder"
+    content.title = "🌙 Time to Wind Down"
+    content.body = "No pressure. Just a little nudge to pause and unplug."
     content.sound = UNNotificationSound.default
     
     content.userInfo = [

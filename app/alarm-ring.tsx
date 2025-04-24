@@ -42,6 +42,56 @@ const stopVibration = () => {
   console.log('Vibration stopped');
 };
 
+// Update the recordWakeupTime function to only record if it's earlier than any existing record for today
+const recordWakeupTime = async (alarmId: string) => {
+  try {
+    const today = new Date();
+    const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    
+    // Format time with leading zeros
+    const hours = today.getHours();
+    const minutes = today.getMinutes().toString().padStart(2, '0');
+    const timeString = `${hours}:${minutes}`;
+    const currentTimeMinutes = hours * 60 + parseInt(minutes);
+    
+    console.log(`Recording wake-up time: ${dateString} at ${timeString} for alarm ${alarmId}`);
+    
+    // Get existing history
+    const historyJson = await AsyncStorage.getItem('wakeupHistory');
+    const history = historyJson ? JSON.parse(historyJson) : {};
+    
+    // Check if we already have a record for today
+    if (history[dateString]) {
+      // Parse existing time
+      const [existingHours, existingMinutes] = history[dateString].time.split(':').map(Number);
+      const existingTimeMinutes = existingHours * 60 + existingMinutes;
+      
+      // Only update if current time is earlier than existing time
+      if (currentTimeMinutes < existingTimeMinutes) {
+        history[dateString] = {
+          time: timeString,
+          alarmId: alarmId
+        };
+        console.log('Updated with earlier wake-up time');
+      } else {
+        console.log('Keeping existing earlier wake-up time');
+      }
+    } else {
+      // No existing record for today, add new one
+      history[dateString] = {
+        time: timeString,
+        alarmId: alarmId
+      };
+    }
+    
+    // Save updated history
+    await AsyncStorage.setItem('wakeupHistory', JSON.stringify(history));
+    console.log('Successfully recorded wake-up time');
+  } catch (error) {
+    console.error('Error recording wake-up time:', error);
+  }
+};
+
 export default function AlarmRingScreen() {
   const params = useLocalSearchParams();
   const [sound, setSound] = useState<Audio.Sound | null>(null);
@@ -416,25 +466,25 @@ export default function AlarmRingScreen() {
     try {
       console.log('Stopping alarm sound');
       
-      // Stop sound using AlarmSoundModule
-      try {
-        await AlarmSoundModule.stopAlarmSound();
-        console.log('AlarmSoundModule stopped sound');
-      } catch (error) {
-        console.error('Error stopping sound with AlarmSoundModule:', error);
+      // Record wake-up time when alarm is dismissed
+      if (currentAlarm) {
+        await recordWakeupTime(currentAlarm.id);
       }
       
-      // Use the notifications utility function instead
-      stopAlarmSound();
+      // Stop sound and vibration
+      if (sound) {
+        await sound.stopAsync();
+        await sound.unloadAsync();
+      }
+      stopVibration();
       
-      // Disable the alarm in AsyncStorage
+      // Reset alarm state
       await resetAlarmState();
-      setIsPlaying(false);
       
-      // Navigate back to home
-      router.replace('/(tabs)');
+      // Navigate back to home screen
+      router.replace('/');
     } catch (error) {
-      console.error('Error stopping alarm:', error);
+      console.error('Error stopping sound:', error);
     }
   };
 
@@ -672,6 +722,20 @@ export default function AlarmRingScreen() {
       await Notifications.cancelAllScheduledNotificationsAsync();
     } catch (error) {
       console.error('Error cancelling notifications:', error);
+    }
+  };
+
+  // Call this function in your dismissAlarm function
+  const handleDismiss = async () => {
+    try {
+      // Record wake-up time when alarm is dismissed
+      if (currentAlarm) {
+        await recordWakeupTime(currentAlarm.id);
+      }
+      
+      // Rest of your existing code...
+    } catch (error) {
+      console.error('Error dismissing alarm:', error);
     }
   };
 

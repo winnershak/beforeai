@@ -664,11 +664,21 @@ export const cancelAlarmNotification = async (alarmId: string) => {
     // Get all scheduled notifications
     const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
     
-    // Filter notifications related to this alarm
+    // Filter notifications related to this alarm - look for both data and identifier
     const alarmNotifications = scheduledNotifications.filter(notification => {
       try {
+        // Check if alarmId is in the notification data
         const data = notification.content.data as any;
-        return data && data.alarmId === alarmId;
+        if (data && data.alarmId === alarmId) {
+          return true;
+        }
+        
+        // Also check if alarmId is part of the notification identifier
+        if (notification.identifier && notification.identifier.includes(alarmId)) {
+          return true;
+        }
+        
+        return false;
       } catch (e) {
         return false;
       }

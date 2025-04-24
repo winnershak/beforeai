@@ -611,6 +611,110 @@ class ScreenTimeBridge: NSObject {
   static func requiresMainQueueSetup() -> Bool {
     return true
   }
+  
+  @objc(registerScheduleForBackgroundMonitoring:withSchedule:resolver:rejecter:)
+  func registerScheduleForBackgroundMonitoring(
+    scheduleId: String,
+    schedule: [String: Any],
+    resolve: @escaping RCTPromiseResolveBlock,
+    reject: @escaping RCTPromiseRejectBlock
+  ) {
+    if #available(iOS 16.0, *) {
+      do {
+        // Parse the schedule data
+        guard let startTimeString = schedule["startTime"] as? String,
+              let endTimeString = schedule["endTime"] as? String,
+              let isActive = schedule["isActive"] as? Bool else {
+          reject("INVALID_SCHEDULE", "Invalid schedule data", nil)
+          return
+        }
+        
+        // Only proceed if the schedule is active
+        guard isActive else {
+          resolve(false)
+          return
+        }
+        
+        // Try multiple date formatters to handle different ISO formats
+        let dateFormatter = ISO8601DateFormatter()
+        
+        // First try with fractional seconds
+        dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        var startDate = dateFormatter.date(from: startTimeString)
+        var endDate = dateFormatter.date(from: endTimeString)
+        
+        // If that fails, try without fractional seconds
+        if startDate == nil || endDate == nil {
+          dateFormatter.formatOptions = [.withInternetDateTime]
+          startDate = dateFormatter.date(from: startTimeString)
+          endDate = dateFormatter.date(from: endTimeString)
+        }
+        
+        // If still nil, try a more lenient approach
+        if startDate == nil || endDate == nil {
+          let fallbackFormatter = DateFormatter()
+          fallbackFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss.SSSZ"
+          startDate = fallbackFormatter.date(from: startTimeString)
+          endDate = fallbackFormatter.date(from: endTimeString)
+          
+          // One more attempt with a simpler format
+          if startDate == nil || endDate == nil {
+            fallbackFormatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
+            startDate = fallbackFormatter.date(from: startTimeString)
+            endDate = fallbackFormatter.date(from: endTimeString)
+          }
+        }
+        
+        // Check if we have valid dates
+        guard let finalStartDate = startDate, let finalEndDate = endDate else {
+          print("❌ Failed to parse dates: start=\(startTimeString), end=\(endTimeString)")
+          reject("INVALID_DATES", "Invalid date format", nil)
+          return
+        }
+        
+        print("✅ Successfully parsed dates: start=\(finalStartDate), end=\(finalEndDate)")
+        
+        // Create calendar components for start and end times
+        let calendar = Calendar.current
+        let startComponents = calendar.dateComponents([.hour, .minute], from: finalStartDate)
+        let endComponents = calendar.dateComponents([.hour, .minute], from: finalEndDate)
+        
+        print("⏰ Time components: start=\(startComponents.hour ?? 0):\(startComponents.minute ?? 0), end=\(endComponents.hour ?? 0):\(endComponents.minute ?? 0)")
+        
+        // Create a device activity schedule with the correct API
+        let deviceSchedule = DeviceActivitySchedule(
+          intervalStart: DateComponents(
+            hour: startComponents.hour,
+            minute: startComponents.minute
+          ),
+          intervalEnd: DateComponents(
+            hour: endComponents.hour,
+            minute: endComponents.minute
+          ),
+          repeats: true
+        )
+        
+        // Create a center and register the schedule
+        let center = DeviceActivityCenter()
+        let activityName = DeviceActivityName("AppBlock-\(scheduleId)")
+        
+        // Register the schedule with the system
+        try center.startMonitoring(
+          activityName,
+          during: deviceSchedule
+        )
+        
+        print("📱 Successfully registered schedule \(scheduleId) for background monitoring")
+        resolve(true)
+      } catch {
+        print("❌ Error registering schedule: \(error)")
+        reject("REGISTER_ERROR", "Failed to register schedule: \(error.localizedDescription)", error)
+      }
+    } else {
+      reject("UNSUPPORTED_IOS", "This feature requires iOS 16.0 or later", nil)
+    }
+  }
 }
 
 // Add a SwiftUI view to host the FamilyActivityPicker

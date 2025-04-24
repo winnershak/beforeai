@@ -57,7 +57,8 @@
         "com.apple.developer.family-controls": true,
         "com.apple.developer.usernotifications.time-sensitive": true,
         "aps-environment": "production"
-      }
+      },
+      "appleTeamId": "8L789T788W"
     },
     "plugins": [
       [
