@@ -213,23 +213,18 @@ class ScreenTimeBridge: NSObject {
   func applyAppBlockSchedule(_ scheduleData: NSDictionary, resolve: @escaping RCTPromiseResolveBlock, reject: @escaping RCTPromiseRejectBlock) {
     // Extract schedule data
     guard let id = scheduleData["id"] as? String,
-          let startTimeStr = scheduleData["startTime"] as? String,
-          let endTimeStr = scheduleData["endTime"] as? String,
           let blockedApps = scheduleData["blockedApps"] as? [String],
           let blockedCategories = scheduleData["blockedCategories"] as? [String],
           let blockedWebDomains = scheduleData["blockedWebDomains"] as? [String],
-          let daysOfWeek = scheduleData["daysOfWeek"] as? [Bool],
           let isActive = scheduleData["isActive"] as? Bool else {
       reject("invalid_data", "Invalid schedule data", nil)
       return
     }
     
     print("📅 Applying app block schedule: \(id)")
-    print("⏰ Start time: \(startTimeStr), End time: \(endTimeStr)")
     print("📱 Blocked apps: \(blockedApps.count)")
     print("🔖 Blocked categories: \(blockedCategories.count)")
     print("🌐 Blocked web domains: \(blockedWebDomains.count)")
-    print("📆 Days of week: \(daysOfWeek)")
     print("✅ Is active: \(isActive)")
     
     // Get the selection for this schedule
@@ -252,28 +247,6 @@ class ScreenTimeBridge: NSObject {
       return
     }
     
-    // Create a DateComponents for the start time
-    let dateFormatter = ISO8601DateFormatter()
-    dateFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-    
-    guard let startDate = dateFormatter.date(from: startTimeStr),
-          let endDate = dateFormatter.date(from: endTimeStr) else {
-      print("Failed to parse dates: \(startTimeStr), \(endTimeStr)")
-      reject("invalid_date", "Invalid date format", nil)
-      return
-    }
-    
-    let calendar = Calendar.current
-    let startComponents = calendar.dateComponents([.hour, .minute], from: startDate)
-    let endComponents = calendar.dateComponents([.hour, .minute], from: endDate)
-    
-    // Create a schedule
-    let schedule = DeviceActivitySchedule(
-      intervalStart: DateComponents(hour: startComponents.hour, minute: startComponents.minute),
-      intervalEnd: DateComponents(hour: endComponents.hour, minute: endComponents.minute),
-      repeats: true
-    )
-    
     print("📊 Schedule data contains: \(blockedApps.count) apps, \(blockedCategories.count) categories, \(blockedWebDomains.count) domains")
     
     // Print the counts for debugging
@@ -289,91 +262,29 @@ class ScreenTimeBridge: NSObject {
       if let selection = self.scheduleSelections[id] {
         print("📱 Using stored selection for schedule \(id): \(selection.applicationTokens.count) apps, \(selection.categoryTokens.count) categories, \(selection.webDomainTokens.count) web domains")
         
-        // Create a monitor for this schedule
-        if #available(iOS 16.0, *) {
-          let monitor = AppBlockMonitor(scheduleId: id)
-          self.monitors[id] = monitor
-          AppBlockMonitor.activeMonitors[id] = monitor
-          
-          // Define the missing variables
-          let activityName = DeviceActivityName(id)
-          let center = DeviceActivityCenter()
-          
-          do {
-            // Start monitoring
-            try center.startMonitoring(
-              activityName,
-              during: schedule
-            )
-            
-            // Apply the restrictions immediately if within the time window
-            let now = Date()
-            let nowComponents = calendar.dateComponents([.hour, .minute], from: now)
-            let nowHour = nowComponents.hour ?? 0
-            let nowMinute = nowComponents.minute ?? 0
-            let startHour = startComponents.hour ?? 0
-            let startMinute = startComponents.minute ?? 0
-            let endHour = endComponents.hour ?? 0
-            let endMinute = endComponents.minute ?? 0
-            
-            // Fix time window detection logic to handle overnight schedules properly
-            var isWithinTimeWindow = false
-            
-            // Convert everything to minutes for easier comparison
-            let nowMinutes = nowHour * 60 + nowMinute
-            let startMinutes = startHour * 60 + startMinute
-            let endMinutes = endHour * 60 + endMinute
-            
-            if (startMinutes < endMinutes) {
-              // Normal schedule (e.g. 9:00 to 17:00)
-              isWithinTimeWindow = nowMinutes >= startMinutes && nowMinutes <= endMinutes
-            } else {
-              // Overnight schedule (e.g. 22:00 to 7:00)
-              isWithinTimeWindow = nowMinutes >= startMinutes || nowMinutes <= endMinutes
-            }
-            
-            print("🕒 Current time: \(nowHour):\(nowMinute)")
-            print("🕒 Start time: \(startHour):\(startMinute)")
-            print("🕒 End time: \(endHour):\(endMinute)")
-            print("🔍 Is within time window: \(isWithinTimeWindow)")
-            
-            // Check if today is a day when this schedule should be active
-            let todayIndex = calendar.component(.weekday, from: now) - 1 // 0 = Sunday
-            let isActiveToday = daysOfWeek.indices.contains(todayIndex) && daysOfWeek[todayIndex]
-            print("📅 Today is day \(todayIndex), active: \(isActiveToday)")
-            
-            isWithinTimeWindow = isWithinTimeWindow && isActiveToday
-            
-            if isWithinTimeWindow {
-              print("🔒 Applying shields immediately")
-              let store = ManagedSettingsStore()
-              
-              // Custom shield configuration is handled by the system automatically
-              // when BlissShieldConfigurationDataSource is included in the target
-              print("🛡️ Applying shields with custom configuration")
-              
-              if !blockedCategories.isEmpty {
-                // Use the stored selection for this schedule
-                store.shield.applicationCategories = .specific(selection.categoryTokens)
-              }
-              
-              if !blockedApps.isEmpty {
-                // Use the stored selection for this schedule
-                store.shield.applications = selection.applicationTokens
-              }
-              
-              if !blockedWebDomains.isEmpty {
-                // Use the stored selection for this schedule
-                store.shield.webDomains = selection.webDomainTokens
-              }
-            }
-            
-            resolve(true)
-          } catch {
-            print("❌ Monitoring error: \(error.localizedDescription)")
-            reject("monitoring_error", "Failed to start monitoring: \(error.localizedDescription)", error as NSError)
-          }
+        // Apply the restrictions immediately
+        let store = ManagedSettingsStore()
+        
+        // Custom shield configuration is handled by the system automatically
+        // when BlissShieldConfigurationDataSource is included in the target
+        print("🛡️ Applying shields with custom configuration")
+        
+        if !blockedCategories.isEmpty {
+          // Use the stored selection for this schedule
+          store.shield.applicationCategories = .specific(selection.categoryTokens)
         }
+        
+        if !blockedApps.isEmpty {
+          // Use the stored selection for this schedule
+          store.shield.applications = selection.applicationTokens
+        }
+        
+        if !blockedWebDomains.isEmpty {
+          // Use the stored selection for this schedule
+          store.shield.webDomains = selection.webDomainTokens
+        }
+        
+        resolve(true)
       } else {
         // No stored selection, prompt the user to select apps first
         print("No stored selection available")
@@ -714,6 +625,34 @@ class ScreenTimeBridge: NSObject {
     } else {
       reject("UNSUPPORTED_IOS", "This feature requires iOS 16.0 or later", nil)
     }
+  }
+  
+  @objc
+  func removeSchedule(_ scheduleId: NSString, resolve: @escaping RCTPromiseResolveBlock, rejecter reject: @escaping RCTPromiseRejectBlock) {
+    let id = scheduleId as String
+    print("🗑️ Removing schedule: \(id)")
+    
+    // Stop monitoring for this specific schedule
+    let center = DeviceActivityCenter()
+    let activityName = DeviceActivityName(id)
+    center.stopMonitoring([activityName])
+    
+    // Remove shields
+    let store = ManagedSettingsStore()
+    store.shield.applications = nil
+    store.shield.applicationCategories = nil
+    store.shield.webDomains = nil
+    
+    // Remove this monitor from active monitors
+    if #available(iOS 16.0, *) {
+      AppBlockMonitor.activeMonitors.removeValue(forKey: id)
+    }
+    
+    // Remove from stored selections
+    scheduleSelections.removeValue(forKey: id as String)
+    
+    print("✅ Successfully removed schedule: \(id)")
+    resolve(true)
   }
 }
 

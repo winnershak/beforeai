@@ -363,6 +363,7 @@ export default function AppBlockScreen() {
         console.log("🔒 Applying app block schedule from main screen");
         if (ScreenTimeBridge) {
           // Convert the schedule to a format that can be passed to Swift
+          // Keep time fields in the data but they won't be used for blocking
           const scheduleData = {
             id: schedule.id,
             startTime: schedule.startTime.toISOString(),
@@ -491,45 +492,21 @@ export default function AppBlockScreen() {
     }
   };
   
-  // Update the registerSchedulesWithSystem function to fix date format issues
+  // Replace the entire registerSchedulesWithSystem function with this simplified version
   const registerSchedulesWithSystem = async () => {
-    if (Platform.OS === 'ios' && ScreenTimeBridge) {
-      console.log("Registering active schedules with the system");
-      
-      for (const schedule of schedules) {
-        if (schedule.isActive) {
-          try {
-            // Check if the method exists
-            if (typeof ScreenTimeBridge.registerScheduleForBackgroundMonitoring !== 'function') {
-              console.log("Background monitoring registration not available");
-              continue;
-            }
-            
-            // Format dates in a way that Swift can reliably parse
-            const startTime = schedule.startTime.toISOString();
-            const endTime = schedule.endTime.toISOString();
-            
-            console.log(`Registering schedule with dates: start=${startTime}, end=${endTime}`);
-            
-            // Convert schedule to the format needed for registration
-            const scheduleData = {
-              id: schedule.id,
-              startTime: startTime,
-              endTime: endTime,
-              blockedApps: schedule.blockedApps || [],
-              blockedCategories: schedule.blockedCategories || [],
-              blockedWebDomains: schedule.blockedWebDomains || [],
-              daysOfWeek: schedule.daysOfWeek,
-              isActive: true
-            };
-            
-            // Register with the system
-            await ScreenTimeBridge.registerScheduleForBackgroundMonitoring(schedule.id, scheduleData);
-            console.log(`Registered schedule ${schedule.id} with the system`);
-          } catch (error) {
-            console.error(`Error registering schedule ${schedule.id}:`, error);
-            // Continue with other schedules even if one fails
-          }
+    // Skip the background registration entirely since it's causing errors
+    // and you don't need the 15-minute minimum requirement
+    console.log("Skipping background registration due to short schedule duration");
+    
+    // Just apply the schedules directly without registering for background monitoring
+    for (const schedule of schedules) {
+      if (schedule.isActive && Platform.OS === 'ios' && ScreenTimeBridge) {
+        try {
+          // Apply the schedule directly
+          await applyAppBlockSchedule(schedule);
+          console.log(`Applied schedule ${schedule.id} directly`);
+        } catch (error) {
+          console.error(`Error applying schedule ${schedule.id}:`, error);
         }
       }
     }
@@ -545,40 +522,103 @@ export default function AppBlockScreen() {
     }
   }, [schedules, hasScreenTimeAccess]);
   
-  // Function to check if a schedule is currently active based on time
+  // Function to check if a schedule is currently active
   const isScheduleCurrentlyActive = (schedule: AppBlockSchedule) => {
     // If the schedule is not set to active, it's definitely not active
     if (!schedule.isActive) return false;
     
+    // Check if we're past the end time
     const now = new Date();
-    const currentDay = now.getDay(); // 0 = Sunday, 1 = Monday, etc.
+    const endTime = new Date(schedule.endTime);
     
-    // Check if today is a day when this schedule is active
-    if (!schedule.daysOfWeek[currentDay]) return false;
-    
-    // Get current hour and minute
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTimeAsMinutes = currentHour * 60 + currentMinute;
-    
-    // Get schedule start and end times
-    const startHour = schedule.startTime.getHours();
-    const startMinute = schedule.startTime.getMinutes();
-    const startTimeAsMinutes = startHour * 60 + startMinute;
-    
-    const endHour = schedule.endTime.getHours();
-    const endMinute = schedule.endTime.getMinutes();
-    const endTimeAsMinutes = endHour * 60 + endMinute;
-    
-    // Check if current time is within schedule time range
-    // Handle both normal ranges and overnight ranges
-    if (startTimeAsMinutes <= endTimeAsMinutes) {
-      // Normal time range (e.g., 9:00 - 17:00)
-      return currentTimeAsMinutes >= startTimeAsMinutes && currentTimeAsMinutes <= endTimeAsMinutes;
-    } else {
-      // Overnight time range (e.g., 22:00 - 7:00)
-      return currentTimeAsMinutes >= startTimeAsMinutes || currentTimeAsMinutes <= endTimeAsMinutes;
+    // If current time is past the end time, suggest removing the block
+    if (now > endTime) {
+      return false;
     }
+    
+    // Otherwise, the schedule is active
+    return true;
+  };
+  
+  // Function to format schedule time for display
+  const formatScheduleTime = (schedule: AppBlockSchedule) => {
+    // Only show when the block will end
+    const endTime = new Date(schedule.endTime);
+    return `Ends at ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+  };
+  
+  // Function to render the schedule card
+  const renderScheduleCard = (schedule: AppBlockSchedule, index: number) => {
+    const isActive = isScheduleCurrentlyActive(schedule);
+    const isSnoozed = isSnoozeActive && snoozeEndTime !== null;
+    const now = new Date();
+    const endTime = new Date(schedule.endTime);
+    const isPastEndTime = now > endTime;
+    
+    return (
+      <TouchableOpacity 
+        key={schedule.id}
+        style={styles.scheduleCard}
+        onPress={() => editSchedule(index)}
+      >
+        <View style={styles.scheduleHeader}>
+          <View style={styles.scheduleNameContainer}>
+            <Text style={styles.scheduleName}>{schedule.name}</Text>
+            {isActive && (
+              <View style={[styles.statusBadge, styles.statusBadgeActive]}>
+                <Text style={styles.statusBadgeText}>Active</Text>
+              </View>
+            )}
+            {isPastEndTime && (
+              <View style={[styles.statusBadge, styles.statusBadgeEnded]}>
+                <Text style={styles.statusBadgeText}>Ended</Text>
+              </View>
+            )}
+            {isSnoozed && (
+              <View style={[styles.statusBadge, styles.statusBadgeSnoozed]}>
+                <Text style={styles.statusBadgeText}>Snoozed</Text>
+              </View>
+            )}
+          </View>
+        </View>
+        
+        <View style={styles.scheduleDetails}>
+          <View style={styles.scheduleInfo}>
+            <Ionicons name="apps" size={18} color="#8E8E93" />
+            <Text style={styles.scheduleInfoText}>
+              {schedule.blockedApps && schedule.blockedApps.length > 0 
+                ? `${schedule.blockedApps.length} app${schedule.blockedApps.length !== 1 ? 's' : ''}` 
+                : "No apps"} 
+              {schedule.blockedWebDomains && schedule.blockedWebDomains.length > 0 
+                ? `, ${schedule.blockedWebDomains.length} website${schedule.blockedWebDomains.length !== 1 ? 's' : ''}` 
+                : ""}
+              {schedule.blockedCategories && schedule.blockedCategories.length > 0 
+                ? `, ${schedule.blockedCategories.length} categor${schedule.blockedCategories.length !== 1 ? 'ies' : 'y'}` 
+                : ""}
+            </Text>
+          </View>
+          
+          {/* Always show the time, regardless of active status */}
+          <View style={styles.scheduleTimeRow}>
+            <Ionicons name="time-outline" size={18} color="#0A84FF" style={styles.timeIcon} />
+            <Text style={styles.timeText}>
+              Ends at {endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+            </Text>
+          </View>
+          
+          {/* Add End Block Now button for active schedules */}
+          {isActive && (
+            <TouchableOpacity 
+              style={styles.endBlockButton}
+              onPress={() => handleEndBlock(schedule.id)}
+            >
+              <Ionicons name="stop-circle-outline" size={20} color="#FF453A" />
+              <Text style={styles.endBlockText}>End Block Now</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
   };
   
   // Add this function to your AppBlockScreen component
@@ -693,6 +733,44 @@ export default function AppBlockScreen() {
     }
   };
   
+  // Add this function to handle ending a block
+  const handleEndBlock = async (scheduleId: string) => {
+    try {
+      // Find the schedule
+      const schedule = schedules.find(s => s.id === scheduleId);
+      if (!schedule) return;
+      
+      // Update the schedule to be inactive
+      const updatedSchedules = schedules.map(s => 
+        s.id === scheduleId ? {...s, isActive: false} : s
+      );
+      
+      // Update state
+      setSchedules(updatedSchedules);
+      
+      // Save to AsyncStorage
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
+      
+      // If on iOS, use ScreenTimeBridge to stop monitoring
+      if (Platform.OS === 'ios' && ScreenTimeBridge) {
+        try {
+          // Use stopMonitoringForSchedule with 0 minutes to immediately end
+          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
+          console.log(`Ended block for schedule: ${scheduleId}`);
+          
+          // Show confirmation to user
+          Alert.alert('Block Ended', 'App blocking has been deactivated for today.');
+        } catch (error) {
+          console.error(`Error ending block for schedule ${scheduleId}:`, error);
+          Alert.alert('Error', 'Failed to end block. Please try again.');
+        }
+      }
+    } catch (error) {
+      console.error('Error handling end block:', error);
+      Alert.alert('Error', 'Failed to end block. Please try again.');
+    }
+  };
+  
   return (
     <>
       <Stack.Screen 
@@ -800,111 +878,7 @@ export default function AppBlockScreen() {
         
         {/* Schedules List */}
         <ScrollView style={styles.schedulesList}>
-          {schedules.map((schedule, index) => {
-            const isCurrentlyActive = isScheduleCurrentlyActive(schedule);
-            
-            return (
-              <TouchableOpacity 
-                key={schedule.id}
-                style={styles.scheduleCard}
-                onPress={() => editSchedule(index)}
-              >
-                <View style={styles.scheduleHeader}>
-                  <View style={styles.scheduleNameContainer}>
-                    <View style={styles.activeIndicator}>
-                      <View style={[
-                        styles.activeIndicatorDot,
-                        isSnoozeActive ? styles.activeIndicatorDotSnoozed : 
-                        isCurrentlyActive ? styles.activeIndicatorDotOn : 
-                        schedule.isActive ? styles.activeIndicatorDotScheduled : styles.activeIndicatorDotOff
-                      ]} />
-                    </View>
-                    <Text style={styles.scheduleName}>{schedule.name || 'Focus Time'}</Text>
-                  </View>
-                  
-                  {/* Status Badge */}
-                  {(schedule.isActive) && (
-                    <View style={[
-                      styles.statusBadge,
-                      isSnoozeActive ? styles.statusBadgeSnoozed : 
-                      isCurrentlyActive ? styles.statusBadgeActive : styles.statusBadgeScheduled
-                    ]}>
-                      <Text style={styles.statusBadgeText}>
-                        {isSnoozeActive ? 'Snoozed' : isCurrentlyActive ? 'Active' : 'Scheduled'}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-                
-                {/* Snooze Info (only show if both snoozed and the schedule would be active now) */}
-                {isSnoozeActive && isCurrentlyActive && (
-                  <View style={styles.snoozeInfoContainer}>
-                    <View style={styles.snoozeInfoContent}>
-                      <Ionicons name="time-outline" size={20} color="#0A84FF" />
-                      <Text style={styles.snoozeInfoText}>
-                        {' Snoozed for '}{snoozeTimeLeft}
-                      </Text>
-                    </View>
-                    <TouchableOpacity 
-                      style={styles.snoozeEndButton}
-                      onPress={handleEndSnooze}
-                    >
-                      <Text style={styles.snoozeEndButtonText}>End Now</Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
-                
-                <View style={styles.scheduleDetails}>
-                  <View style={styles.scheduleTimeRow}>
-                    <Ionicons name="time-outline" size={18} color="#0A84FF" style={styles.timeIcon} />
-                    <Text style={styles.timeText}>
-                      {formatTime(schedule.startTime)} - {formatTime(schedule.endTime)}
-                    </Text>
-                  </View>
-                  
-                  <View style={styles.daysList}>
-                    {schedule.daysOfWeek.map((isActive, dayIndex) => (
-                      <View 
-                        key={dayIndex} 
-                        style={[
-                          styles.dayBubble,
-                          isActive ? styles.selectedDay : styles.unselectedDay
-                        ]}
-                      >
-                        <Text 
-                          style={[
-                            styles.dayText,
-                            isActive ? styles.selectedDayText : styles.unselectedDayText
-                          ]}
-                        >
-                          {daysOfWeek[dayIndex][0]}
-                        </Text>
-                      </View>
-                    ))}
-                  </View>
-                  
-                  {(schedule.blockedApps.length > 0 || schedule.blockedWebDomains.length > 0) && (
-                    <View style={styles.appsContainer}>
-                      <View style={styles.appsHeader}>
-                        <Ionicons name="apps" size={18} color="#0A84FF" />
-                        <Text style={styles.appsHeaderText}>
-                          {schedule.blockedApps && schedule.blockedApps.length > 0 ? 
-                            `${schedule.blockedApps.length} apps` : 
-                            "All apps"}
-                          {schedule.blockedWebDomains && schedule.blockedWebDomains.length > 0 ? 
-                            `, ${schedule.blockedWebDomains.length} websites` : 
-                            ""}
-                          {schedule.blockedCategories && schedule.blockedCategories.length > 0 ? 
-                            " + categories" : 
-                            ""}
-                        </Text>
-                      </View>
-                    </View>
-                  )}
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+          {schedules.map((schedule, index) => renderScheduleCard(schedule, index))}
         </ScrollView>
         
         {/* Add New Schedule Button */}
@@ -1053,47 +1027,33 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 16,
   },
-  scheduleTimeRow: {
+  scheduleInfo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 10,
   },
-  timeIcon: {
-    marginRight: 8,
+  scheduleInfoText: {
+    color: '#FFFFFF',
+    marginLeft: 8,
+    fontSize: 14,
   },
-  timeText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  daysList: {
+  scheduleActions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  dayBubble: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginRight: 8,
-    marginBottom: 8,
+    marginTop: 12,
   },
-  selectedDay: {
-    backgroundColor: '#0A84FF',
+  scheduleActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    padding: 12,
+    borderRadius: 16,
   },
-  unselectedDay: {
-    backgroundColor: '#3A3A3C',
-  },
-  dayText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
-  selectedDayText: {
-    color: '#fff',
-  },
-  unselectedDayText: {
-    color: '#8E8E93',
+  scheduleActionText: {
+    color: '#0A84FF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   addButton: {
     position: 'absolute',
@@ -1158,18 +1118,6 @@ const styles = StyleSheet.create({
     height: 200,
     width: '100%',
   },
-  appsContainer: {
-    marginTop: 12,
-  },
-  appsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  appsHeaderText: {
-    color: '#FFFFFF',
-    marginLeft: 8,
-    fontSize: 14,
-  },
   snoozeInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1213,6 +1161,9 @@ const styles = StyleSheet.create({
   },
   statusBadgeScheduled: {
     backgroundColor: 'rgba(255, 149, 0, 0.2)', // Orange background for scheduled
+  },
+  statusBadgeEnded: {
+    backgroundColor: 'rgba(255, 69, 58, 0.2)',
   },
   statusBadgeText: {
     fontSize: 12,
@@ -1300,5 +1251,51 @@ const styles = StyleSheet.create({
   },
   pickerContainer: {
     paddingVertical: 20,
+  },
+  scheduleTimeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    backgroundColor: 'rgba(10, 132, 255, 0.1)',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  timeIcon: {
+    marginRight: 8,
+    color: '#0A84FF',
+  },
+  timeText: {
+    fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  removeBlockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  removeBlockText: {
+    color: '#FF453A',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  endBlockButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 69, 58, 0.1)',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 12,
+  },
+  endBlockText: {
+    color: '#FF453A',
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 8,
   },
 }); 
