@@ -34,6 +34,7 @@ interface AppBlockSchedule {
   blockedApps: string[];
   blockedCategories: string[];
   blockedWebDomains: string[];
+  snoozeUntil?: string;
 }
 
 export default function AppBlockScreen() {
@@ -63,31 +64,49 @@ export default function AppBlockScreen() {
   // Function to check if there's an active snooze
   const checkSnoozeStatus = async () => {
     try {
-      const snoozeUntil = await AsyncStorage.getItem('appBlockDisabledUntil');
+      // Get all schedules
+      const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
+      if (!savedSchedules) return;
       
-      if (snoozeUntil) {
-        const endTime = new Date(snoozeUntil);
-        const now = new Date();
-        
-        // If the snooze end time is in the future
-        if (endTime > now) {
-          setIsSnoozeActive(true);
-          setSnoozeEndTime(endTime);
-          updateSnoozeTimeLeft(endTime);
-        } else {
-          // Snooze expired
-          setIsSnoozeActive(false);
-          setSnoozeEndTime(null);
-          setSnoozeTimeLeft('');
+      const parsedSchedules = JSON.parse(savedSchedules);
+      
+      // Check if any schedule has a snoozeUntil property
+      let anySnoozeActive = false;
+      let latestSnoozeEndTime: Date | null = null;
+      
+      for (const schedule of parsedSchedules) {
+        if (schedule.snoozeUntil) {
+          const snoozeEndTime = new Date(schedule.snoozeUntil);
+          const now = new Date();
           
-          // Clean up the expired snooze
-          await AsyncStorage.removeItem('appBlockDisabledUntil');
+          if (snoozeEndTime > now) {
+            // This schedule is snoozed
+            anySnoozeActive = true;
+            
+            // Keep track of the latest snooze end time
+            if (!latestSnoozeEndTime || snoozeEndTime > latestSnoozeEndTime) {
+              latestSnoozeEndTime = snoozeEndTime;
+            }
+          } else {
+            // Snooze expired, remove it from this schedule
+            schedule.snoozeUntil = null;
+          }
         }
+      }
+      
+      // Update the UI based on snooze status
+      setIsSnoozeActive(anySnoozeActive);
+      setSnoozeEndTime(latestSnoozeEndTime);
+      
+      if (latestSnoozeEndTime) {
+        updateSnoozeTimeLeft(latestSnoozeEndTime);
       } else {
-        setIsSnoozeActive(false);
-        setSnoozeEndTime(null);
         setSnoozeTimeLeft('');
       }
+      
+      // Save the updated schedules back to storage
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(parsedSchedules));
+      
     } catch (error) {
       console.error('Error checking snooze status:', error);
     }
@@ -174,15 +193,26 @@ export default function AppBlockScreen() {
           if (savedSchedules) {
             const parsed = JSON.parse(savedSchedules);
             // Convert string dates back to Date objects AND ensure all arrays exist
-            const schedules = parsed.map((schedule: any) => ({
-              ...schedule,
-              startTime: new Date(schedule.startTime),
-              endTime: new Date(schedule.endTime),
-              // Ensure these arrays exist
-              blockedApps: Array.isArray(schedule.blockedApps) ? schedule.blockedApps : [],
-              blockedWebDomains: Array.isArray(schedule.blockedWebDomains) ? schedule.blockedWebDomains : [],
-              blockedCategories: Array.isArray(schedule.blockedCategories) ? schedule.blockedCategories : []
-            }));
+            const schedules = parsed.map((schedule: AppBlockSchedule) => {
+              // Ensure endTime is a proper Date object
+              const endTime = new Date(schedule.endTime);
+              
+              return {
+                ...schedule,
+                startTime: new Date(schedule.startTime),
+                endTime: endTime,
+                // Ensure these arrays exist
+                blockedApps: Array.isArray(schedule.blockedApps) ? schedule.blockedApps : [],
+                blockedWebDomains: Array.isArray(schedule.blockedWebDomains) ? schedule.blockedWebDomains : [],
+                blockedCategories: Array.isArray(schedule.blockedCategories) ? schedule.blockedCategories : []
+              };
+            });
+            
+            console.log("Loaded schedules with dates:", schedules.map((s: AppBlockSchedule) => ({
+              id: s.id,
+              endTime: s.endTime.toLocaleString()
+            })));
+            
             setSchedules(schedules);
             
             // IMMEDIATELY check for schedules that need the End Block button
@@ -553,15 +583,22 @@ export default function AppBlockScreen() {
   
   // Function to check if a schedule is currently active
   const isScheduleCurrentlyActive = (schedule: AppBlockSchedule) => {
-    // If the schedule is not set to active, it's definitely not active
-    if (!schedule.isActive) return false;
+    // If the schedule is not active, return false
+    if (!schedule.isActive) {
+      return false;
+    }
     
     // Check if we're past the end time
     const now = new Date();
+    
+    // Parse the end time and ensure it's a proper Date object
     const endTime = new Date(schedule.endTime);
     
+    // Debug with full date and time
+    console.log(`Schedule ${schedule.id}: now=${now.toLocaleString()}, end=${endTime.toLocaleString()}, isPastEndTime=${now >= endTime}`);
+    
     // If current time is past the end time, suggest removing the block
-    if (now > endTime) {
+    if (now >= endTime) {
       return false;
     }
     
@@ -654,31 +691,17 @@ export default function AppBlockScreen() {
   
   // Update the renderScheduleCard function to be more precise
   const renderScheduleCard = (schedule: AppBlockSchedule, index: number) => {
-    const isActive = isScheduleCurrentlyActive(schedule);
-    const isSnoozed = isSnoozeActive && snoozeEndTime !== null;
-    
-    // Get current time and end time with millisecond precision
-    const now = new Date();
-    const endTime = new Date(schedule.endTime);
-    
-    // Check if current time is past the end time with millisecond precision
-    const isPastEndTimeValue = now.getTime() >= endTime.getTime();
-    
-    // Log for debugging
-    if (schedule.isActive) {
-      console.log(`Schedule ${schedule.id}: now=${now.toLocaleTimeString()}, end=${endTime.toLocaleTimeString()}, isPastEndTime=${isPastEndTimeValue}`);
-    }
-    
-    // Determine which status badge to show
     let statusBadge = null;
-    
-    if (isSnoozed) {
+    const now = new Date();
+
+    if (schedule.snoozeUntil && new Date(schedule.snoozeUntil) > now) {
+      // This specific schedule is snoozed
       statusBadge = (
         <View style={[styles.statusBadge, styles.statusBadgeSnoozed]}>
           <Text style={styles.statusBadgeText}>Snoozed</Text>
         </View>
       );
-    } else if (isScheduleActive(schedule)) {
+    } else if (schedule.isActive) {
       statusBadge = (
         <View style={[styles.statusBadge, styles.statusBadgeActive]}>
           <Text style={styles.statusBadgeText}>Active</Text>
@@ -687,7 +710,7 @@ export default function AppBlockScreen() {
     } else {
       statusBadge = (
         <View style={[styles.statusBadge, styles.statusBadgeEnded]}>
-          <Text style={styles.statusBadgeText}>Inactive</Text>
+          <Text style={styles.statusBadgeText}>Disabled</Text>
         </View>
       );
     }
@@ -725,7 +748,7 @@ export default function AppBlockScreen() {
           <View style={styles.scheduleTimeRow}>
             <Ionicons name="time-outline" size={18} color="#0A84FF" style={styles.timeIcon} />
             <Text style={styles.timeText}>
-              End available at {endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              End available at {schedule.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
             </Text>
           </View>
           
@@ -814,45 +837,93 @@ export default function AppBlockScreen() {
     }
   };
   
-  // Add this function to handle ending the snooze
+  // Modify the handleSnooze function to store snooze per schedule
+  const handleSnooze = async (scheduleId: string, minutes: number) => {
+    try {
+      // Get all schedules
+      const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
+      if (!savedSchedules) return;
+      
+      const parsedSchedules = JSON.parse(savedSchedules);
+      
+      // Find the specific schedule
+      const scheduleIndex = parsedSchedules.findIndex((s: any) => s.id === scheduleId);
+      if (scheduleIndex === -1) return;
+      
+      // Set snooze end time
+      const now = new Date();
+      const snoozeEndTime = new Date(now.getTime() + minutes * 60 * 1000);
+      
+      // Add snoozeUntil property to this specific schedule
+      parsedSchedules[scheduleIndex].snoozeUntil = snoozeEndTime.toISOString();
+      
+      // Save updated schedules
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(parsedSchedules));
+      
+      // If on iOS, stop monitoring for this specific schedule temporarily
+      if (Platform.OS === 'ios' && ScreenTimeBridge) {
+        try {
+          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, minutes);
+          console.log("Monitoring paused for schedule:", scheduleId);
+        } catch (error) {
+          console.error("Error pausing monitoring:", error);
+        }
+      }
+      
+      // Update UI
+      checkSnoozeStatus();
+      
+      // Navigate to snooze screen
+      router.push({
+        pathname: '/snooze-sleep',
+        params: { minutes, scheduleId }
+      });
+    } catch (error) {
+      console.error('Error snoozing schedule:', error);
+    }
+  };
+  
+  // Modify the handleEndSnooze function to avoid reloading schedules
   const handleEndSnooze = async () => {
     try {
-      // Clear the snooze timestamp
+      // Get all schedules
+      const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
+      if (!savedSchedules) return;
+      
+      const parsedSchedules = JSON.parse(savedSchedules);
+      
+      // Remove snoozeUntil from all schedules
+      for (const schedule of parsedSchedules) {
+        if (schedule.snoozeUntil) {
+          schedule.snoozeUntil = null;
+        }
+      }
+      
+      // Save updated schedules
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(parsedSchedules));
+      
+      // Clear global snooze state (for backward compatibility)
       await AsyncStorage.removeItem('appBlockDisabledUntil');
+      
+      // Update UI
       setIsSnoozeActive(false);
       setSnoozeEndTime(null);
       setSnoozeTimeLeft('');
       
-      // Clear any existing timer
-      if (snoozeTimerRef.current) {
-        clearInterval(snoozeTimerRef.current);
-        snoozeTimerRef.current = null;
-      }
+      // Update the schedules state directly instead of reloading
+      setSchedules(parsedSchedules);
       
-      // Get all schedules that might be snoozed
-      const schedulesJson = await AsyncStorage.getItem('appBlockSchedules');
-      if (schedulesJson) {
-        const schedules = JSON.parse(schedulesJson);
-        
-        // For each active schedule, reapply it
-        for (const schedule of schedules) {
-          if (schedule.isActive && Platform.OS === 'ios' && ScreenTimeBridge) {
-            try {
-              // Use stopMonitoringForSchedule with 0 minutes to immediately reapply
-              await ScreenTimeBridge.stopMonitoringForSchedule(schedule.id, 0);
-              console.log(`Reapplied block for schedule: ${schedule.id}`);
-            } catch (error) {
-              console.error(`Error reapplying block for schedule ${schedule.id}:`, error);
-            }
-          }
+      // If on iOS, resume monitoring for all schedules
+      if (Platform.OS === 'ios' && ScreenTimeBridge) {
+        try {
+          // This will reapply all active schedules
+          applyAllSchedules();
+        } catch (error) {
+          console.error("Error resuming monitoring:", error);
         }
       }
-      
-      // Show confirmation to user
-      Alert.alert('Snooze Ended', 'App blocking has been reactivated.');
     } catch (error) {
       console.error('Error ending snooze:', error);
-      Alert.alert('Error', 'Failed to end snooze. Please try again.');
     }
   };
   
@@ -1012,14 +1083,16 @@ export default function AppBlockScreen() {
           {schedules.map((schedule, index) => renderScheduleCard(schedule, index))}
         </ScrollView>
         
-        {/* Add New Schedule Button */}
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={createNewSchedule}
-        >
-          <Ionicons name="add-circle" size={22} color="#fff" />
-          <Text style={styles.addButtonText}>New Sleep Time</Text>
-        </TouchableOpacity>
+        {/* Add New Schedule Button - Only show if no schedules exist */}
+        {schedules.length === 0 && (
+          <TouchableOpacity
+            style={styles.addButton}
+            onPress={createNewSchedule}
+          >
+            <Ionicons name="add-circle" size={22} color="#fff" />
+            <Text style={styles.addButtonText}>New Sleep Time</Text>
+          </TouchableOpacity>
+        )}
         
         {/* Time Pickers */}
         {(showStartPicker || showEndPicker) && (
@@ -1428,5 +1501,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginLeft: 8,
+  },
+  stickyButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#000',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  createButton: {
+    backgroundColor: '#0A84FF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+  },
+  createButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 }); 

@@ -215,14 +215,6 @@ export default function SnoozeSleep() {
             </View>
             
             <TouchableOpacity 
-              style={styles.homeButton}
-              onPress={handleGoHome}
-            >
-              <Ionicons name="home-outline" size={20} color="#fff" style={styles.buttonIcon} />
-              <Text style={styles.buttonText}>Go Home</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
               style={styles.endButton}
               onPress={handleEndBreak}
             >
@@ -285,15 +277,6 @@ const styles = StyleSheet.create({
     bottom: Platform.OS === 'ios' ? 50 : 40,
     left: 20,
     right: 20,
-  },
-  homeButton: {
-    backgroundColor: '#0A84FF',
-    padding: 16,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginBottom: 12,
-    flexDirection: 'row',
-    justifyContent: 'center',
   },
   endButton: {
     backgroundColor: '#3A3A3C',

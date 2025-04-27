@@ -174,26 +174,22 @@ export default function EditScheduleScreen() {
       // Get the current time
       const now = new Date();
       
-      // Check if the end time is earlier than the current time
+      // Create a new Date object for the end time
       const endTime = new Date(schedule.endTime);
       
-      // Only compare hours and minutes, not the date
-      if (endTime.getHours() < now.getHours() || 
-          (endTime.getHours() === now.getHours() && endTime.getMinutes() < now.getMinutes())) {
-        // Instead of adding a day, just set the hours and minutes but keep today's date
-        const adjustedEndTime = new Date();
-        adjustedEndTime.setHours(endTime.getHours());
-        adjustedEndTime.setMinutes(endTime.getMinutes());
-        adjustedEndTime.setSeconds(0);
-        
-        // If it's still in the past, then add a day
-        if (adjustedEndTime < now) {
-          adjustedEndTime.setDate(adjustedEndTime.getDate() + 1);
-        }
-        
-        endTime.setTime(adjustedEndTime.getTime());
-        console.log("End time adjusted:", endTime);
+      // Set the date part of endTime to today
+      endTime.setFullYear(now.getFullYear());
+      endTime.setMonth(now.getMonth());
+      endTime.setDate(now.getDate());
+      
+      // Now check if we need to adjust the date:
+      // 1. If end time is earlier than current time, move to tomorrow
+      if (endTime < now) {
+        console.log("End time is earlier than current time, moving to tomorrow");
+        endTime.setDate(endTime.getDate() + 1);
       }
+      
+      console.log("Final end time:", endTime);
       
       // Update the schedule with adjusted end time and current start time
       const updatedSchedule = {

@@ -90,33 +90,67 @@ export default function BreatheScreen() {
     }
   };
   
-  // Function to handle "Take a break" - disable blocking for today
+  // Function to handle "Take a break" - permanently disable this specific app block
   const handleTakeBreak = async () => {
     try {
-      // Set a disable until timestamp (end of today)
-      const endOfDay = new Date();
-      endOfDay.setHours(23, 59, 59, 999);
+      if (!scheduleId) {
+        console.error('No schedule ID available');
+        router.push('/(tabs)');
+        return;
+      }
       
-      await AsyncStorage.setItem('appBlockDisabledUntil', endOfDay.toISOString());
+      // Get all schedules
+      const schedulesJson = await AsyncStorage.getItem('appBlockSchedules');
+      if (!schedulesJson) {
+        console.error('No schedules found');
+        router.push('/(tabs)');
+        return;
+      }
+      
+      // Parse schedules and find the current one to disable
+      const schedules = JSON.parse(schedulesJson);
+      const updatedSchedules = schedules.map((schedule: any) => {
+        if (schedule.id === scheduleId) {
+          // Set this specific schedule to inactive
+          return {
+            ...schedule,
+            isActive: false
+          };
+        }
+        return schedule;
+      });
+      
+      // Save the updated schedules
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
       
       // If on iOS, stop monitoring for this specific schedule
-      // Pass a large number of minutes (1440 = 24 hours)
-      if (Platform.OS === 'ios' && ScreenTimeBridge && scheduleId) {
+      if (Platform.OS === 'ios' && ScreenTimeBridge) {
         try {
-          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 1440);
-          console.log("Monitoring stopped for schedule:", scheduleId);
+          // First try with 0 minutes
+          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
+          
+          // Also try with a very large number to ensure it's stopped
+          await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 999999);
+          
+          console.log("Monitoring stopped permanently for schedule:", scheduleId);
+          
+          // Force a refresh of all schedules to ensure this one is removed
+          if (ScreenTimeBridge.refreshSchedules) {
+            await ScreenTimeBridge.refreshSchedules();
+          }
         } catch (error) {
           console.error("Error stopping monitoring:", error);
         }
       }
       
       Alert.alert(
-        "Break Time",
-        "This focus time is disabled for the rest of today. Other focus times will remain active.",
+        "Block Ended",
+        "This focus time is now inactive. You can re-enable it from the App Block screen.",
         [{ text: "OK", onPress: () => router.push('/(tabs)') }]
       );
     } catch (error) {
-      console.error('Error taking a break:', error);
+      console.error('Error ending app block:', error);
+      router.push('/(tabs)');
     }
   };
   
