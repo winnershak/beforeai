@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 
 const { ScreenTimeBridge, SleepNotificationModule } = NativeModules;
@@ -52,6 +52,11 @@ export default function AppBlockScreen() {
   const [reminderTime, setReminderTime] = useState(new Date());
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [isReminderEnabled, setIsReminderEnabled] = useState(false);
+  const [endableSchedules, setEndableSchedules] = useState<string[]>([]);
+  const isFocused = useIsFocused();
+  const checkTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [isPastEndTimeState, setIsPastEndTimeState] = useState(false);
   
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
@@ -142,7 +147,24 @@ export default function AppBlockScreen() {
     };
   }, [isSnoozeActive, snoozeEndTime]);
   
-  // Load schedules whenever the screen comes into focus
+  // Add this function to check for schedules that need the End Block button
+  const checkScheduleEndTimes = () => {
+    console.log("🔍 Immediately checking schedule end times");
+    
+    // Force a re-render to update the UI immediately
+    setRefreshTrigger(prev => prev + 1);
+    
+    // Set up a timer to check again in 1 second
+    if (checkTimerRef.current) {
+      clearTimeout(checkTimerRef.current);
+    }
+    
+    checkTimerRef.current = setTimeout(() => {
+      setRefreshTrigger(prev => prev + 1);
+    }, 1000);
+  };
+  
+  // Update the useFocusEffect to run the check immediately when the screen is focused
   useFocusEffect(
     React.useCallback(() => {
       const loadSchedules = async () => {
@@ -162,6 +184,9 @@ export default function AppBlockScreen() {
               blockedCategories: Array.isArray(schedule.blockedCategories) ? schedule.blockedCategories : []
             }));
             setSchedules(schedules);
+            
+            // IMMEDIATELY check for schedules that need the End Block button
+            setTimeout(checkScheduleEndTimes, 100);
           } else {
             // If no schedules, set empty array
             setSchedules([]);
@@ -193,8 +218,12 @@ export default function AppBlockScreen() {
       loadReminderSettings();
       checkSnoozeStatus();
       
-      // No cleanup needed
-      return () => {};
+      // Run the check again after a short delay to ensure everything is loaded
+      const immediateCheck = setTimeout(checkScheduleEndTimes, 500);
+      
+      return () => {
+        clearTimeout(immediateCheck);
+      };
     }, [])
   );
   
@@ -544,16 +573,124 @@ export default function AppBlockScreen() {
   const formatScheduleTime = (schedule: AppBlockSchedule) => {
     // Only show when the block will end
     const endTime = new Date(schedule.endTime);
-    return `Ends at ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+    return `End available at ${endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
   };
   
-  // Function to render the schedule card
+  // Add this effect to check for schedules that can be ended
+  useEffect(() => {
+    // Function to check which schedules can be ended
+    const checkEndableSchedules = () => {
+      const now = new Date();
+      const endable: string[] = [];
+      
+      schedules.forEach(schedule => {
+        if (schedule.isActive) {
+          const endTime = new Date(schedule.endTime);
+          // Check if current time is at or past end time
+          if (now >= endTime) {
+            endable.push(schedule.id);
+          }
+        }
+      });
+      
+      setEndableSchedules(endable);
+    };
+    
+    // Check immediately when the component mounts or when schedules change
+    checkEndableSchedules();
+    
+    // Set up a timer to check every minute
+    checkTimerRef.current = setInterval(checkEndableSchedules, 60000);
+    
+    return () => {
+      if (checkTimerRef.current) {
+        clearInterval(checkTimerRef.current);
+        checkTimerRef.current = null;
+      }
+    };
+  }, [schedules, isFocused]);
+  
+  // Remove the 10-second refresh timer
+  useEffect(() => {
+    // Function to check if any schedules need the End Block button
+    const checkScheduleTimes = () => {
+      const now = new Date();
+      // Force a re-render to update the UI
+      setRefreshTrigger(prev => prev + 1);
+    };
+    
+    // Check immediately
+    checkScheduleTimes();
+    
+    // Set up an interval to check every 1 second (1000ms)
+    const intervalId = setInterval(checkScheduleTimes, 1000);
+    
+    // Clean up the interval when the component unmounts
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, []);
+  
+  // First, let's add a new function to determine if a schedule is active
+  const isScheduleActive = (schedule: AppBlockSchedule) => {
+    // Always consider it active if isActive is true
+    return schedule.isActive === true;
+  };
+  
+  // Function to check if current time is truly past the end time
+  const isPastEndTime = (schedule: AppBlockSchedule) => {
+    // If the schedule is not active, it's considered past end time
+    if (!schedule.isActive) return true;
+    
+    const now = new Date();
+    const endTime = new Date(schedule.endTime);
+    
+    // Debug with full date and time
+    console.log(`Schedule ${schedule.id}: now=${now.toLocaleString()}, end=${endTime.toLocaleString()}, isPastEndTime=${now.getTime() > endTime.getTime()}`);
+    
+    // Simple millisecond-precise comparison
+    return now.getTime() > endTime.getTime();
+  };
+  
+  // Update the renderScheduleCard function to be more precise
   const renderScheduleCard = (schedule: AppBlockSchedule, index: number) => {
     const isActive = isScheduleCurrentlyActive(schedule);
     const isSnoozed = isSnoozeActive && snoozeEndTime !== null;
+    
+    // Get current time and end time with millisecond precision
     const now = new Date();
     const endTime = new Date(schedule.endTime);
-    const isPastEndTime = now > endTime;
+    
+    // Check if current time is past the end time with millisecond precision
+    const isPastEndTimeValue = now.getTime() >= endTime.getTime();
+    
+    // Log for debugging
+    if (schedule.isActive) {
+      console.log(`Schedule ${schedule.id}: now=${now.toLocaleTimeString()}, end=${endTime.toLocaleTimeString()}, isPastEndTime=${isPastEndTimeValue}`);
+    }
+    
+    // Determine which status badge to show
+    let statusBadge = null;
+    
+    if (isSnoozed) {
+      statusBadge = (
+        <View style={[styles.statusBadge, styles.statusBadgeSnoozed]}>
+          <Text style={styles.statusBadgeText}>Snoozed</Text>
+        </View>
+      );
+    } else if (isScheduleActive(schedule)) {
+      statusBadge = (
+        <View style={[styles.statusBadge, styles.statusBadgeActive]}>
+          <Text style={styles.statusBadgeText}>Active</Text>
+        </View>
+      );
+    } else {
+      statusBadge = (
+        <View style={[styles.statusBadge, styles.statusBadgeEnded]}>
+          <Text style={styles.statusBadgeText}>Inactive</Text>
+        </View>
+      );
+    }
     
     return (
       <TouchableOpacity 
@@ -564,21 +701,7 @@ export default function AppBlockScreen() {
         <View style={styles.scheduleHeader}>
           <View style={styles.scheduleNameContainer}>
             <Text style={styles.scheduleName}>{schedule.name}</Text>
-            {isActive && (
-              <View style={[styles.statusBadge, styles.statusBadgeActive]}>
-                <Text style={styles.statusBadgeText}>Active</Text>
-              </View>
-            )}
-            {isPastEndTime && (
-              <View style={[styles.statusBadge, styles.statusBadgeEnded]}>
-                <Text style={styles.statusBadgeText}>Ended</Text>
-              </View>
-            )}
-            {isSnoozed && (
-              <View style={[styles.statusBadge, styles.statusBadgeSnoozed]}>
-                <Text style={styles.statusBadgeText}>Snoozed</Text>
-              </View>
-            )}
+            {statusBadge}
           </View>
         </View>
         
@@ -602,18 +725,18 @@ export default function AppBlockScreen() {
           <View style={styles.scheduleTimeRow}>
             <Ionicons name="time-outline" size={18} color="#0A84FF" style={styles.timeIcon} />
             <Text style={styles.timeText}>
-              Ends at {endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+              End available at {endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
             </Text>
           </View>
           
-          {/* Add End Block Now button for active schedules */}
-          {isActive && (
+          {/* Show End Block button only when schedule is active AND truly past adjusted end time */}
+          {schedule.isActive && isPastEndTime(schedule) && (
             <TouchableOpacity 
               style={styles.endBlockButton}
               onPress={() => handleEndBlock(schedule.id)}
             >
-              <Ionicons name="stop-circle-outline" size={20} color="#FF453A" />
-              <Text style={styles.endBlockText}>End Block Now</Text>
+              <Ionicons name="stop-circle-outline" size={18} color="#FF453A" />
+              <Text style={styles.endBlockText}>End Block</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -733,41 +856,49 @@ export default function AppBlockScreen() {
     }
   };
   
-  // Add this function to handle ending a block
+  // Update the handleEndBlock function to completely destroy the block
   const handleEndBlock = async (scheduleId: string) => {
     try {
-      // Find the schedule
-      const schedule = schedules.find(s => s.id === scheduleId);
-      if (!schedule) return;
+      console.log(`🔥 DESTROYING block for schedule: ${scheduleId}`);
       
-      // Update the schedule to be inactive
-      const updatedSchedules = schedules.map(s => 
-        s.id === scheduleId ? {...s, isActive: false} : s
-      );
-      
-      // Update state
-      setSchedules(updatedSchedules);
-      
-      // Save to AsyncStorage
-      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
-      
-      // If on iOS, use ScreenTimeBridge to stop monitoring
+      // If on iOS, use ScreenTimeBridge to completely stop monitoring
       if (Platform.OS === 'ios' && ScreenTimeBridge) {
         try {
-          // Use stopMonitoringForSchedule with 0 minutes to immediately end
+          // First, remove all shields immediately
+          await ScreenTimeBridge.removeAllShields();
+          console.log('🛡️ All shields removed');
+          
+          // Then stop monitoring for this schedule
           await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
-          console.log(`Ended block for schedule: ${scheduleId}`);
+          console.log('🔥 Successfully stopped monitoring');
+          
+          // Update the UI to show the block is completely inactive
+          const updatedSchedules = schedules.map(s => {
+            if (s.id === scheduleId) {
+              return {
+                ...s,
+                isActive: false,
+                // Set end time to now to ensure it's considered past
+                endTime: new Date()
+              };
+            }
+            return s;
+          });
+          
+          // Update state and save to AsyncStorage
+          setSchedules(updatedSchedules);
+          await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
           
           // Show confirmation to user
-          Alert.alert('Block Ended', 'App blocking has been deactivated for today.');
+          Alert.alert('Block Destroyed', 'App blocking has been completely deactivated.');
         } catch (error) {
-          console.error(`Error ending block for schedule ${scheduleId}:`, error);
-          Alert.alert('Error', 'Failed to end block. Please try again.');
+          console.error('💥 Error destroying block:', error);
+          Alert.alert('Error', 'Failed to destroy block. Please try again.');
         }
       }
     } catch (error) {
-      console.error('Error handling end block:', error);
-      Alert.alert('Error', 'Failed to end block. Please try again.');
+      console.error('💥 Error handling destroy block:', error);
+      Alert.alert('Error', 'Failed to destroy block. Please try again.');
     }
   };
   
