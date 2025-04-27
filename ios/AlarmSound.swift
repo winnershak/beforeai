@@ -172,9 +172,9 @@ class AlarmSound: NSObject {
     let capturedRejecter = rejecter
     
     DispatchQueue.main.async {
-      // Restore original system volume
+      // First attempt to restore volume
       self.volumeControl.restoreOriginalVolume(
-        { _ in print("🔊 Original system volume restored") },
+        { _ in print("🔊 First attempt to restore original volume") },
         rejecter: { _, _, _ in print("❌ Failed to restore system volume") }
       )
       
@@ -186,8 +186,29 @@ class AlarmSound: NSObject {
       self.audioPlayer?.stop()
       self.audioPlayer = nil
       
+      // Multiple restoration attempts with increasing delays
+      let delays = [0.5, 1.0, 2.0]
+      for (index, delay) in delays.enumerated() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+          self.volumeControl.restoreOriginalVolume(
+            { _ in print("�� Volume restoration attempt #\(index + 2)") },
+            rejecter: { _, _, _ in print("❌ Failed on volume restoration attempt #\(index + 2)") }
+          )
+          
+          // On the last attempt, also deactivate the audio session
+          if index == delays.count - 1 {
+            do {
+              try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+              print("✅ Audio session deactivated")
+            } catch {
+              print("❌ Failed to deactivate audio session: \(error)")
+            }
+          }
+        }
+      }
+      
       capturedResolver(true)
-      print("✅ Alarm sound stopped, keeping audio session active.")
+      print("✅ Alarm sound stopped, multiple volume restoration attempts scheduled.")
     }
   }
   

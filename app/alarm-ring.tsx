@@ -466,25 +466,37 @@ export default function AlarmRingScreen() {
     try {
       console.log('Stopping alarm sound');
       
-      // Record wake-up time when alarm is dismissed
+      // First, stop the sound using the native module
+      await AlarmSoundModule.stopAlarmSound();
+      
+      // Add a second attempt after a short delay
+      setTimeout(async () => {
+        try {
+          console.log('Making second attempt to stop alarm sound');
+          await AlarmSoundModule.stopAlarmSound();
+        } catch (error) {
+          console.error('Error in second attempt to stop alarm sound:', error);
+        }
+      }, 1000);
+      
+      // Stop vibration
+      stopVibration();
+      
+      // Record wake-up time
       if (currentAlarm) {
         await recordWakeupTime(currentAlarm.id);
       }
       
-      // Stop sound and vibration
-      if (sound) {
-        await sound.stopAsync();
-        await sound.unloadAsync();
-      }
-      stopVibration();
-      
       // Reset alarm state
       await resetAlarmState();
       
-      // Navigate back to home screen
-      router.replace('/');
+      // Navigate back to the alarms screen
+      router.replace('/(tabs)');
     } catch (error) {
-      console.error('Error stopping sound:', error);
+      console.error('Error stopping alarm sound:', error);
+      
+      // Fallback: try to navigate away even if there was an error
+      router.replace('/(tabs)');
     }
   };
 
@@ -736,6 +748,29 @@ export default function AlarmRingScreen() {
       // Rest of your existing code...
     } catch (error) {
       console.error('Error dismissing alarm:', error);
+    }
+  };
+
+  // Add this function to handle mission completion
+  const handleMissionComplete = async () => {
+    try {
+      console.log('Mission completed, restoring volume');
+      
+      // Make multiple attempts to restore volume
+      await AlarmSoundModule.stopAlarmSound();
+      
+      // Add additional attempts with delays
+      setTimeout(() => AlarmSoundModule.stopAlarmSound(), 500);
+      setTimeout(() => AlarmSoundModule.stopAlarmSound(), 1500);
+      
+      // Continue with normal mission completion logic
+      // ...
+      
+      // Navigate back to the alarms tab
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Error handling mission completion:', error);
+      router.replace('/(tabs)');
     }
   };
 
