@@ -9,13 +9,15 @@ import {
   ImageBackground,
   Modal,
   TextInput,
-  Alert
+  Alert,
+  ActivityIndicator
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, Stack } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { CacheManager } from 'react-native-expo-image-cache';
+import RevenueCatService from '../services/RevenueCatService';
 
 // Get screen dimensions for responsive layout
 const { width, height } = Dimensions.get('window');
@@ -30,6 +32,9 @@ export default function QuizIntro() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showRedeemCodeModal, setShowRedeemCodeModal] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [redeeming, setRedeeming] = useState(false);
   const backgroundImage = require('../../assets/images/10.png');
   
   // Preload the background image
@@ -87,6 +92,37 @@ export default function QuizIntro() {
     }
   };
 
+  const handleCodeRedemption = async () => {
+    if (!promoCode.trim()) {
+      Alert.alert('Error', 'Please enter a valid promo code.');
+      return;
+    }
+    
+    try {
+      setRedeeming(true);
+      
+      // Call RevenueCat service to redeem code
+      const success = await RevenueCatService.redeemPromoCode(promoCode);
+      
+      if (success) {
+        // Show success message
+        Alert.alert(
+          'Success!',
+          'Your promo code has been redeemed successfully.',
+          [{ text: 'OK', onPress: () => router.replace('/(tabs)') }]
+        );
+      } else {
+        // Show error for invalid code
+        Alert.alert('Invalid Code', 'The promo code you entered is invalid or has expired.');
+      }
+    } catch (error) {
+      console.error('Error redeeming promo code:', error);
+      Alert.alert('Error', 'There was a problem redeeming your code. Please try again.');
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -126,7 +162,13 @@ export default function QuizIntro() {
                 </View>
               </TouchableOpacity>
               
-              {/* Subtle login button for existing users and reviewers */}
+              <TouchableOpacity 
+                style={styles.redeemCodeButton}
+                onPress={() => setShowRedeemCodeModal(true)}
+              >
+                <Text style={styles.redeemCodeText}>Have a promo code?</Text>
+              </TouchableOpacity>
+              
               <TouchableOpacity 
                 style={styles.loginButton}
                 onPress={() => setShowLoginModal(true)}
@@ -138,7 +180,6 @@ export default function QuizIntro() {
         </View>
       </ImageBackground>
       
-      {/* Login Modal */}
       <Modal
         visible={showLoginModal}
         transparent={true}
@@ -146,7 +187,7 @@ export default function QuizIntro() {
         onRequestClose={() => setShowLoginModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={styles.loginModalContent}>
             <Text style={styles.modalTitle}>Log In</Text>
             
             <TextInput
@@ -167,7 +208,7 @@ export default function QuizIntro() {
               secureTextEntry
             />
             
-            <View style={styles.modalButtons}>
+            <View style={styles.loginModalButtons}>
               <TouchableOpacity 
                 style={styles.cancelButton}
                 onPress={() => {
@@ -184,6 +225,52 @@ export default function QuizIntro() {
                 onPress={handleLogin}
               >
                 <Text style={styles.loginModalButtonText}>Log In</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+      
+      <Modal
+        visible={showRedeemCodeModal}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowRedeemCodeModal(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalHeader}>Enter Promo Code</Text>
+            
+            <TextInput 
+              style={styles.modalInput}
+              placeholder="Enter your code here"
+              placeholderTextColor="#999"
+              value={promoCode}
+              onChangeText={setPromoCode}
+              autoCapitalize="characters"
+            />
+            
+            <View style={styles.appmodalButtons}>
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => {
+                  setPromoCode('');
+                  setShowRedeemCodeModal(false);
+                }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.redeemButton}
+                onPress={handleCodeRedemption}
+                disabled={redeeming}
+              >
+                {redeeming ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Text style={styles.redeemButtonText}>Redeem</Text>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -307,7 +394,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
+  loginModalContent: {
     backgroundColor: '#1C1C1E',
     borderRadius: 16,
     padding: 20,
@@ -334,7 +421,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
   },
-  modalButtons: {
+  loginModalButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     width: '100%',
@@ -363,5 +450,67 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  redeemCodeButton: {
+    marginTop: 12,
+    marginBottom: 10,
+    padding: 10,
+  },
+  redeemCodeText: {
+    color: '#FF9500', // Orange color to stand out
+    fontSize: 14,
+    textDecorationLine: 'underline',
+    fontWeight: '500',
+  },
+  redeemButton: {
+    backgroundColor: '#FF9500', // Orange to match theme
+    padding: 15,
+    borderRadius: 10,
+    width: '48%',
+    alignItems: 'center',
+  },
+  redeemButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 20,
+    width: width * 0.85,
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalHeader: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 20,
+  },
+  modalInput: {
+    backgroundColor: '#2C2C2E',
+    width: '100%',
+    padding: 15,
+    borderRadius: 10,
+    color: '#fff',
+    marginBottom: 15,
+    fontSize: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  appmodalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    marginTop: 10,
   },
 }); 

@@ -19,10 +19,10 @@
 		5B0773957CCD442FB18139DD /* rain.caf in Resources */ = {isa = PBXBuildFile; fileRef = 07B9F98317C942DDA779807A /* rain.caf */; };
 		5C4E5A13A13D4A1B932D68C4 /* space.caf in Resources */ = {isa = PBXBuildFile; fileRef = 983EB07A1B56467BA639A151 /* space.caf */; };
 		5D46BDFDF43F49BDAACF6539 /* beach.caf in Resources */ = {isa = PBXBuildFile; fileRef = 3DA5F15D935F4D92A369A042 /* beach.caf */; };
+		68C87DA391415014A61A03CB /* libPods-BlissAlarm.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 75DD6DDDBABAD77A02DA8A8D /* libPods-BlissAlarm.a */; };
 		7915E0095D084731B42483CF /* pink-noise.caf in Resources */ = {isa = PBXBuildFile; fileRef = 90EFB3BFEF4641889E4F4AFD /* pink-noise.caf */; };
 		81746E1AA27742A9994BAD89 /* completeword.caf in Resources */ = {isa = PBXBuildFile; fileRef = 9B991EBDDCFC4EDFBF1F61BF /* completeword.caf */; };
 		88ED184076A142A0910A1E6D /* piano.caf in Resources */ = {isa = PBXBuildFile; fileRef = 97A669EA9248464BA1826B00 /* piano.caf */; };
-		96905EF65AED1B983A6B3ABC /* libPods-BlissAlarm.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 58EEBF8E8E6FB1BC6CAF49B5 /* libPods-BlissAlarm.a */; };
 		A97BC69DC97D4B91BEE39A1B /* white-noise.caf in Resources */ = {isa = PBXBuildFile; fileRef = 99BD2482E7A1436AB92B130F /* white-noise.caf */; };
 		AD51C2B934184F64BF54A61C /* thunder.caf in Resources */ = {isa = PBXBuildFile; fileRef = F942075DCE9245888C0B1A69 /* thunder.caf */; };
 		B05D3F5AF4BF40568F8C5F05 /* tetris.caf in Resources */ = {isa = PBXBuildFile; fileRef = 91DC36C5ABBB41FFB9703DB7 /* tetris.caf */; };
@@ -84,15 +84,15 @@
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = BlissAlarm/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = BlissAlarm/Info.plist; sourceTree = "<group>"; };
 		13B07FB71A68108700A75B9A /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = main.m; path = BlissAlarm/main.m; sourceTree = "<group>"; };
+		1D10FD5BA09ED9792409B950 /* Pods-BlissAlarm.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BlissAlarm.release.xcconfig"; path = "Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm.release.xcconfig"; sourceTree = "<group>"; };
 		29B1B10C87F84BC5A963CDFE /* quiet-boom.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "quiet-boom.caf"; path = "BlissAlarm/quiet-boom.caf"; sourceTree = "<group>"; };
 		2AB49E9FDBF545ABB08D0F11 /* slice.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = slice.caf; path = BlissAlarm/slice.caf; sourceTree = "<group>"; };
+		2CAD3B3F1888DF31D11D8C44 /* Pods-BlissAlarm.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BlissAlarm.debug.xcconfig"; path = "Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm.debug.xcconfig"; sourceTree = "<group>"; };
 		3DA5F15D935F4D92A369A042 /* beach.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = beach.caf; path = BlissAlarm/beach.caf; sourceTree = "<group>"; };
 		43B53089B289409294F4A827 /* frenchcomplete.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = frenchcomplete.caf; path = BlissAlarm/frenchcomplete.caf; sourceTree = "<group>"; };
-		58EEBF8E8E6FB1BC6CAF49B5 /* libPods-BlissAlarm.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BlissAlarm.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		62A7D23D28A343AEB535468E /* calm-rain.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "calm-rain.caf"; path = "BlissAlarm/calm-rain.caf"; sourceTree = "<group>"; };
 		65615C409B4040D48B566160 /* fire.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = fire.caf; path = BlissAlarm/fire.caf; sourceTree = "<group>"; };
-		6C2E3173556A471DD304B334 /* Pods-BlissAlarm.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BlissAlarm.debug.xcconfig"; path = "Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm.debug.xcconfig"; sourceTree = "<group>"; };
-		7A4D352CD337FB3A3BF06240 /* Pods-BlissAlarm.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-BlissAlarm.release.xcconfig"; path = "Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm.release.xcconfig"; sourceTree = "<group>"; };
+		75DD6DDDBABAD77A02DA8A8D /* libPods-BlissAlarm.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-BlissAlarm.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		7CA00F5B154E417288EB01F6 /* achieve.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = achieve.caf; path = BlissAlarm/achieve.caf; sourceTree = "<group>"; };
 		90EFB3BFEF4641889E4F4AFD /* pink-noise.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "pink-noise.caf"; path = "BlissAlarm/pink-noise.caf"; sourceTree = "<group>"; };
 		91DC36C5ABBB41FFB9703DB7 /* tetris.caf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = tetris.caf; path = BlissAlarm/tetris.caf; sourceTree = "<group>"; };
@@ -152,7 +152,7 @@
 				DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */,
 				DC07F5612D8BB36D005F15FF /* ManagedSettings.framework in Frameworks */,
 				DC07F5602D8BB363005F15FF /* FamilyControls.framework in Frameworks */,
-				96905EF65AED1B983A6B3ABC /* libPods-BlissAlarm.a in Frameworks */,
+				68C87DA391415014A61A03CB /* libPods-BlissAlarm.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -217,7 +217,7 @@
 				DC07F55F2D8BB363005F15FF /* FamilyControls.framework */,
 				DC07F5582D8BB0F9005F15FF /* ManagedSettings.framework */,
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				58EEBF8E8E6FB1BC6CAF49B5 /* libPods-BlissAlarm.a */,
+				75DD6DDDBABAD77A02DA8A8D /* libPods-BlissAlarm.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -281,8 +281,8 @@
 		D65327D7A22EEC0BE12398D9 /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				6C2E3173556A471DD304B334 /* Pods-BlissAlarm.debug.xcconfig */,
-				7A4D352CD337FB3A3BF06240 /* Pods-BlissAlarm.release.xcconfig */,
+				2CAD3B3F1888DF31D11D8C44 /* Pods-BlissAlarm.debug.xcconfig */,
+				1D10FD5BA09ED9792409B950 /* Pods-BlissAlarm.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -302,15 +302,15 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "BlissAlarm" */;
 			buildPhases = (
-				08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */,
+				E5976F9F00640D082C9E176E /* [CP] Check Pods Manifest.lock */,
 				4E7B0184ACD119CA061A1317 /* [Expo] Configure project */,
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
-				800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */,
-				DF80CBC648226FA6FEC25EB8 /* [CP] Embed Pods Frameworks */,
 				DCD78E832DA30DFA005C3778 /* Embed Foundation Extensions */,
+				AF19B631F7FBCC4F746581F3 /* [CP] Embed Pods Frameworks */,
+				BCB289D011BE33FFD9D3F578 /* [CP] Copy Pods Resources */,
 			);
 			buildRules = (
 			);
@@ -416,28 +416,6 @@
 			shellPath = /bin/sh;
 			shellScript = "if [[ -f \"$PODS_ROOT/../.xcode.env\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env\"\nfi\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n# The project root by default is one level up from the ios directory\nexport PROJECT_ROOT=\"$PROJECT_DIR\"/..\n\nif [[ \"$CONFIGURATION\" = *Debug* ]]; then\n  export SKIP_BUNDLING=1\nfi\nif [[ -z \"$ENTRY_FILE\" ]]; then\n  # Set the entry JS file using the bundler's entry resolution.\n  export ENTRY_FILE=\"$(\"$NODE_BINARY\" -e \"require('expo/scripts/resolveAppEntry')\" \"$PROJECT_ROOT\" ios absolute | tail -n 1)\"\nfi\n\nif [[ -z \"$CLI_PATH\" ]]; then\n  # Use Expo CLI\n  export CLI_PATH=\"$(\"$NODE_BINARY\" --print \"require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })\")\"\nfi\nif [[ -z \"$BUNDLE_COMMAND\" ]]; then\n  # Default Expo CLI command for bundling\n  export BUNDLE_COMMAND=\"export:embed\"\nfi\n\n# Source .xcode.env.updates if it exists to allow\n# SKIP_BUNDLING to be unset if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.updates\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.updates\"\nfi\n# Source local changes to allow overrides\n# if needed\nif [[ -f \"$PODS_ROOT/../.xcode.env.local\" ]]; then\n  source \"$PODS_ROOT/../.xcode.env.local\"\nfi\n\n`\"$NODE_BINARY\" --print \"require('path').dirname(require.resolve('react-native/package.json')) + '/scripts/react-native-xcode.sh'\"`\n\n";
 		};
-		08A4A3CD28434E44B6B9DE2E /* [CP] Check Pods Manifest.lock */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
-				"${PODS_ROOT}/Manifest.lock",
-			);
-			name = "[CP] Check Pods Manifest.lock";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-BlissAlarm-checkManifestLockResult.txt",
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
-			showEnvVarsInLog = 0;
-		};
 		4E7B0184ACD119CA061A1317 /* [Expo] Configure project */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
@@ -457,7 +435,25 @@
 			shellPath = /bin/sh;
 			shellScript = "# This script configures Expo modules and generates the modules provider file.\nbash -l -c \"./Pods/Target\\ Support\\ Files/Pods-BlissAlarm/expo-configure-project.sh\"\n";
 		};
-		800E24972A6A228C8D4807E9 /* [CP] Copy Pods Resources */ = {
+		AF19B631F7FBCC4F746581F3 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm-frameworks.sh",
+				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputPaths = (
+				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm-frameworks.sh\"\n";
+			showEnvVarsInLog = 0;
+		};
+		BCB289D011BE33FFD9D3F578 /* [CP] Copy Pods Resources */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -471,11 +467,13 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXTaskManager/ExpoTaskManager_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoFileSystem/ExpoFileSystem_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/ExpoSystemUI/ExpoSystemUI_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/PurchasesHybridCommon/PurchasesHybridCommon.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RNCAsyncStorage/RNCAsyncStorage_resources.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RNPermissions/RNPermissionsPrivacyInfo.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-Core/React-Core_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/React-cxxreact/React-cxxreact_privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/RevenueCat/RevenueCat.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/SDWebImage/SDWebImage.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/boost/boost_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/expo-dev-launcher/EXDevLauncher.bundle",
@@ -493,11 +491,13 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoTaskManager_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoFileSystem_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoSystemUI_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PurchasesHybridCommon.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RCT-Folly_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNCAsyncStorage_resources.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RNPermissionsPrivacyInfo.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-Core_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/React-cxxreact_privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RevenueCat.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/SDWebImage.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/boost_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXDevLauncher.bundle",
@@ -511,22 +511,26 @@
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
-		DF80CBC648226FA6FEC25EB8 /* [CP] Embed Pods Frameworks */ = {
+		E5976F9F00640D082C9E176E /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
-			inputPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm-frameworks.sh",
-				"${PODS_XCFRAMEWORKS_BUILD_DIR}/hermes-engine/Pre-built/hermes.framework/hermes",
+			inputFileListPaths = (
 			);
-			name = "[CP] Embed Pods Frameworks";
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
 			outputPaths = (
-				"${TARGET_BUILD_DIR}/${FRAMEWORKS_FOLDER_PATH}/hermes.framework",
+				"$(DERIVED_FILE_DIR)/Pods-BlissAlarm-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm-frameworks.sh\"\n";
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -556,7 +560,7 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 6C2E3173556A471DD304B334 /* Pods-BlissAlarm.debug.xcconfig */;
+			baseConfigurationReference = 2CAD3B3F1888DF31D11D8C44 /* Pods-BlissAlarm.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
@@ -596,7 +600,7 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 7A4D352CD337FB3A3BF06240 /* Pods-BlissAlarm.release.xcconfig */;
+			baseConfigurationReference = 1D10FD5BA09ED9792409B950 /* Pods-BlissAlarm.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;

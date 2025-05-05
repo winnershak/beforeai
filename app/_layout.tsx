@@ -6,7 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import 'react-native-reanimated';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { router } from 'expo-router';
+import { router, useSegments } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { registerBackgroundTask } from './background-task';
 import { 
@@ -35,6 +35,7 @@ import { TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Network from 'expo-network';
 import { Alert } from 'react-native';
+import { SplashScreen as RouterSplashScreen } from 'expo-router';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -86,7 +87,7 @@ export default function AppLayout() {
   console.log('Loading root layout...');
 
   const colorScheme = useColorScheme();
-  const [loaded] = useFonts({
+  const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
 
@@ -101,12 +102,23 @@ export default function AppLayout() {
   const [isLoading, setIsLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
 
+  // Add this to track if navigation is safe
+  const [isMounted, setIsMounted] = useState(false);
+  
+  const segments = useSegments();
+  
+  // Add this near your other refs
+  const hasNavigatedToQuizRef = useRef(false);
+  
+  // Use this to handle navigation after mount
   useEffect(() => {
-    console.log('Root layout mounted');
-    if (loaded) {
-      SplashScreen.hideAsync();
+    if (loaded && isReady && !loading) {
+      // Mark as mounted - safe to navigate now
+      setIsMounted(true);
+      // Hide splash screen once everything is ready
+      RouterSplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, isReady, loading]);
 
   useAlarmManager(); // This will check for active alarms on app launch
 
@@ -376,6 +388,9 @@ export default function AppLayout() {
   useEffect(() => {
     const checkPremiumAccess = async () => {
       try {
+        // Only check premium status if mounted
+        if (!isMounted) return;
+        
         // Check premium status from AsyncStorage only
         const isPremium = await AsyncStorage.getItem('isPremium');
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
@@ -394,18 +409,44 @@ export default function AppLayout() {
       }
     };
 
-    checkPremiumAccess();
-  }, []);
-
-  // Add this effect to handle navigation after the component is mounted
-  useEffect(() => {
-    if (loaded && isReady) {
-      // Only navigate when everything is loaded
-      if (initialRoute) {
-        router.replace(initialRoute);
-      }
+    if (isMounted) {
+      checkPremiumAccess();
     }
-  }, [loaded, isReady, initialRoute]);
+  }, [isMounted]);
+
+  // Then modify your navigation effect to be much simpler
+  useEffect(() => {
+    // This will only run after the component is fully mounted and navigation is ready
+    const handleInitialNavigation = async () => {
+      try {
+        // Skip if we've already navigated or conditions aren't met
+        if (!segments || !isMounted || !isAppReady || hasNavigatedToQuizRef.current) return;
+        
+        // Get premium status
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+        
+        // Only navigate if needed
+        if (quizCompleted !== 'true' && isPremium !== 'true') {
+          // Mark that we've navigated using the ref (doesn't cause re-render)
+          hasNavigatedToQuizRef.current = true;
+          
+          // Single navigation with delay
+          setTimeout(() => {
+            console.log('Safe to navigate now, redirecting to quiz (one-time)');
+            router.replace('/quiz');
+          }, 1000);
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error in navigation handler:', error);
+        setIsLoading(false);
+      }
+    };
+    
+    handleInitialNavigation();
+  }, [segments, isMounted, isAppReady]);
 
   useEffect(() => {
     async function setupNotifications() {
@@ -641,9 +682,6 @@ export default function AppLayout() {
                 },
               }}
             />
-            <Stack.Screen name="mission/photo" options={{ title: 'Photo' }} />
-            <Stack.Screen name="mission/photo-scanner" options={{ headerShown: false }} />
-            <Stack.Screen name="mission/photo-preview" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/index" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/question1" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/question2" options={{ headerShown: false }} />
@@ -652,13 +690,12 @@ export default function AppLayout() {
             <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/yes" options={{ headerShown: false }} />
             <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
-            <Stack.Screen name="mission-alarm" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen 
               name="snooze-confirmation" 
               options={{
                 headerShown: false,
                 presentation: 'modal',
-                gestureEnabled: false, // Prevent swiping to dismiss
+                gestureEnabled: false,
                 animation: 'fade',
               }} 
             />

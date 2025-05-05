@@ -46,7 +46,7 @@ export default function StudyScreen() {
           <View style={styles.textContainer}>
             <Text style={styles.highlightText}>78% Faster</Text>
             <Text style={styles.title}>
-              According to a 5-month study, Rise helps you transform your sleep faster than other methods
+              According to a 5-month study, Bliss Alarm helps you transform your sleep faster than other methods
             </Text>
           </View>
           

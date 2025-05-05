@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Platform, View, Text, ActivityIndicator } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
+import { router, useRootNavigationState } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
 import { HapticTab } from '@/components/HapticTab';
@@ -18,18 +18,22 @@ export default function TabLayout() {
   const colorScheme = useColorScheme();
   const [isLoading, setIsLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+  const navigationState = useRootNavigationState();
 
   useEffect(() => {
     const checkPremiumAccess = async () => {
       try {
+        if (!navigationState?.key) return;
+        
         setIsLoading(true);
         
         const isPremium = await RevenueCatService.checkLocalSubscriptionStatus();
-        
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
         if (quizCompleted !== 'true' && !isPremium) {
-          router.replace('/quiz');
+          setTimeout(() => {
+            router.replace('/quiz');
+          }, 0);
           return;
         }
         
@@ -42,7 +46,7 @@ export default function TabLayout() {
     };
 
     checkPremiumAccess();
-  }, []);
+  }, [navigationState?.key]);
 
   if (isLoading) {
     return (

@@ -21,13 +21,12 @@ import { CacheManager } from 'react-native-expo-image-cache';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RevenueCatService from '../services/RevenueCatService';
 import * as Notifications from 'expo-notifications';
-import * as InAppPurchases from 'expo-in-app-purchases';
 import * as Network from 'expo-network';
 import * as Application from 'expo-application';
 
-// Product IDs as simple constants - no capitalization to avoid confusion
-const PRODUCT_MONTHLY = 'blissmonth';
-const PRODUCT_YEARLY = 'blissyear';
+// Product IDs that match what's in RevenueCat and App Store
+const PRODUCT_MONTHLY = 'blissmonthly';
+const PRODUCT_YEARLY = 'blissyearly';
 
 const { width, height } = Dimensions.get('window');
 
@@ -62,27 +61,6 @@ const userReviews = [
   }
 ];
 
-const debugIAP = async () => {
-  console.log('=== IAP DEBUG START ===');
-  console.log('Device ID:', await Application.getIosIdForVendorAsync());
-  console.log('Bundle ID:', await Application.applicationId);
-  // Log StoreKit connection
-  try {
-    await InAppPurchases.connectAsync();
-    console.log('StoreKit connection: SUCCESS');
-    try {
-      console.log('Getting product IDs:', {PRODUCT_MONTHLY, PRODUCT_YEARLY});
-      const products = await InAppPurchases.getProductsAsync([PRODUCT_MONTHLY, PRODUCT_YEARLY]);
-      console.log('PRODUCTS RESPONSE:', JSON.stringify(products, null, 2));
-    } catch (e) {
-      console.log('Product fetch failed:', e);
-    }
-  } catch (e) {
-    console.log('StoreKit connection failed:', e);
-  }
-  console.log('=== IAP DEBUG END ===');
-};
-
 export default function YesScreen() {
   const [personName, setPersonName] = useState("Friend");
   const [selectedPlan, setSelectedPlan] = useState('yearly'); // 'monthly' or 'yearly'
@@ -90,11 +68,10 @@ export default function YesScreen() {
   const [packages, setPackages] = useState<any[]>([]);
   const hasStartedPurchase = useRef(false);
   
-  // Fetch the person's name from AsyncStorage using the correct key
+  // Fetch the person's name from AsyncStorage
   useEffect(() => {
     const fetchUserName = async () => {
       try {
-        // Get name using the exact key from userInfo.tsx
         const userName = await AsyncStorage.getItem('user_name');
         if (userName) {
           setPersonName(userName);
@@ -106,56 +83,55 @@ export default function YesScreen() {
     
     fetchUserName();
     
-    // Initialize the RevenueCat service
+    // Initialize RevenueCat only once on component mount
     const initializeRevenueCat = async () => {
       try {
-        console.log('Starting IAP initialization...');
+        console.log('Initializing RevenueCat...');
+        await RevenueCatService.initialize();
         
-        // Always disconnect first to ensure a clean state
-        try {
-          await InAppPurchases.disconnectAsync();
-          console.log('Disconnected from App Store (cleanup)');
-        } catch (disconnectError) {
-          // Ignore disconnect errors
-        }
+        // Check if user already has premium
+        const isPremium = await RevenueCatService.isSubscribed();
+        console.log('User premium status:', isPremium);
         
-        // Then connect explicitly
-        try {
-          await InAppPurchases.connectAsync();
-          console.log('Successfully connected to App Store');
-        } catch (connectError) {
-          console.error('Failed to connect to App Store:', connectError);
-          // Show error to user
-          Alert.alert(
-            "Store Connection Error",
-            "Unable to connect to the App Store. Please restart the app and try again."
-          );
+        if (isPremium) {
+          console.log('User already has premium subscription');
+          await AsyncStorage.setItem('isPremium', 'true');
+          await AsyncStorage.setItem('quizCompleted', 'true');
+          
+          // Navigate to index if already premium
+          router.replace('/');
           return;
         }
         
-        // First test a direct connection to the App Store
-        try {
-          // Test retrieving products directly
-          console.log('ATTEMPTING TO FETCH FROM APP STORE WITH EXACTLY THESE IDs:', 
-            JSON.stringify({PRODUCT_MONTHLY, PRODUCT_YEARLY}));
-          
-          const products = await InAppPurchases.getProductsAsync([
-            PRODUCT_MONTHLY, PRODUCT_YEARLY
-          ]);
-          console.log('DIRECT IAP TEST RESULT:', JSON.stringify(products, null, 2));
-        } catch (e) {
-          console.error('Failed to get products after connection:', e);
-        }
-        
-        await RevenueCatService.initialize();
-        const availablePackages = await RevenueCatService.getSubscriptionPackages();
-        setPackages(availablePackages);
+        // Only fetch packages if not premium
+        const packages = await RevenueCatService.getSubscriptionPackages();
+        console.log('RevenueCat packages available:', packages.length);
+        setPackages(packages);
       } catch (error) {
         console.error('Error initializing RevenueCat:', error);
       }
     };
     
     initializeRevenueCat();
+    
+    // Check network connectivity
+    const checkConnection = async () => {
+      try {
+        const networkState = await Network.getNetworkStateAsync();
+        console.log('Network state:', networkState.isConnected ? 'Connected' : 'Disconnected');
+        
+        if (!networkState.isConnected || !networkState.isInternetReachable) {
+          Alert.alert(
+            "Internet Connection Error",
+            "Please check your internet connection and try again."
+          );
+        }
+      } catch (e) {
+        console.error('Network check error:', e);
+      }
+    };
+    
+    checkConnection();
   }, []);
 
   // Preload the background image
@@ -172,6 +148,88 @@ export default function YesScreen() {
     
     preloadImage();
   }, []);
+
+  const requestNotificationPermissions = async () => {
+    try {
+      const { status: existingStatus } = await Notifications.getPermissionsAsync();
+      
+      if (existingStatus !== 'granted') {
+        const { status } = await Notifications.requestPermissionsAsync();
+        
+        if (status === 'granted') {
+          console.log('Notification permissions granted');
+          await AsyncStorage.setItem('notificationPermissionGranted', 'true');
+        } else {
+          console.log('Notification permissions denied');
+        }
+      } else {
+        await AsyncStorage.setItem('notificationPermissionGranted', 'true');
+      }
+    } catch (error) {
+      console.error('Error requesting notification permissions:', error);
+    }
+  };
+
+  // Simplified subscription handler using only RevenueCat
+  const handleSubscription = async () => {
+    if (hasStartedPurchase.current || loading) return;
+    hasStartedPurchase.current = true;
+    setLoading(true);
+
+    try {
+      const productId = selectedPlan === 'yearly' ? PRODUCT_YEARLY : PRODUCT_MONTHLY;
+      console.log(`Starting purchase for ${productId}...`);
+      
+      const success = await RevenueCatService.purchaseProduct(productId);
+
+      if (success) {
+        console.log('Purchase successful!');
+        await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        await requestNotificationPermissions();
+        
+        // Navigate to main app
+        router.replace('/(tabs)');
+      } else {
+        console.log('Purchase failed or was cancelled');
+        Alert.alert("Purchase Failed", "We couldn't complete your subscription. Please try again.");
+      }
+    } catch (error) {
+      console.error('Subscription error:', error);
+      Alert.alert("Error", "Something went wrong with your purchase. Please try again.");
+    } finally {
+      hasStartedPurchase.current = false;
+      setLoading(false);
+    }
+  };
+
+  // Simplified restore function using only RevenueCat
+  const handleRestore = async () => {
+    if (loading) return;
+    setLoading(true);
+
+    try {
+      console.log('Attempting to restore purchases...');
+      const restored = await RevenueCatService.restorePurchases();
+      
+      if (restored) {
+        console.log('Purchases restored successfully!');
+        await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        
+        // Navigate to main app
+        router.replace('/(tabs)');
+      } else {
+        console.log('No purchases to restore');
+        Alert.alert("No Subscription Found", "We couldn't find any active subscriptions to restore.");
+      }
+    } catch (error) {
+      console.error('Error restoring purchases:', error);
+      Alert.alert("Restore Error", "There was a problem restoring your purchases. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Add this function to format the prices
   const getPackageDetails = (packageType: string) => {
@@ -200,300 +258,6 @@ export default function YesScreen() {
       price: pkg.product.priceString
     };
   };
-
-  // Function to handle subscription
-  const handleSubscription = async () => {
-    if (hasStartedPurchase.current) return;
-    hasStartedPurchase.current = true;
-
-    try {
-      setLoading(true);
-      
-      // Direct IAP purchase - the most reliable method  
-      try {
-        const productId = selectedPlan === 'yearly' ? PRODUCT_YEARLY : PRODUCT_MONTHLY;
-        
-        // Get products directly from Apple
-        const products = await InAppPurchases.getProductsAsync([productId]);
-        
-        if (products.results && products.results.length > 0) {
-          // Product exists, try purchasing directly
-          console.log('Attempting direct purchase...');
-          
-          // Set up purchase listener
-          InAppPurchases.setPurchaseListener(({ responseCode, results, errorCode }) => {
-            if (responseCode === InAppPurchases.IAPResponseCode.OK) {
-              console.log('Direct purchase successful!');
-              // Verify we have valid results before proceeding
-              if (results && results.length > 0) {
-                const purchase = results[0];
-                // Verify this is one of our subscription products
-                if (purchase.productId === PRODUCT_MONTHLY || purchase.productId === PRODUCT_YEARLY) {
-                  // Simple direct approach - no promises or nested callbacks
-                  AsyncStorage.setItem('isPremium', 'true');
-                  AsyncStorage.setItem('quizCompleted', 'true');
-                  console.log('Purchase successful, navigating to alarms...');
-                  // Navigate after a small delay to ensure storage is updated
-                  setTimeout(() => {
-                    router.replace('/(tabs)');
-                  }, 300);
-                } else {
-                  console.log('Invalid product purchased:', purchase.productId);
-                  Alert.alert('Purchase Error', 'Invalid product purchased. Please try again.');
-                  setLoading(false);
-                }
-              } else {
-                console.log('No purchase results returned');
-                setLoading(false);
-              }
-            } else {
-              console.log('Purchase failed with code:', responseCode);
-              Alert.alert('Purchase Failed', 'Please try again later.');
-              setLoading(false);
-            }
-          });
-          
-          // Purchase the product
-          await InAppPurchases.purchaseItemAsync(productId);
-          
-          // Add backup timer to check purchase status and navigate
-          const purchaseCheckTimer = setTimeout(async () => {
-            console.log('Backup purchase check timer fired');
-            console.log('Checking subscription status directly...');
-            try {
-              const isPremium = await RevenueCatService.isSubscribed();
-              console.log('RevenueCat subscription check result:', isPremium);
-              
-              if (isPremium) {
-                console.log('Purchase was successful, navigating...');
-                await AsyncStorage.setItem('isPremium', 'true');
-                await AsyncStorage.setItem('quizCompleted', 'true');
-                router.replace('/(tabs)');
-              } else {
-                console.log('No subscription detected in backup check');
-                setLoading(false);
-                Alert.alert("Subscription Required", "Please complete your purchase to continue.");
-              }
-            } catch (error) {
-              console.error('Error in subscription check:', error);
-              setLoading(false);
-            }
-          }, 2000);
-          
-          return; // Exit early if direct purchase is initiated
-        }
-      } catch (directError) {
-        console.error('Direct purchase attempt failed:', directError);
-      }
-      
-      // Add detailed debugging
-      console.log('Product IDs we are looking for:', PRODUCT_MONTHLY, PRODUCT_YEARLY);
-      
-      // Force load products directly
-      try {
-        const rawProducts = await InAppPurchases.getProductsAsync([
-          PRODUCT_MONTHLY, PRODUCT_YEARLY
-        ]);
-        console.log('DIRECT PRODUCT TEST:', rawProducts);
-      } catch (productError) {
-        console.error('Failed to get products:', productError);
-      }
-      
-      // If no packages loaded, try loading them again
-      if (!Array.isArray(packages) || packages.length === 0) {
-        const availablePackages = await RevenueCatService.getSubscriptionPackages();
-        setPackages(availablePackages);
-        console.log('Available packages:', JSON.stringify(availablePackages, null, 2));
-        
-        if (availablePackages.length === 0) {
-          Alert.alert("Error", "Unable to load subscription options. Please try again later.");
-          return;
-        }
-      }
-      
-      // Find the selected package by product ID directly
-      const productId = selectedPlan === 'yearly' ? PRODUCT_YEARLY : PRODUCT_MONTHLY;
-      console.log(`Looking for product ID: ${productId} in packages:`, JSON.stringify(packages, null, 2));
-
-      // Direct purchase approach - skip package finding
-      try {
-        console.log('Using direct purchase approach with product ID:', productId);
-        const success = await RevenueCatService.purchaseProduct(productId);
-        
-        if (success) {
-          // Save both premium status and subscription type
-          await AsyncStorage.setItem('quizCompleted', 'true');
-          await AsyncStorage.setItem('isPremium', 'true');
-          await AsyncStorage.setItem('subscriptionType', selectedPlan);
-          
-          console.log(`Subscription successful: ${selectedPlan}`);
-          
-          // Request notification permissions
-          await requestNotificationPermissions();
-          
-          // Navigate immediately, then show the alert
-          router.replace('/(tabs)');
-          
-          // Show success alert after navigation
-          setTimeout(() => {
-            Alert.alert(
-              "Subscription Successful", 
-              `Thank you for subscribing to the ${selectedPlan} plan!`
-            );
-          }, 500);
-        } else {
-          Alert.alert("Subscription Failed", "There was an issue with your subscription. Please try again.");
-        }
-      } catch (purchaseError) {
-        console.error('Error during direct purchase:', purchaseError);
-        Alert.alert("Purchase Error", "There was an error processing your purchase. Please try again.");
-      }
-
-      // At the end of the function, before navigation:
-      const isSubscribed = await RevenueCatService.isSubscribed();
-      if (isSubscribed) {
-        await AsyncStorage.setItem('isPremium', 'true');
-        await AsyncStorage.setItem('quizCompleted', 'true');
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert("Still Waiting", "We couldn't confirm your subscription yet. Please wait or try again.");
-      }
-    } catch (error) {
-      console.error('Error during subscription:', error);
-      Alert.alert("Error", `An unexpected error occurred: ${(error as Error).message || 'Unknown error'}`);
-    } finally {
-      setTimeout(() => {
-        hasStartedPurchase.current = false;
-      }, 3000); // cooldown
-      setLoading(false);
-    }
-  };
-
-  // Function to properly restore purchases
-  const handleRestore = async () => {
-    try {
-      setLoading(true);
-      console.log('Attempting to restore purchases...');
-      
-      // Use the EXISTING restorePurchases method
-      const restored = await RevenueCatService.restorePurchases();
-      
-      if (restored) {
-        console.log('Subscription successfully restored!');
-        
-        // Get subscription details to verify it's active
-        const details = await RevenueCatService.getSubscriptionDetails();
-        
-        // Check that details are valid and subscription is active
-        if (details && details.expirationDate > new Date()) {
-          // If valid, mark as premium
-          await AsyncStorage.setItem('isPremium', 'true');
-          await AsyncStorage.setItem('quizCompleted', 'true');
-          
-          Alert.alert(
-            "Subscription Restored", 
-            `Your subscription has been restored.`,
-            [{ text: "Continue", onPress: () => router.push('/(tabs)') }]
-          );
-        } else {
-          // Subscription exists but might be expired
-          Alert.alert("Expired Subscription", "Your previous subscription appears to have expired. Please purchase a new subscription.");
-        }
-      } else {
-        Alert.alert("No Active Subscription", "We couldn't find any active subscriptions to restore.");
-      }
-    } catch (error) {
-      console.error('Error restoring subscription:', error);
-      Alert.alert("Error", "An error occurred while restoring your subscription.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const requestNotificationPermissions = async () => {
-    try {
-      const { status: existingStatus } = await Notifications.getPermissionsAsync();
-      
-      if (existingStatus !== 'granted') {
-        const { status } = await Notifications.requestPermissionsAsync();
-        
-        if (status === 'granted') {
-          console.log('Notification permissions granted');
-          await AsyncStorage.setItem('notificationPermissionGranted', 'true');
-        } else {
-          console.log('Notification permissions denied');
-        }
-      } else {
-        await AsyncStorage.setItem('notificationPermissionGranted', 'true');
-      }
-    } catch (error) {
-      console.error('Error requesting notification permissions:', error);
-    }
-  };
-
-  const handlePurchase = async (packageId: string) => {
-    try {
-      setLoading(true);
-      
-      // Direct purchase approach - no package finding
-      const purchased = await RevenueCatService.purchaseProduct(packageId);
-      
-      if (purchased) {
-        // Mark quiz as completed
-        await AsyncStorage.setItem('quizCompleted', 'true');
-        await AsyncStorage.setItem('isPremium', 'true');
-        
-        // Store subscription type based on packageId
-        if (packageId === 'blissmonth') {
-          await AsyncStorage.setItem('subscriptionType', 'monthly');
-          console.log('Monthly subscription stored');
-        } else if (packageId === 'blissyear') {
-          await AsyncStorage.setItem('subscriptionType', 'yearly');
-          console.log('Yearly subscription stored');
-        }
-        
-        console.log('Purchase successful, redirecting to app block');
-        
-        // Force navigation with a slight delay to ensure state is updated
-        setTimeout(() => {
-          console.log('Executing delayed navigation to app block');
-          router.replace('/(tabs)/appblock');
-        }, 500);
-      } else {
-        console.log('Purchase failed or was cancelled');
-        Alert.alert("Purchase Failed", "Your purchase could not be completed. Please try again.");
-      }
-    } catch (error) {
-      console.error('Error processing purchase:', error);
-      Alert.alert("Purchase Error", "There was an error processing your purchase. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    const checkConnection = async () => {
-      try {
-        const networkState = await Network.getNetworkStateAsync();
-        console.log('NETWORK STATE:', networkState);
-        
-        if (!networkState.isConnected || !networkState.isInternetReachable) {
-          Alert.alert(
-            "Internet Connection Error",
-            "Please check your internet connection and try again."
-          );
-        }
-      } catch (e) {
-        console.error('Network check error:', e);
-      }
-    };
-    
-    checkConnection();
-  }, []);
-
-  useEffect(() => {
-    debugIAP();
-  }, []);
 
   return (
     <>

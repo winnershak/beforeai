@@ -41,10 +41,10 @@ export default function RiseScreen() {
       >
         <SafeAreaView style={styles.container}>
           <View style={styles.content}>
-            <Text style={styles.title}>Welcome to Rise</Text>
+            <Text style={styles.title}>Welcome to Bliss Alarm</Text>
             
             <Text style={styles.description}>
-              With over 100,000 users, Rise is class-leading and based on years of research to better your sleep and make your life better.
+              With over 100,000 users, Bliss Alarm is class-leading and based on years of research to better your sleep and make your life better.
             </Text>
             
             <View style={styles.spacer} />
