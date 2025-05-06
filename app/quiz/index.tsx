@@ -163,17 +163,10 @@ export default function QuizIntro() {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.redeemCodeButton}
-                onPress={() => setShowRedeemCodeModal(true)}
+                style={styles.loginButton} 
+                onPress={() => router.push('/auth/login')}
               >
-                <Text style={styles.redeemCodeText}>Have a promo code?</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.loginButton}
-                onPress={() => setShowLoginModal(true)}
-              >
-                <Text style={styles.loginText}>Already have an account? Log in</Text>
+                <Text style={styles.loginText}>Already have an account?</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>

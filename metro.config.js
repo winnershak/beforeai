@@ -1,5 +1,5 @@
 // Learn more https://docs.expo.io/guides/customizing-metro
-const { getDefaultConfig } = require('expo/metro-config');
+const { getDefaultConfig } = require('@expo/metro-config');
 
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(__dirname);
@@ -9,11 +9,13 @@ config.resolver.extraNodeModules = {
   ...config.resolver.extraNodeModules,
   'ExponentPedometer': __dirname + '/app/mock-modules/ExponentPedometer.js',
   // Add a direct replacement for expo-sensors
-  'expo-sensors': __dirname + '/app/utils/expo-sensors-patch.js'
+  'expo-sensors': __dirname + '/app/utils/expo-sensors-patch.js',
+  // Remove the idb reference since we uninstalled it
+  // 'idb': require.resolve('./node_modules/idb'),
 };
 
 // Add a specific resolver for the problematic module
-config.resolver.sourceExts = ['jsx', 'js', 'ts', 'tsx', 'json'];
+config.resolver.sourceExts = ['jsx', 'js', 'ts', 'tsx', 'json', 'mjs'];
 
 // Handle circular dependencies
 config.resolver.blockList = [

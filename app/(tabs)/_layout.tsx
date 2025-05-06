@@ -58,6 +58,7 @@ export default function TabLayout() {
 
   return (
     <Tabs
+      key="main-tabs"
       screenOptions={{
         tabBarActiveTintColor: '#007AFF',
         tabBarInactiveTintColor: '#8E8E93',
@@ -80,14 +81,14 @@ export default function TabLayout() {
         name="appblock"
         options={{
           title: 'App Block',
-          tabBarIcon: ({ color }) => <Ionicons name="timer-outline" size={28} color={color} />,
+          tabBarIcon: ({ color }) => Ionicons ? <Ionicons name="timer-outline" size={28} color={color} /> : null,
         }}
       />
       <Tabs.Screen
         name="index"
         options={{
           title: 'Alarms',
-          tabBarIcon: ({ color }) => <Ionicons name="alarm" size={28} color={color} />,
+          tabBarIcon: ({ color }) => Ionicons ? <Ionicons name="alarm" size={28} color={color} /> : null,
           headerShown: false,
         }}
       />
@@ -95,7 +96,7 @@ export default function TabLayout() {
         name="tutorial"
         options={{
           title: 'Tutorial',
-          tabBarIcon: ({ color }) => <Ionicons name="book-outline" size={28} color={color} />,
+          tabBarIcon: ({ color }) => Ionicons ? <Ionicons name="book-outline" size={28} color={color} /> : null,
           headerShown: false,
         }}
       />
@@ -103,7 +104,7 @@ export default function TabLayout() {
         name="sounds"
         options={{
           title: 'Sounds',
-          tabBarIcon: ({ color }) => <Ionicons name="musical-notes" size={28} color={color} />,
+          tabBarIcon: ({ color }) => Ionicons ? <Ionicons name="musical-notes" size={28} color={color} /> : null,
           headerShown: true,
         }}
       />
@@ -111,7 +112,7 @@ export default function TabLayout() {
         name="settings"
         options={{
           title: 'Settings',
-          tabBarIcon: ({ color }) => <Ionicons name="settings" size={28} color={color} />,
+          tabBarIcon: ({ color }) => Ionicons ? <Ionicons name="settings" size={28} color={color} /> : null,
           headerShown: false,
         }}
       />

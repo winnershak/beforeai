@@ -36,6 +36,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Network from 'expo-network';
 import { Alert } from 'react-native';
 import { SplashScreen as RouterSplashScreen } from 'expo-router';
+import firebase from '@react-native-firebase/app';
+import { firebaseConfig } from './services/firebase-config';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -123,6 +125,11 @@ export default function AppLayout() {
   useAlarmManager(); // This will check for active alarms on app launch
 
   useEffect(() => {
+    // Initialize Firebase if not already initialized
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    
     // Set a small delay to ensure the app is fully mounted
     const timer = setTimeout(() => {
       setIsAppReady(true);

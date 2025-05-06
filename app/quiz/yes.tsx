@@ -25,8 +25,8 @@ import * as Network from 'expo-network';
 import * as Application from 'expo-application';
 
 // Product IDs that match what's in RevenueCat and App Store
-const PRODUCT_MONTHLY = 'blissmonthly';
-const PRODUCT_YEARLY = 'blissyearly';
+const PRODUCT_MONTHLY = 'blissmonth';
+const PRODUCT_YEARLY = 'blissyear';
 
 const { width, height } = Dimensions.get('window');
 

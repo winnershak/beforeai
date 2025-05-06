@@ -2,9 +2,9 @@ import Purchases, { PurchasesPackage, CustomerInfo, PURCHASE_TYPE, PurchasesErro
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
-// Correct product IDs from RevenueCat dashboard
-const PRODUCT_MONTHLY = 'blissmonthly';
-const PRODUCT_YEARLY = 'blissyearly';
+// Correct product IDs to match App Store Connect
+const PRODUCT_MONTHLY = 'blissmonth';
+const PRODUCT_YEARLY = 'blissyear';
 const WEB_MONTHLY = 'sub_month';
 const WEB_QUARTERLY = 'sub_week12';
 const WEB_WEEKLY = 'sub_week';
@@ -113,35 +113,9 @@ class RevenueCatService {
       if (currentOffering && currentOffering.availablePackages && currentOffering.availablePackages.length > 0) {
         return currentOffering.availablePackages;
       } else {
-        console.log('No offerings found in RevenueCat - using fallback packages');
-        // Return fallback packages for development
-        return [
-          // Mock packages if RevenueCat is not configured
-          {
-            identifier: 'monthly',
-            offeringIdentifier: 'default',
-            packageType: PACKAGE_TYPE.MONTHLY,
-            product: {
-              price: 12.99,
-              priceString: '$12.99',
-              identifier: 'blissmonthly',
-              title: 'Bliss Monthly Premium',
-              description: 'Monthly Subscription'
-            }
-          },
-          {
-            identifier: 'yearly',
-            offeringIdentifier: 'default',
-            packageType: PACKAGE_TYPE.ANNUAL,
-            product: {
-              price: 49.99,
-              priceString: '$49.99',
-              identifier: 'blissyearly',
-              title: 'Bliss Yearly Premium',
-              description: 'Yearly Subscription'
-            }
-          }
-        ] as unknown as PurchasesPackage[];
+        console.log('No offerings found in RevenueCat');
+        // Return empty array instead of fallback packages
+        return [];
       }
     } catch (error) {
       console.error('Error getting subscription packages:', error);
@@ -150,53 +124,58 @@ class RevenueCatService {
     }
   }
 
-  async purchaseProduct(packageIdentifier: string): Promise<boolean> {
+  async purchaseProduct(productId: string): Promise<boolean> {
     try {
       if (!this.initialized) await this.initialize();
       
-      console.log(`Attempting to purchase product: ${packageIdentifier}`);
+      console.log(`Attempting to purchase product: ${productId}`);
       
-      // Get all available packages
+      // Get available packages
       const packages = await this.getPackages();
-      console.log('Available packages:', JSON.stringify(packages, null, 2));
+      console.log('Available packages:', packages);
       
-      // Find the package that matches the selected product
-      const packageToPurchase = packages.find(pkg => 
-        pkg.product.identifier === packageIdentifier
-      );
+      // Find the package by type instead of product ID
+      let packageToPurchase;
+      
+      if (productId === 'blissmonth' || productId === 'blissmonthly') {
+        // Find monthly package
+        packageToPurchase = packages.find(pkg => 
+          pkg.packageType === PACKAGE_TYPE.MONTHLY
+        );
+      } else if (productId === 'blissyear' || productId === 'blissyearly') {
+        // Find annual package
+        packageToPurchase = packages.find(pkg => 
+          pkg.packageType === PACKAGE_TYPE.ANNUAL
+        );
+      }
       
       if (!packageToPurchase) {
-        console.error(`Package ${packageIdentifier} not found`);
+        console.log(`Package for ${productId} not found`);
         return false;
       }
       
-      console.log(`Found package to purchase:`, JSON.stringify(packageToPurchase, null, 2));
+      console.log(`Found package: ${packageToPurchase.identifier}`);
       
-      // Make the purchase
+      // Purchase the package
       const { customerInfo } = await Purchases.purchasePackage(packageToPurchase);
-      console.log('Purchase result:', JSON.stringify(customerInfo, null, 2));
       
-      // Update customer info
-      this.customerInfo = customerInfo;
+      // Check if the purchase was successful
+      const isPremium = customerInfo?.entitlements.active && 
+                       customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] !== undefined;
       
-      // Check if the purchase was successful by looking for the premium entitlement
-      const hasPremium = 
-        customerInfo.entitlements.active && 
-        customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] !== undefined;
-      
-      console.log(`Purchase successful, premium entitlement active: ${hasPremium}`);
-      
-      // Update local storage
-      if (hasPremium) {
+      if (isPremium) {
+        console.log('Purchase successful, user has premium entitlement');
         await AsyncStorage.setItem('isPremium', 'true');
         await AsyncStorage.setItem('quizCompleted', 'true');
         
-        // Store subscription type
-        const isYearly = packageIdentifier === PRODUCT_YEARLY;
-        await AsyncStorage.setItem('subscriptionType', isYearly ? 'yearly' : 'monthly');
+        // Store the last verification time
+        await AsyncStorage.setItem('lastVerifiedSubscription', new Date().toISOString());
+        
+        return true;
+      } else {
+        console.log('Purchase completed but user does not have premium entitlement');
+        return false;
       }
-      
-      return hasPremium;
     } catch (error) {
       console.error('Error purchasing product:', error);
       
@@ -429,35 +408,42 @@ class RevenueCatService {
       return await this.getPackages();
     } catch (error) {
       console.error('Error getting subscription packages:', error);
-      
-      // Return fallback packages if there's an error
-      return [
-        {
-          identifier: 'monthly',
-          offeringIdentifier: 'default',
-          packageType: PACKAGE_TYPE.MONTHLY,
-          product: {
-            price: 12.99,
-            priceString: '$12.99',
-            identifier: 'blissmonthly',
-            title: 'Bliss Monthly Premium',
-            description: 'Monthly Subscription'
-          }
-        },
-        {
-          identifier: 'yearly',
-          offeringIdentifier: 'default',
-          packageType: PACKAGE_TYPE.ANNUAL,
-          product: {
-            price: 49.99,
-            priceString: '$49.99',
-            identifier: 'blissyearly',
-            title: 'Bliss Yearly Premium',
-            description: 'Yearly Subscription'
-          }
-        }
-      ] as unknown as PurchasesPackage[];
+      // Return empty array instead of fallback packages
+      return [];
     }
+  }
+
+  async identifyUser(userId: string): Promise<void> {
+    try {
+      if (!this.initialized) await this.initialize();
+      
+      console.log(`Identifying user with RevenueCat: ${userId}`);
+      await Purchases.logIn(userId);
+      
+      // Refresh customer info after login
+      this.customerInfo = await Purchases.getCustomerInfo();
+      this.emitSubscriptionUpdate();
+      
+      return;
+    } catch (error) {
+      console.error('Error identifying user with RevenueCat:', error);
+    }
+  }
+
+  private emitSubscriptionUpdate(): void {
+    // Notify listeners about subscription status change
+    const isPremium = this.customerInfo?.entitlements.active && 
+                     this.customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] !== undefined;
+    
+    // Update local storage
+    AsyncStorage.setItem('isPremium', isPremium ? 'true' : 'false');
+    
+    // If premium, also mark quiz as completed
+    if (isPremium) {
+      AsyncStorage.setItem('quizCompleted', 'true');
+    }
+    
+    console.log(`Subscription status updated: Premium = ${isPremium}`);
   }
 }
 
