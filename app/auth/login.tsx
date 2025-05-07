@@ -17,31 +17,20 @@ import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AuthService from '../services/AuthService';
 import * as Google from 'expo-auth-session/providers/google';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import * as WebBrowser from 'expo-web-browser';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [isAppleAuthAvailable, setIsAppleAuthAvailable] = useState(false);
   
   const [request, response, promptAsync] = Google.useAuthRequest({
     iosClientId: '748781286916-o2egm2al46ak0bnnbkkir01ck9qafael.apps.googleusercontent.com',
     androidClientId: '', // optional for now
     webClientId: '748781286916-9pj4l0k1di57hoh672q2hluug5vu4msj.apps.googleusercontent.com',
   });
-  
-  // Check if Apple Auth is available
-  useEffect(() => {
-    const checkAppleAuth = async () => {
-      const isAvailable = await AppleAuthentication.isAvailableAsync();
-      setIsAppleAuthAvailable(isAvailable);
-    };
-    
-    checkAppleAuth();
-  }, []);
   
   // Handle Google Auth response
   useEffect(() => {
@@ -69,23 +58,6 @@ export default function LoginScreen() {
     }
   };
   
-  const handleAppleLogin = async () => {
-    setLoading(true);
-    try {
-      const success = await AuthService.signInWithApple();
-      if (success) {
-        router.replace('/(tabs)');
-      } else {
-        Alert.alert('Login Failed', 'Unable to sign in with Apple. Please try again.');
-      }
-    } catch (error) {
-      console.error('Apple login error:', error);
-      Alert.alert('Login Error', 'An error occurred during Apple sign-in.');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   const handleEmailLogin = async () => {
     if (!email || !password) {
       Alert.alert('Missing Information', 'Please enter both email and password.');
@@ -94,6 +66,26 @@ export default function LoginScreen() {
     
     setLoading(true);
     try {
+      // Special case for App Store reviewers
+      if (email === 'appreview' && password === 'blissalarm2023') {
+        // Store mock user data
+        await AsyncStorage.setItem('user', JSON.stringify({
+          uid: 'app-reviewer-special-id',
+          email: 'reviewer@example.com',
+          displayName: 'App Reviewer',
+        }));
+        
+        // Mark as logged in and premium
+        await AsyncStorage.setItem('isLoggedIn', 'true');
+        await AsyncStorage.setItem('isPremium', 'true');
+        await AsyncStorage.setItem('quizCompleted', 'true');
+        
+        // Navigate to main app
+        router.replace('/(tabs)');
+        return;
+      }
+      
+      // Normal authentication flow
       const success = await AuthService.signInWithEmail(email, password);
       if (success) {
         router.replace('/(tabs)');
@@ -208,24 +200,6 @@ export default function LoginScreen() {
                   >
                     <Ionicons name="logo-google" size={20} color="#fff" />
                     <Text style={styles.socialButtonText}>Continue with Google</Text>
-                  </TouchableOpacity>
-                  
-                  {isAppleAuthAvailable && (
-                    <TouchableOpacity 
-                      style={styles.appleButton}
-                      onPress={handleAppleLogin}
-                      disabled={loading}
-                    >
-                      <Ionicons name="logo-apple" size={20} color="#fff" />
-                      <Text style={styles.socialButtonText}>Continue with Apple</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-                
-                <View style={styles.signupSection}>
-                  <Text style={styles.signupText}>Don't have an account?</Text>
-                  <TouchableOpacity onPress={() => router.push('/auth/signup')}>
-                    <Text style={styles.signupLink}>Sign Up</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
@@ -361,33 +335,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 15,
   },
-  appleButton: {
-    flexDirection: 'row',
-    backgroundColor: '#000',
-    height: 55,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
   socialButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '500',
     marginLeft: 10,
-  },
-  signupSection: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  signupText: {
-    color: '#ccc',
-    fontSize: 15,
-  },
-  signupLink: {
-    color: '#0A84FF',
-    fontSize: 15,
-    fontWeight: '600',
-    marginLeft: 5,
   },
 }); 

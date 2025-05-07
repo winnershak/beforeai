@@ -6,10 +6,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useRootNavigationState } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
-import TabBarBackground from '@/components/ui/TabBarBackground';
-import { Colors } from '@/constants/Colors';
+// Comment out potentially problematic imports
+// import { HapticTab } from '@/components/HapticTab';
+// import { IconSymbol } from '@/components/ui/IconSymbol';
+// import TabBarBackground from '@/components/ui/TabBarBackground';
+// import { Colors } from '@/constants/Colors';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import RevenueCatService from '../services/RevenueCatService';
 import { registerBackgroundTask } from '../background-task';

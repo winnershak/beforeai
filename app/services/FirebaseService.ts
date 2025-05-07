@@ -78,7 +78,7 @@ class FirebaseService {
     
     // Identify user in RevenueCat
     if (user.uid) {
-      await RevenueCatService.identify(user.uid);
+      await RevenueCatService.identifyUser(user.uid);
     }
   }
 

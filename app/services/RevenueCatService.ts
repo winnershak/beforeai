@@ -16,11 +16,26 @@ const PREMIUM_ENTITLEMENT_ID = 'premium';
 class RevenueCatService {
   private initialized = false;
   private customerInfo: CustomerInfo | null = null;
+  private initializationInProgress = false;
 
   async initialize(): Promise<boolean> {
     try {
-      if (this.initialized) return true;
+      // If already initialized, return immediately
+      if (this.initialized) {
+        console.log('RevenueCat already initialized, skipping');
+        return true;
+      }
 
+      // Prevent concurrent initialization
+      if (this.initializationInProgress) {
+        console.log('RevenueCat initialization already in progress, waiting...');
+        // Wait for existing initialization to complete
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.initialized;
+      }
+
+      this.initializationInProgress = true;
+      
       // Apple API key for RevenueCat
       const apiKey = 'appl_lYbJeOGoxWaMxwVeTyTLxgXSzHw';
       
@@ -48,9 +63,11 @@ class RevenueCatService {
       console.log('Initial customer info:', JSON.stringify(this.customerInfo, null, 2));
       
       this.initialized = true;
+      this.initializationInProgress = false;
       console.log('RevenueCat SDK initialized successfully');
       return true;
     } catch (error) {
+      this.initializationInProgress = false;
       console.error('Failed to initialize RevenueCat:', error);
       return false;
     }
