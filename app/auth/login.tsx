@@ -44,14 +44,33 @@ export default function LoginScreen() {
     
     setLoading(true);
     try {
+      console.log('LOGIN: Starting Google sign-in...');
       const success = await AuthService.signInWithGoogle(accessToken);
+      
       if (success) {
-        router.replace('/(tabs)');
+        // Check subscription status from AsyncStorage (which was set by FirebaseService)
+        const isPremium = await AsyncStorage.getItem('isPremium');
+        
+        if (isPremium === 'true') {
+          // Show success message for premium users
+          Alert.alert(
+            'Premium Subscription Active',
+            'Welcome back! Your premium subscription is active. Enjoy all features!',
+            [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
+          );
+        } else {
+          // Show message for non-premium users
+          Alert.alert(
+            'Login Successful',
+            'No active subscription detected. Some features may be limited.',
+            [{ text: 'Continue', onPress: () => router.replace('/(tabs)') }]
+          );
+        }
       } else {
         Alert.alert('Login Failed', 'Unable to sign in with Google. Please try again.');
       }
     } catch (error) {
-      console.error('Google login error:', error);
+      console.error('LOGIN: Google sign-in error:', error);
       Alert.alert('Login Error', 'An error occurred during Google sign-in.');
     } finally {
       setLoading(false);

@@ -10,8 +10,8 @@ config.resolver.extraNodeModules = {
   'ExponentPedometer': __dirname + '/app/mock-modules/ExponentPedometer.js',
   // Add a direct replacement for expo-sensors
   'expo-sensors': __dirname + '/app/utils/expo-sensors-patch.js',
-  // Remove the idb reference since we uninstalled it
-  // 'idb': require.resolve('./node_modules/idb'),
+  // Use a simple empty object instead of trying to find noop.js
+  'idb': require.resolve('./app/mock-modules/empty.js')
 };
 
 // Add a specific resolver for the problematic module

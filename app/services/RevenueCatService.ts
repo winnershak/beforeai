@@ -77,22 +77,29 @@ class RevenueCatService {
     try {
       if (!this.initialized) await this.initialize();
       
-      // Get fresh customer info
+      // Get fresh customer info with extra logging
+      console.log('RevenueCatService: Getting customer info...');
       this.customerInfo = await Purchases.getCustomerInfo();
+      console.log('RevenueCatService: Raw customer info:', JSON.stringify(this.customerInfo, null, 2));
+      
+      // Log entitlements specifically
+      if (this.customerInfo?.entitlements) {
+        console.log('RevenueCatService: Entitlements:', JSON.stringify(this.customerInfo.entitlements, null, 2));
+      }
       
       // Check if user has the premium entitlement
       const hasPremium = 
         this.customerInfo?.entitlements.active && 
         this.customerInfo.entitlements.active[PREMIUM_ENTITLEMENT_ID] !== undefined;
       
-      console.log(`User has premium entitlement: ${hasPremium}`);
+      console.log(`RevenueCatService: Has premium entitlement: ${hasPremium}`);
       
       // Update local storage
       await AsyncStorage.setItem('isPremium', hasPremium ? 'true' : 'false');
       
       return hasPremium;
     } catch (error) {
-      console.error('Error checking subscription status:', error);
+      console.error('RevenueCatService: Error checking subscription status:', error);
       return false;
     }
   }
@@ -435,10 +442,34 @@ class RevenueCatService {
       if (!this.initialized) await this.initialize();
       
       console.log(`Identifying user with RevenueCat: ${userId}`);
+      
+      // Log any existing customer info before login
+      const beforeInfo = await Purchases.getCustomerInfo();
+      console.log('RevenueCat - BEFORE login customer info:', JSON.stringify({
+        originalAppUserId: beforeInfo.originalAppUserId,
+        appUserId: beforeInfo.originalAppUserId,
+        firstSeen: beforeInfo.firstSeen,
+        activeSubscriptions: beforeInfo.activeSubscriptions,
+        allExpirationDates: beforeInfo.allExpirationDates,
+        entitlements: beforeInfo.entitlements
+      }, null, 2));
+      
+      // Login with the user ID
       await Purchases.logIn(userId);
       
       // Refresh customer info after login
       this.customerInfo = await Purchases.getCustomerInfo();
+      
+      // Log detailed customer info after login
+      console.log('RevenueCat - AFTER login customer info:', JSON.stringify({
+        originalAppUserId: this.customerInfo.originalAppUserId,
+        appUserId: this.customerInfo.originalAppUserId,
+        firstSeen: this.customerInfo.firstSeen,
+        activeSubscriptions: this.customerInfo.activeSubscriptions,
+        allExpirationDates: this.customerInfo.allExpirationDates,
+        entitlements: this.customerInfo.entitlements
+      }, null, 2));
+      
       this.emitSubscriptionUpdate();
       
       return;

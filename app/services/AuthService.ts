@@ -1,3 +1,4 @@
+import auth from '@react-native-firebase/auth';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Google from 'expo-auth-session/providers/google';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -30,19 +31,24 @@ class AuthService {
   }
 
   // Sign in with Google
-  async signInWithGoogle(accessToken: string) {
+  async signInWithGoogle(accessToken: string): Promise<boolean> {
     try {
-      // Exchange accessToken for idToken
-      const response = await fetch('https://www.googleapis.com/userinfo/v2/me', {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      console.log('AuthService: Starting Google sign-in with access token');
       
-      const userInfo = await response.json();
+      // Create a Google credential with the access token
+      const googleCredential = auth.GoogleAuthProvider.credential(null, accessToken);
       
-      // Sign in with Firebase
-      return await FirebaseService.signInWithGoogle(accessToken);
+      // Sign in with credential directly
+      const userCredential = await auth().signInWithCredential(googleCredential);
+      
+      // Handle successful login
+      if (userCredential.user) {
+        await FirebaseService.handleSuccessfulLogin(userCredential.user);
+        return true;
+      }
+      return false;
     } catch (error) {
-      console.error('Google sign-in error:', error);
+      console.error('AuthService: Google sign-in error:', error);
       return false;
     }
   }
@@ -66,12 +72,12 @@ class AuthService {
   }
 
   // Sign in with email
-  async signInWithEmail(email: string, password: string) {
+  async signInWithEmail(email: string, password: string): Promise<boolean> {
     return await FirebaseService.signInWithEmail(email, password);
   }
 
   // Sign up with email
-  async signUpWithEmail(email: string, password: string) {
+  async signUpWithEmail(email: string, password: string): Promise<boolean> {
     return await FirebaseService.signUpWithEmail(email, password);
   }
 
@@ -88,7 +94,7 @@ class AuthService {
   }
 
   // Sign out
-  async signOut() {
+  async signOut(): Promise<boolean> {
     return await FirebaseService.signOut();
   }
 }

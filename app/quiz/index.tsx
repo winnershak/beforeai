@@ -47,6 +47,47 @@ export default function QuizIntro() {
     };
     
     preloadImage();
+    
+    // Add this simple Firebase test
+    const testFirebase = async () => {
+      try {
+        console.log('🔥 FIREBASE TEST: Starting...');
+        
+        // Import Firebase modules
+        const firebase = require('@react-native-firebase/app').default;
+        const auth = require('@react-native-firebase/auth').default;
+        
+        // Check if Firebase is initialized
+        console.log(`🔥 FIREBASE TEST: Apps count: ${firebase.apps.length}`);
+        
+        if (firebase.apps.length === 0) {
+          console.log('🔥 FIREBASE TEST: Firebase is NOT initialized, initializing now...');
+          firebase.initializeApp({
+            appId: '1:748781286916:ios:d94493e3abc4808c102751',
+            projectId: 'bliss-alarm-b8280',
+          });
+          console.log('🔥 FIREBASE TEST: Firebase initialized successfully');
+        } else {
+          console.log('🔥 FIREBASE TEST: Firebase is already initialized');
+        }
+        
+        // Try anonymous sign-in (simplest auth method)
+        console.log('🔥 FIREBASE TEST: Attempting anonymous sign-in...');
+        const result = await auth().signInAnonymously();
+        console.log('🔥 FIREBASE TEST: SUCCESS! Firebase authentication is working!');
+        console.log(`🔥 FIREBASE TEST: User ID: ${result.user.uid}`);
+        
+        // Sign out
+        await auth().signOut();
+        console.log('🔥 FIREBASE TEST: Signed out successfully');
+      } catch (error) {
+        console.error('🔥 FIREBASE TEST: FAILED!', error);
+       
+      }
+    };
+    
+    // Run the test
+    testFirebase();
   }, []);
 
   useEffect(() => {
@@ -163,10 +204,10 @@ export default function QuizIntro() {
               </TouchableOpacity>
               
               <TouchableOpacity 
-                style={styles.loginButton} 
-                onPress={() => router.push('/auth/login')}
+                style={styles.redeemCodeButton} 
+                onPress={() => router.push('/redemption')}
               >
-                <Text style={styles.loginText}>Already have an account?</Text>
+                <Text style={styles.redeemCodeText}>Have a redemption code?</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -372,15 +413,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 4,
   },
-  loginButton: {
-    marginTop: 20,
-    padding: 10,
-  },
-  loginText: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 14,
-    textDecorationLine: 'underline',
-  },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.7)',
@@ -445,12 +477,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   redeemCodeButton: {
-    marginTop: 12,
-    marginBottom: 10,
+    marginTop: 15,
     padding: 10,
   },
   redeemCodeText: {
-    color: '#FF9500', // Orange color to stand out
+    color: '#FF9500', // Orange color that matches your theme
     fontSize: 14,
     textDecorationLine: 'underline',
     fontWeight: '500',

@@ -37,7 +37,7 @@ import * as Network from 'expo-network';
 import { Alert } from 'react-native';
 import { SplashScreen as RouterSplashScreen } from 'expo-router';
 import firebase from '@react-native-firebase/app';
-import { firebaseConfig } from './services/firebase-config';
+import '@react-native-firebase/auth';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -46,6 +46,10 @@ SplashScreen.preventAutoHideAsync();
 
 // Global flag to track if alarm is active
 let isAlarmActive = false;
+
+// Make Firebase globally available
+// @ts-ignore - Adding firebase to global
+global.firebaseApp = firebase;
 
 const handleError = (error: Error) => {
   console.log('Caught error:', error);
@@ -127,7 +131,14 @@ export default function AppLayout() {
   useEffect(() => {
     // Initialize Firebase if not already initialized
     if (!firebase.apps.length) {
-      firebase.initializeApp(firebaseConfig);
+      console.log('Initializing Firebase in _layout.tsx...');
+      firebase.initializeApp({
+        appId: '1:748781286916:ios:d94493e3abc4808c102751',
+        projectId: 'bliss-alarm-b8280',
+      });
+      console.log('Firebase initialized successfully in _layout.tsx');
+    } else {
+      console.log('Firebase already initialized in _layout.tsx');
     }
     
     // Set a small delay to ensure the app is fully mounted
@@ -636,6 +647,66 @@ export default function AppLayout() {
     });
   }, []);
 
+  useEffect(() => {
+    const checkSubscriptionExpiry = async () => {
+      try {
+        // Check if user has a redemption code subscription
+        const redemptionCode = await AsyncStorage.getItem('redemptionCode');
+        if (!redemptionCode) return; // No redemption code found
+        
+        // Check expiry date
+        const expiryDateStr = await AsyncStorage.getItem('subscriptionExpiryDate');
+        if (!expiryDateStr) return;
+        
+        const expiryDate = new Date(expiryDateStr);
+        const now = new Date();
+        
+        if (now > expiryDate) {
+          // Subscription expired
+          console.log('Redemption code subscription expired');
+          await AsyncStorage.removeItem('isPremium');
+          await AsyncStorage.removeItem('redemptionCode');
+          await AsyncStorage.removeItem('subscriptionExpiryDate');
+          // Don't remove quizCompleted to avoid forcing the user through the quiz again
+          
+          // Optional: Show expiry notification if app is open
+          if (AppState.currentState === 'active') {
+            Alert.alert(
+              'Subscription Expired',
+              'Your premium subscription has expired. Would you like to renew?',
+              [
+                {
+                  text: 'Not Now', 
+                  style: 'cancel'
+                },
+                {
+                  text: 'Renew', 
+                  onPress: () => router.push('/quiz/yes')
+                }
+              ]
+            );
+          }
+        }
+      } catch (error) {
+        console.error('Error checking subscription expiry:', error);
+      }
+    };
+    
+    // Check on app startup
+    checkSubscriptionExpiry();
+    
+    // Also check when app comes to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        checkSubscriptionExpiry();
+      }
+    });
+    
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   if (!loaded || loading || !isReady) {
     return null;
   }
@@ -713,6 +784,15 @@ export default function AppLayout() {
                 headerShown: true,
                 headerBackTitle: "",
               }}
+            />
+            <Stack.Screen 
+              name="redemption" 
+              options={{
+                title: "Redemption Code",
+                headerShown: true,
+                headerTransparent: true,
+                headerTintColor: '#FFFFFF',
+              }} 
             />
           </Stack>
         </ThemeProvider>

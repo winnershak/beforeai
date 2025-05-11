@@ -1,15 +1,16 @@
+// @ts-ignore - Using global firebase
+const firebase = global.firebaseApp || require('@react-native-firebase/app').default;
 import auth from '@react-native-firebase/auth';
-import firebase from '@react-native-firebase/app';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import RevenueCatService from './RevenueCatService';
-import { firebaseConfig } from './firebase-config';
 
-// Initialize Firebase if not already initialized
-if (!firebase.apps.length) {
-  firebase.initializeApp(firebaseConfig);
-}
+console.log('FirebaseService: Module loading...');
 
 class FirebaseService {
+  constructor() {
+    console.log('FirebaseService: Constructor called');
+  }
+
   // Listen for auth state changes
   subscribeToAuthChanges(callback: (user: any | null) => void) {
     return auth().onAuthStateChanged(callback);
@@ -42,7 +43,12 @@ class FirebaseService {
   // Sign in with Google
   async signInWithGoogle(idToken: string): Promise<boolean> {
     try {
-      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+      console.log('FirebaseService: Starting Google sign-in with token');
+      
+      // Use auth.GoogleAuthProvider directly
+      const { GoogleAuthProvider } = auth;
+      const googleCredential = GoogleAuthProvider.credential(idToken);
+      
       const userCredential = await auth().signInWithCredential(googleCredential);
       await this.handleSuccessfulLogin(userCredential.user);
       return true;
@@ -55,8 +61,14 @@ class FirebaseService {
   // Sign in with Apple
   async signInWithApple(identityToken: string): Promise<boolean> {
     try {
-      const appleCredential = auth.AppleAuthProvider.credential(identityToken);
-      const userCredential = await auth().signInWithCredential(appleCredential);
+      // Use auth.OAuthProvider directly
+      const { OAuthProvider } = auth;
+      const appleProvider = new OAuthProvider('apple.com');
+      
+      // Pass the token directly, not as an object
+      const credential = appleProvider.credential(identityToken);
+      
+      const userCredential = await auth().signInWithCredential(credential);
       await this.handleSuccessfulLogin(userCredential.user);
       return true;
     } catch (error) {
@@ -67,18 +79,54 @@ class FirebaseService {
 
   // Handle successful login
   async handleSuccessfulLogin(user: any) {
-    // Store user data in AsyncStorage
-    await AsyncStorage.setItem('user', JSON.stringify({
-      uid: user.uid,
-      email: user.email,
-      displayName: user.displayName,
-      photoURL: user.photoURL,
-    }));
-    await AsyncStorage.setItem('isLoggedIn', 'true');
-    
-    // Identify user in RevenueCat
-    if (user.uid) {
-      await RevenueCatService.identifyUser(user.uid);
+    try {
+      console.log(`FirebaseService: Handling successful login for user ${user.uid}`);
+      
+      // Save user data to AsyncStorage
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+      await AsyncStorage.setItem('isLoggedIn', 'true');
+      
+      // Log detailed user information
+      console.log('USER DETAILS:', JSON.stringify({
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName || 'Not set',
+        emailVerified: user.emailVerified,
+        isAnonymous: user.isAnonymous,
+        metadata: user.metadata,
+        providerData: user.providerData,
+        providerId: user.providerData?.[0]?.providerId || 'unknown'
+      }, null, 2));
+      
+      // Get the user's email address
+      const email = user.email;
+      
+      // Only proceed if we have an email
+      if (email) {
+        console.log(`FirebaseService: Identifying user by email: ${email}`);
+        
+        // Use EMAIL instead of UID to identify with RevenueCat
+        await RevenueCatService.identifyUser(email);
+        
+        // Check premium status
+        try {
+          console.log('FirebaseService: Checking RevenueCat premium status');
+          const hasPremium = await RevenueCatService.isSubscribed();
+          console.log(`FirebaseService: User has premium: ${hasPremium}`);
+          await AsyncStorage.setItem('isPremium', hasPremium ? 'true' : 'false');
+        } catch (premiumError) {
+          console.error('FirebaseService: Error checking premium status', premiumError);
+          await AsyncStorage.setItem('isPremium', 'false');
+        }
+      } else {
+        console.log('FirebaseService: No email available for RevenueCat identification');
+        await AsyncStorage.setItem('isPremium', 'false');
+      }
+      
+      return true;
+    } catch (error) {
+      console.error('FirebaseService: Error handling login', error);
+      return false;
     }
   }
 

@@ -35,7 +35,6 @@
 		DC07F5602D8BB363005F15FF /* FamilyControls.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F55F2D8BB363005F15FF /* FamilyControls.framework */; };
 		DC07F5612D8BB36D005F15FF /* ManagedSettings.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5582D8BB0F9005F15FF /* ManagedSettings.framework */; };
 		DC07F5632D8BB373005F15FF /* DeviceActivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC07F5622D8BB373005F15FF /* DeviceActivity.framework */; };
-		DC1800702DCA841500991301 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = DC18006F2DCA841400991301 /* GoogleService-Info.plist */; };
 		DC1E2DB92DA4EE0F00D849F8 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC1E2DB82DA4EE0E00D849F8 /* StoreKit.framework */; };
 		DC55B0192D94C553004436B8 /* AlarmSound.m in Sources */ = {isa = PBXBuildFile; fileRef = DC55B0162D94C553004436B8 /* AlarmSound.m */; };
 		DC55B01B2D94C6A7004436B8 /* AlarmSound.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */; };
@@ -51,6 +50,7 @@
 		DCACC2CA2D8FCCE2004DD610 /* beacon.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C12D8FCCE2004DD610 /* beacon.caf */; };
 		DCACC2CB2D8FCCE2004DD610 /* radar.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C52D8FCCE2004DD610 /* radar.caf */; };
 		DCACC2CC2D8FCCE2004DD610 /* reflection.caf in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2C62D8FCCE2004DD610 /* reflection.caf */; };
+		DCB2B70B2DCC780A001015BB /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = DCB2B70A2DCC780A001015BB /* GoogleService-Info.plist */; };
 		DCE529332DA1EA4500D735C6 /* ManagedSettingsUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */; };
 		DCEDACFD2D8FD909002223D7 /* orkney.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACFA2D8FD909002223D7 /* orkney.mp3 */; };
 		DCEDACFE2D8FD909002223D7 /* circuit.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCEDACF92D8FD909002223D7 /* circuit.mp3 */; };
@@ -111,7 +111,6 @@
 		DC07F55E2D8BB2BF005F15FF /* BlissAlarm-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "BlissAlarm-Bridging-Header.h"; sourceTree = "<group>"; };
 		DC07F55F2D8BB363005F15FF /* FamilyControls.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = FamilyControls.framework; path = System/Library/Frameworks/FamilyControls.framework; sourceTree = SDKROOT; };
 		DC07F5622D8BB373005F15FF /* DeviceActivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = DeviceActivity.framework; path = System/Library/Frameworks/DeviceActivity.framework; sourceTree = SDKROOT; };
-		DC18006F2DCA841400991301 /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		DC1E2DB82DA4EE0E00D849F8 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
 		DC55B0162D94C553004436B8 /* AlarmSound.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AlarmSound.m; sourceTree = "<group>"; };
 		DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlarmSound.swift; sourceTree = "<group>"; };
@@ -127,6 +126,7 @@
 		DCACC2C42D8FCCE2004DD610 /* orkney.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = orkney.caf; sourceTree = "<group>"; };
 		DCACC2C52D8FCCE2004DD610 /* radar.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = radar.caf; sourceTree = "<group>"; };
 		DCACC2C62D8FCCE2004DD610 /* reflection.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = reflection.caf; sourceTree = "<group>"; };
+		DCB2B70A2DCC780A001015BB /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		DCE529322DA1EA4400D735C6 /* ManagedSettingsUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ManagedSettingsUI.framework; path = System/Library/Frameworks/ManagedSettingsUI.framework; sourceTree = SDKROOT; };
 		DCEDACF82D8FD909002223D7 /* chimes.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = chimes.mp3; sourceTree = "<group>"; };
 		DCEDACF92D8FD909002223D7 /* circuit.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = circuit.mp3; sourceTree = "<group>"; };
@@ -238,8 +238,8 @@
 				DC942DF52DB60809005710B6 /* SleepNotificationModule.swift */,
 				DC55B01A2D94C6A7004436B8 /* AlarmSound.swift */,
 				DC55B0162D94C553004436B8 /* AlarmSound.m */,
-				DC18006F2DCA841400991301 /* GoogleService-Info.plist */,
 				DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */,
+				DCB2B70A2DCC780A001015BB /* GoogleService-Info.plist */,
 				DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */,
 				DC07F55E2D8BB2BF005F15FF /* BlissAlarm-Bridging-Header.h */,
 				DC07F55A2D8BB29E005F15FF /* ScreenTimeBridge.m */,
@@ -393,7 +393,7 @@
 				88ED184076A142A0910A1E6D /* piano.caf in Resources */,
 				A97BC69DC97D4B91BEE39A1B /* white-noise.caf in Resources */,
 				7915E0095D084731B42483CF /* pink-noise.caf in Resources */,
-				DC1800702DCA841500991301 /* GoogleService-Info.plist in Resources */,
+				DCB2B70B2DCC780A001015BB /* GoogleService-Info.plist in Resources */,
 				5B0773957CCD442FB18139DD /* rain.caf in Resources */,
 				5C4E5A13A13D4A1B932D68C4 /* space.caf in Resources */,
 				DCACC2A42D8F7FC0004DD610 /* test.mp3 in Resources */,
@@ -428,6 +428,7 @@
 			);
 			inputPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-BlissAlarm/Pods-BlissAlarm-resources.sh",
+				"${PODS_CONFIGURATION_BUILD_DIR}/AppAuth/AppAuthCore_Privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXApplication/ExpoApplication_privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/EXConstants.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/EXConstants/ExpoConstants_privacy.bundle",
@@ -439,7 +440,9 @@
 				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCore/FirebaseCore_Privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreExtension/FirebaseCoreExtension_Privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/FirebaseCoreInternal/FirebaseCoreInternal_Privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/GTMAppAuth/GTMAppAuth_Privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/GTMSessionFetcher/GTMSessionFetcher_Core_Privacy.bundle",
+				"${PODS_CONFIGURATION_BUILD_DIR}/GoogleSignIn/GoogleSignIn.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/GoogleUtilities/GoogleUtilities_Privacy.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/PurchasesHybridCommon/PurchasesHybridCommon.bundle",
 				"${PODS_CONFIGURATION_BUILD_DIR}/RCT-Folly/RCT-Folly_privacy.bundle",
@@ -458,6 +461,7 @@
 			);
 			name = "[CP] Copy Pods Resources";
 			outputPaths = (
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/AppAuthCore_Privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoApplication_privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/EXConstants.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/ExpoConstants_privacy.bundle",
@@ -469,7 +473,9 @@
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebaseCore_Privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebaseCoreExtension_Privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/FirebaseCoreInternal_Privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GTMAppAuth_Privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GTMSessionFetcher_Core_Privacy.bundle",
+				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleSignIn.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/GoogleUtilities_Privacy.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/PurchasesHybridCommon.bundle",
 				"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/RCT-Folly_privacy.bundle",
