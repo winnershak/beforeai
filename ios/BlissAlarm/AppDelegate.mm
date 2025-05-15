@@ -4,7 +4,6 @@
 #import <React/RCTLinkingManager.h>
 #import <React/RCTBridgeModule.h>
 #import <UserNotifications/UserNotifications.h>
-#import <Firebase.h>
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate>
 @end
@@ -13,8 +12,6 @@
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
-  [FIRApp configure];
-  
   self.moduleName = @"main";
 
   // You can add your custom initial props in the dictionary below.

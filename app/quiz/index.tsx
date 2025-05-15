@@ -49,45 +49,45 @@ export default function QuizIntro() {
     preloadImage();
     
     // Add this simple Firebase test
-    const testFirebase = async () => {
-      try {
-        console.log('🔥 FIREBASE TEST: Starting...');
+    // // const testFirebase = async () => {
+    // //   try {
+    // //     console.log('🔥 FIREBASE TEST: Starting...');
         
-        // Import Firebase modules
-        const firebase = require('@react-native-firebase/app').default;
-        const auth = require('@react-native-firebase/auth').default;
+    // //     // Import Firebase modules
+    // //     const firebase = require('@react-native-firebase/app').default;
+    // //     const auth = require('@react-native-firebase/auth').default;
         
-        // Check if Firebase is initialized
-        console.log(`🔥 FIREBASE TEST: Apps count: ${firebase.apps.length}`);
+    // //     // Check if Firebase is initialized
+    // //     console.log(`🔥 FIREBASE TEST: Apps count: ${firebase.apps.length}`);
         
-        if (firebase.apps.length === 0) {
-          console.log('🔥 FIREBASE TEST: Firebase is NOT initialized, initializing now...');
-          firebase.initializeApp({
-            appId: '1:748781286916:ios:d94493e3abc4808c102751',
-            projectId: 'bliss-alarm-b8280',
-          });
-          console.log('🔥 FIREBASE TEST: Firebase initialized successfully');
-        } else {
-          console.log('🔥 FIREBASE TEST: Firebase is already initialized');
-        }
+    // //     if (firebase.apps.length === 0) {
+    // //       console.log('🔥 FIREBASE TEST: Firebase is NOT initialized, initializing now...');
+    // //       firebase.initializeApp({
+    // //         appId: '1:748781286916:ios:d94493e3abc4808c102751',
+    // //         projectId: 'bliss-alarm-b8280',
+    // //       });
+    // //       console.log('🔥 FIREBASE TEST: Firebase initialized successfully');
+    // //     } else {
+    // //       console.log('🔥 FIREBASE TEST: Firebase is already initialized');
+    // //     }
         
-        // Try anonymous sign-in (simplest auth method)
-        console.log('🔥 FIREBASE TEST: Attempting anonymous sign-in...');
-        const result = await auth().signInAnonymously();
-        console.log('🔥 FIREBASE TEST: SUCCESS! Firebase authentication is working!');
-        console.log(`🔥 FIREBASE TEST: User ID: ${result.user.uid}`);
+    // //     // Try anonymous sign-in (simplest auth method)
+    // //     console.log('🔥 FIREBASE TEST: Attempting anonymous sign-in...');
+    // //     const result = await auth().signInAnonymously();
+    // //     console.log('🔥 FIREBASE TEST: SUCCESS! Firebase authentication is working!');
+    // //     console.log(`🔥 FIREBASE TEST: User ID: ${result.user.uid}`);
         
-        // Sign out
-        await auth().signOut();
-        console.log('🔥 FIREBASE TEST: Signed out successfully');
-      } catch (error) {
-        console.error('🔥 FIREBASE TEST: FAILED!', error);
+    // //     // Sign out
+    // //     await auth().signOut();
+    // //     console.log('🔥 FIREBASE TEST: Signed out successfully');
+    // //   } catch (error) {
+    // //     console.error('🔥 FIREBASE TEST: FAILED!', error);
        
-      }
-    };
+    // //   }
+    // // };
     
-    // Run the test
-    testFirebase();
+    // // Run the test
+    // testFirebase();
   }, []);
 
   useEffect(() => {

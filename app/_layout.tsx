@@ -36,8 +36,8 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import * as Network from 'expo-network';
 import { Alert } from 'react-native';
 import { SplashScreen as RouterSplashScreen } from 'expo-router';
-import firebase from '@react-native-firebase/app';
-import '@react-native-firebase/auth';
+// import firebase from '@react-native-firebase/app';
+// import '@react-native-firebase/auth';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -47,9 +47,9 @@ SplashScreen.preventAutoHideAsync();
 // Global flag to track if alarm is active
 let isAlarmActive = false;
 
-// Make Firebase globally available
-// @ts-ignore - Adding firebase to global
-global.firebaseApp = firebase;
+// // Make Firebase globally available
+// // @ts-ignore - Adding firebase to global
+// global.firebaseApp = firebase;
 
 const handleError = (error: Error) => {
   console.log('Caught error:', error);
@@ -130,16 +130,16 @@ export default function AppLayout() {
 
   useEffect(() => {
     // Initialize Firebase if not already initialized
-    if (!firebase.apps.length) {
-      console.log('Initializing Firebase in _layout.tsx...');
-      firebase.initializeApp({
-        appId: '1:748781286916:ios:d94493e3abc4808c102751',
-        projectId: 'bliss-alarm-b8280',
-      });
-      console.log('Firebase initialized successfully in _layout.tsx');
-    } else {
-      console.log('Firebase already initialized in _layout.tsx');
-    }
+    // if (!firebase.apps.length) {
+    //   console.log('Initializing Firebase in _layout.tsx...');
+    //   firebase.initializeApp({
+    //     appId: '1:748781286916:ios:d94493e3abc4808c102751',
+    //     projectId: 'bliss-alarm-b8280',
+    //   });
+    //   console.log('Firebase initialized successfully in _layout.tsx');
+    // } else {
+    //   console.log('Firebase already initialized in _layout.tsx');
+    // }
     
     // Set a small delay to ensure the app is fully mounted
     const timer = setTimeout(() => {

@@ -11,9 +11,6 @@ platform :ios, podfile_properties['ios.deploymentTarget'] || '16.0'
 install! 'cocoapods',
   :deterministic_uuids => false
 
-# Use frameworks for Firebase but keep React static
-use_frameworks! :linkage => :static
-
 prepare_react_native_project!
 
 target 'BlissAlarm' do
@@ -36,9 +33,13 @@ target 'BlissAlarm' do
 
   config = use_native_modules!(config_command)
 
+  use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
+  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+
   use_react_native!(
     :path => config[:reactNativePath],
     :hermes_enabled => podfile_properties['expo.jsEngine'] == nil || podfile_properties['expo.jsEngine'] == 'hermes',
+    # An absolute path to your application root.
     :app_path => "#{Pod::Config.instance.installation_root}/..",
     :privacy_file_aggregation_enabled => podfile_properties['apple.privacyManifestAggregationEnabled'] != 'false',
   )
@@ -58,6 +59,28 @@ target 'BlissAlarm' do
       target_installation_result.resource_bundle_targets.each do |resource_bundle_target|
         resource_bundle_target.build_configurations.each do |config|
           config.build_settings['CODE_SIGNING_ALLOWED'] = 'NO'
+        end
+      end
+    end
+    
+    installer.pods_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        # Force C++20 which has proper template definitions
+        config.build_settings['OTHER_CPLUSPLUSFLAGS'] = '-std=c++20'
+        # And also update CXXFLAGS
+        config.build_settings['OTHER_CXXFLAGS'] = '-std=c++20'
+        config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
+        
+        # Add additional settings for ReactCommon specifically
+        if target.name == 'ReactCommon'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FOLLY_NO_CONFIG=1'
+        end
+        
+        # Fix RNReanimated missing version string
+        if target.name == 'RNReanimated'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'REANIMATED_VERSION_STRING=\"1.0.0\"'
         end
       end
     end

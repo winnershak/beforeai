@@ -21,17 +21,11 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>1.0.2</string>
+    <string>4.1.0</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
     <array>
-      <dict>
-        <key>CFBundleURLSchemes</key>
-        <array>
-          <string>com.googleusercontent.apps.YOUR_REVERSED_CLIENT_ID</string>
-        </array>
-      </dict>
       <dict>
         <key>CFBundleURLSchemes</key>
         <array>
@@ -47,21 +41,18 @@
       </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>63</string>
+    <string>110</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSRequiresIPhoneOS</key>
     <true/>
-    
-    <!-- Dev-only insecure connection allowance -->
     <key>NSAppTransportSecurity</key>
     <dict>
       <key>NSAllowsArbitraryLoads</key>
-      <true/>
+      <false/>
     </dict>
-
     <key>NSCameraUsageDescription</key>
     <string>$(PRODUCT_NAME) needs access to your Camera.</string>
     <key>NSFamilyControlsUsageDescription</key>
@@ -125,7 +116,7 @@
     <key>NSLocalNetworkUsageDescription</key>
     <string>Developer mode uses local network to connect to development server</string>
     <key>IS_PRODUCTION</key>
-    <false/>
+    <true/>
     <key>RCTDisableExceptionsManager</key>
     <false/>
   </dict>
