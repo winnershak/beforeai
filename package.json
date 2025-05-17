@@ -64,6 +64,7 @@
     "react-dom": "18.3.1",
     "react-native": "0.76.7",
     "react-native-cached-image": "^1.4.3",
+    "react-native-camera": "^4.2.1",
     "react-native-confetti-cannon": "^1.5.2",
     "react-native-error-boundary": "^2.0.0",
     "react-native-expo-image-cache": "^4.1.0",
@@ -84,8 +85,7 @@
     "react-native-vision-camera": "^4.6.4",
     "react-native-web": "~0.19.13",
     "react-native-webview": "13.12.5",
-    "use-latest-callback": "^0.2.3",
-    "react-native-camera": "^4.2.1"
+    "use-latest-callback": "^0.2.3"
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
