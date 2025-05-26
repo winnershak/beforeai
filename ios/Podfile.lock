@@ -1586,6 +1586,8 @@ PODS:
     - React
   - react-native-netinfo (11.4.1):
     - React-Core
+  - react-native-nfc-manager (3.16.1):
+    - React-Core
   - react-native-safe-area-context (4.12.0):
     - React-Core
   - react-native-slider (4.5.6):
@@ -2150,6 +2152,7 @@ DEPENDENCIES:
   - react-native-camera (from `../node_modules/react-native-camera`)
   - react-native-image-base64 (from `../node_modules/react-native-image-base64`)
   - "react-native-netinfo (from `../node_modules/@react-native-community/netinfo`)"
+  - react-native-nfc-manager (from `../node_modules/react-native-nfc-manager`)
   - react-native-safe-area-context (from `../node_modules/react-native-safe-area-context`)
   - "react-native-slider (from `../node_modules/@react-native-community/slider`)"
   - react-native-webview (from `../node_modules/react-native-webview`)
@@ -2362,6 +2365,8 @@ EXTERNAL SOURCES:
     :path: "../node_modules/react-native-image-base64"
   react-native-netinfo:
     :path: "../node_modules/@react-native-community/netinfo"
+  react-native-nfc-manager:
+    :path: "../node_modules/react-native-nfc-manager"
   react-native-safe-area-context:
     :path: "../node_modules/react-native-safe-area-context"
   react-native-slider:
@@ -2532,6 +2537,7 @@ SPEC CHECKSUMS:
   react-native-camera: 079d80421f0572d6b4e836908114d614d0adb553
   react-native-image-base64: dcc37d84fd855e25ffdc7753deba333b0f9e4d8b
   react-native-netinfo: cec9c4e86083cb5b6aba0e0711f563e2fbbff187
+  react-native-nfc-manager: a280ef94cd4871a471b052f0dc70381cf1223049
   react-native-safe-area-context: 8b8404e70b0cbf2a56428a17017c14c1dcc16448
   react-native-slider: 0b7c66d7408aa7c279b783f6a017c31870184c99
   react-native-webview: 286356dfd10655a87a61f8192037904fec3c4921

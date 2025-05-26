@@ -110,13 +110,52 @@ export default function EditScheduleScreen() {
   
   const [schedules, setSchedules] = useState<AppBlockSchedule[]>([]);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
-  const [selectedDevice, setSelectedDevice] = useState<'qr' | 'nfc'>('qr');
+  const [hasQRCode, setHasQRCode] = useState(false);
+  const [hasNFCCard, setHasNFCCard] = useState(false);
   
-  // Load the ONE schedule we care about
+  // Add function to save device selection immediately
+  const saveDeviceSelection = async (device: 'qr' | 'nfc') => {
+    try {
+      console.log(`📱 Saving device selection: ${device}`);
+      
+      // Update local state
+      setSchedule(prev => ({ ...prev, selectedDevice: device }));
+      
+      // Save to AsyncStorage immediately
+      const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
+      if (savedSchedules) {
+        const parsed = JSON.parse(savedSchedules);
+        const mainSchedule = parsed.find((s: any) => s.id === FIXED_SCHEDULE_ID);
+        
+        if (mainSchedule) {
+          // Update the device selection in the saved schedule
+          mainSchedule.selectedDevice = device;
+          await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(parsed));
+          console.log(`✅ Device selection saved: ${device}`);
+        } else {
+          // If no schedule exists yet, just save the device preference
+          await AsyncStorage.setItem('selectedDevice', device);
+          console.log(`✅ Device preference saved: ${device}`);
+        }
+      } else {
+        // No schedules exist, save device preference separately
+        await AsyncStorage.setItem('selectedDevice', device);
+        console.log(`✅ Device preference saved: ${device}`);
+      }
+    } catch (error) {
+      console.error('Error saving device selection:', error);
+    }
+  };
+  
+  // Update the useEffect to also load saved device preference
   useEffect(() => {
     const loadSchedules = async () => {
       try {
         console.log('🔍 Loading THE schedule...');
+        
+        // First try to load saved device preference
+        const savedDevice = await AsyncStorage.getItem('selectedDevice') as 'qr' | 'nfc' | null;
+        
         const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
         if (savedSchedules) {
           const parsed = JSON.parse(savedSchedules);
@@ -128,7 +167,8 @@ export default function EditScheduleScreen() {
             console.log('✅ Found main schedule:', {
               apps: mainSchedule.blockedApps?.length || 0,
               categories: mainSchedule.blockedCategories?.length || 0,
-              websites: mainSchedule.blockedWebDomains?.length || 0
+              websites: mainSchedule.blockedWebDomains?.length || 0,
+              device: mainSchedule.selectedDevice || savedDevice || 'qr'
             });
             
             setSchedule({
@@ -137,15 +177,24 @@ export default function EditScheduleScreen() {
               endTime: new Date(mainSchedule.endTime),
               blockedApps: Array.isArray(mainSchedule.blockedApps) ? mainSchedule.blockedApps : [],
               blockedCategories: Array.isArray(mainSchedule.blockedCategories) ? mainSchedule.blockedCategories : [],
-              blockedWebDomains: Array.isArray(mainSchedule.blockedWebDomains) ? mainSchedule.blockedWebDomains : []
+              blockedWebDomains: Array.isArray(mainSchedule.blockedWebDomains) ? mainSchedule.blockedWebDomains : [],
+              selectedDevice: mainSchedule.selectedDevice || savedDevice || 'qr' // Use saved device or fallback
             });
           } else {
             console.log('📋 No main schedule found, will create new one');
+            // If no schedule but we have a saved device preference, use it
+            if (savedDevice) {
+              setSchedule(prev => ({ ...prev, selectedDevice: savedDevice }));
+            }
           }
           
           setSchedules(parsed);
         } else {
           console.log('📋 No saved schedules found');
+          // If no schedules but we have a saved device preference, use it
+          if (savedDevice) {
+            setSchedule(prev => ({ ...prev, selectedDevice: savedDevice }));
+          }
         }
       } catch (error) {
         console.error('Error loading schedules:', error);
@@ -153,6 +202,23 @@ export default function EditScheduleScreen() {
     };
     
     loadSchedules();
+  }, []);
+  
+  // Check if QR code is saved
+  useEffect(() => {
+    const checkDevices = async () => {
+      try {
+        const savedQR = await AsyncStorage.getItem('blockEndQRCode');
+        setHasQRCode(!!savedQR);
+        
+        const savedNFC = await AsyncStorage.getItem('blockEndNFCData');
+        setHasNFCCard(!!savedNFC);
+      } catch (error) {
+        console.error('Error checking devices:', error);
+      }
+    };
+    
+    checkDevices();
   }, []);
   
   // Open app selection picker
@@ -206,21 +272,23 @@ export default function EditScheduleScreen() {
         return;
       }
 
-      // Create updated schedule with FIXED ID
+      // Create updated schedule with FIXED ID AND selectedDevice
       const updatedSchedule = {
         ...schedule,
         id: FIXED_SCHEDULE_ID, // Always use the same ID
         isActive: false,
         blockedApps: schedule.blockedApps || [],
         blockedCategories: schedule.blockedCategories || [],
-        blockedWebDomains: schedule.blockedWebDomains || []
+        blockedWebDomains: schedule.blockedWebDomains || [],
+        selectedDevice: schedule.selectedDevice // Make sure to save the device type!
       };
       
       console.log('📝 Schedule to save:', {
         id: updatedSchedule.id,
         apps: updatedSchedule.blockedApps.length,
         categories: updatedSchedule.blockedCategories.length,
-        websites: updatedSchedule.blockedWebDomains.length
+        websites: updatedSchedule.blockedWebDomains.length,
+        device: updatedSchedule.selectedDevice
       });
       
       // CLEAN SLATE: Remove all old schedules and save only ONE
@@ -308,20 +376,39 @@ export default function EditScheduleScreen() {
           <Text style={styles.formLabel}>Block Device</Text>
           <View style={styles.deviceOptions}>
             <TouchableOpacity 
-              style={[styles.deviceOption, selectedDevice === 'qr' && styles.deviceOptionSelected]}
-              onPress={() => setSelectedDevice('qr')}
+              style={[styles.deviceOption, schedule.selectedDevice === 'qr' && styles.deviceOptionSelected]}
+              onPress={() => saveDeviceSelection('qr')}
             >
               <Ionicons name="qr-code-outline" size={24} color="#fff" />
               <Text style={styles.deviceOptionText}>QR Code</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.deviceOption, selectedDevice === 'nfc' && styles.deviceOptionSelected]}
-              onPress={() => setSelectedDevice('nfc')}
+              style={[styles.deviceOption, schedule.selectedDevice === 'nfc' && styles.deviceOptionSelected]}
+              onPress={() => saveDeviceSelection('nfc')}
             >
               <Ionicons name="card-outline" size={24} color="#fff" />
               <Text style={styles.deviceOptionText}>NFC Card</Text>
             </TouchableOpacity>
           </View>
+          
+          {/* Show appropriate setup button based on device selection */}
+          {schedule.selectedDevice === 'qr' && (
+            <TouchableOpacity 
+              style={[styles.qrSetupButton, hasQRCode && styles.qrSetupButtonSaved]}
+              onPress={() => router.push('/appblock/qr-setup')}
+            >
+              <Ionicons 
+                name={hasQRCode ? "checkmark-circle" : "qr-code"} 
+                size={20} 
+                color={hasQRCode ? "#34C759" : "#0A84FF"} 
+              />
+              <Text style={[styles.qrSetupButtonText, hasQRCode && styles.qrSetupButtonTextSaved]}>
+                {hasQRCode ? "QR Code Saved" : "Setup QR Code"}
+              </Text>
+              <Ionicons name="chevron-forward" size={18} color="#8E8E93" />
+            </TouchableOpacity>
+          )}
+          {/* No setup needed for NFC - all cards have the same string */}
         </View>
         
         {/* Blocked Apps Selection */}
@@ -574,5 +661,30 @@ const styles = StyleSheet.create({
   deviceOptionSelected: {
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
+  },
+  qrSetupButton: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 10,
+    padding: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  qrSetupButtonText: {
+    color: '#0A84FF',
+    fontSize: 16,
+    fontWeight: '600',
+    flex: 1,
+    marginLeft: 12,
+  },
+  qrSetupButtonSaved: {
+    backgroundColor: '#1C2E1C',
+    borderColor: '#34C759',
+  },
+  qrSetupButtonTextSaved: {
+    color: '#34C759',
   },
 }); 

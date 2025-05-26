@@ -61,6 +61,8 @@
     <string>This app uses the microphone for...</string>
     <key>NSMotionUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your device motion.</string>
+    <key>NFCReaderUsageDescription</key>
+    <string>This app uses NFC to scan cards for ending app blocking.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app uses the photo library for...</string>
     <key>NSUserNotificationUsageDescription</key>

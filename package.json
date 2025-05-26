@@ -74,6 +74,7 @@
     "react-native-image-base64": "^0.1.4",
     "react-native-image-colors": "^2.4.0",
     "react-native-modal-datetime-picker": "^18.0.0",
+    "react-native-nfc-manager": "^3.16.1",
     "react-native-permissions": "^5.2.5",
     "react-native-purchases": "^8.9.6",
     "react-native-push-notification": "^8.1.1",

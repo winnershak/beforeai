@@ -35,6 +35,7 @@ interface AppBlockSchedule {
   blockedCategories: string[];
   blockedWebDomains: string[];
   snoozeUntil?: string;
+  selectedDevice: string;
 }
 
 export default function AppBlockScreen() {
@@ -1006,11 +1007,22 @@ export default function AppBlockScreen() {
         return;
       }
       
-      // Use the main schedule's settings
+      console.log('📋 Schedule device type:', mainSchedule.selectedDevice);
+      
+      // Check if NFC is selected - show native iOS NFC dialog immediately
+      if (mainSchedule.selectedDevice === 'nfc') {
+        console.log('🔵 NFC device selected - opening native NFC scanner');
+        // Navigate directly to NFC scanner which will show the native iOS dialog
+        router.push('/appblock/nfc-scanner');
+        return; // Stop here - don't block yet
+      }
+      
+      // For QR code, proceed with immediate blocking
       console.log('📋 Using main schedule settings:', {
         apps: mainSchedule.blockedApps?.length || 0,
         categories: mainSchedule.blockedCategories?.length || 0,
-        websites: mainSchedule.blockedWebDomains?.length || 0
+        websites: mainSchedule.blockedWebDomains?.length || 0,
+        device: mainSchedule.selectedDevice
       });
       
       // Validate that the schedule has apps to block
@@ -1068,9 +1080,11 @@ export default function AppBlockScreen() {
       const totalWebsites = mainSchedule.blockedWebDomains?.length || 0;
       const totalItems = totalApps + totalWebsites;
       
+      const deviceType = mainSchedule.selectedDevice === 'nfc' ? 'NFC card' : 'QR code';
+      
       Alert.alert(
         'Apps Blocked Forever!', 
-        `${totalItems} apps and websites are now PERMANENTLY blocked. Tap "Stop Blocking" below to unblock them.`,
+        `${totalItems} apps and websites are now PERMANENTLY blocked. Use your ${deviceType} to unblock them.`,
         [{ text: 'OK' }]
       );
       
@@ -1190,7 +1204,7 @@ export default function AppBlockScreen() {
         
         {/* Show different content based on blocking status */}
         {hasActivePermanentBlock ? (
-          // Show "Apps Blocked" status WITHOUT the End Block button
+          // Show "Apps Blocked" status
           <View style={styles.blockedStateContainer}>
             <View style={styles.blockedStatusCard}>
               <Ionicons name="shield-checkmark" size={48} color="#FF453A" />
@@ -1213,16 +1227,30 @@ export default function AppBlockScreen() {
           </View>
         )}
 
-        {/* Edit Button / Stop Blocking Button - Sticky at bottom */}
+        {/* Edit Button / Scan to End Blocking Button - Sticky at bottom */}
         <View style={styles.editButtonContainer}>
           {hasActivePermanentBlock ? (
-            // Show red "Stop Blocking" button when blocking is active
+            // Show appropriate scan button based on selected device type
             <TouchableOpacity
-              style={styles.stopBlockingButton}
-              onPress={handleEndPermanentBlock}
+              style={styles.scanQRButton}
+              onPress={() => {
+                // Check which device type is selected
+                const mainSchedule = schedules.find(s => s.id === 'main-schedule');
+                if (mainSchedule?.selectedDevice === 'nfc') {
+                  router.push('/appblock/nfc-scanner');
+                } else {
+                  router.push('/appblock/qr-scanner');
+                }
+              }}
             >
-              <Ionicons name="stop-circle-outline" size={20} color="#fff" />
-              <Text style={styles.stopBlockingButtonText}>Stop Blocking</Text>
+              <Ionicons 
+                name={schedules.find(s => s.id === 'main-schedule')?.selectedDevice === 'nfc' ? "card-outline" : "qr-code-outline"} 
+                size={20} 
+                color="#fff" 
+              />
+              <Text style={styles.scanQRButtonText}>
+                {schedules.find(s => s.id === 'main-schedule')?.selectedDevice === 'nfc' ? "Scan NFC to End Blocking" : "Scan QR to End Blocking"}
+              </Text>
             </TouchableOpacity>
           ) : (
             // Show blue "Edit Settings" button when not blocking
@@ -1627,18 +1655,23 @@ const styles = StyleSheet.create({
     color: '#999',
     textAlign: 'center',
   },
-  stopBlockingButton: {
-    backgroundColor: '#FF453A',
+  scanQRButton: {
+    backgroundColor: '#FF3B30',
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  stopBlockingButtonText: {
+  scanQRButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
-    marginLeft: 8,
+    fontWeight: 'bold',
   },
 }); 

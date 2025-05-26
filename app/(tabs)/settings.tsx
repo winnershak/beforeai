@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Linking, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform, Linking, Alert, NativeModules } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
@@ -103,6 +103,58 @@ export default function SettingsScreen() {
     });
   };
 
+  const handleRemoveBlocks = async () => {
+    try {
+      // Show confirmation alert
+      Alert.alert(
+        'Remove All Blocks',
+        'Are you sure you want to remove all app and website blocks?',
+        [
+          {
+            text: 'Cancel',
+            style: 'cancel'
+          },
+          {
+            text: 'Remove',
+            style: 'destructive',
+            onPress: async () => {
+              console.log('🔓 Removing all blocks...');
+              
+              // Update schedules to inactive
+              const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
+              if (savedSchedules) {
+                const schedules = JSON.parse(savedSchedules);
+                const inactiveSchedules = schedules.map((s: any) => ({
+                  ...s,
+                  isActive: false
+                }));
+                await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(inactiveSchedules));
+              }
+              
+              // Remove shields from native module
+              if (Platform.OS === 'ios') {
+                const { ScreenTimeBridge } = NativeModules;
+                if (ScreenTimeBridge) {
+                  await ScreenTimeBridge.removeAllShields();
+                  console.log('🛡️ All shields removed');
+                }
+              }
+              
+              Alert.alert(
+                'Blocks Removed',
+                'All app and website blocks have been removed.',
+                [{ text: 'OK' }]
+              );
+            }
+          }
+        ]
+      );
+    } catch (error) {
+      console.error('Error removing blocks:', error);
+      Alert.alert('Error', 'Failed to remove blocks. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -140,7 +192,7 @@ export default function SettingsScreen() {
             onPress={() => Linking.openURL('https://ringed-lifeboat-16e.notion.site/Bliss-Alarm-Privacy-Policy-Support-18df35a984814023857f01d66b34afb5')}
           >
             <View style={styles.settingContent}>
-              <Ionicons name="shield-outline" size={24} color="#FF9500" style={styles.settingIcon} />
+              <Ionicons name="shield-outline" size={24} color="#FF3B30" style={styles.settingIcon} />
               <Text style={styles.settingText}>Privacy Policy</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
@@ -155,6 +207,21 @@ export default function SettingsScreen() {
               <Text style={styles.settingText}>Website</Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>App Blocking</Text>
+          
+          <TouchableOpacity 
+            style={[styles.settingItem, styles.dangerItem]}
+            onPress={handleRemoveBlocks}
+          >
+            <View style={styles.settingContent}>
+              <Ionicons name="shield-outline" size={24} color="#FF3B30" style={styles.settingIcon} />
+              <Text style={[styles.settingText, styles.dangerText]}>Remove All Blocks</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#FF3B30" />
           </TouchableOpacity>
         </View>
 
@@ -314,5 +381,12 @@ const styles = StyleSheet.create({
   settingDescription: {
     color: '#999',
     fontSize: 14,
+  },
+  dangerItem: {
+    borderColor: '#FF3B30',
+    borderWidth: 1,
+  },
+  dangerText: {
+    color: '#FF3B30',
   },
 }); 
