@@ -30,6 +30,7 @@ interface AppBlockSchedule {
   blockedApps: string[];
   blockedCategories: string[];
   blockedWebDomains: string[];
+  selectedDevice: 'qr' | 'nfc';
 }
 
 const BlockedItemsCount = ({ 
@@ -91,63 +92,83 @@ export default function EditScheduleScreen() {
   const scheduleId = params.id as string;
   const isNew = scheduleId === 'new';
   
+  // Use a FIXED ID so we always have only ONE schedule
+  const FIXED_SCHEDULE_ID = 'main-schedule';
+  
   const [schedule, setSchedule] = useState<AppBlockSchedule>({
-    id: isNew ? Date.now().toString() : scheduleId,
+    id: FIXED_SCHEDULE_ID, // Always use the same ID
     name: 'App Blocker',
     startTime: new Date(),
-    endTime: new Date(Date.now() + 60 * 60 * 1000), // 1 hour later
-    daysOfWeek: [true, true, true, true, true, true, true], // All days selected by default
-    isActive: true,
+    endTime: new Date(Date.now() + 60 * 60 * 1000),
+    daysOfWeek: [true, true, true, true, true, true, true],
+    isActive: false,
     blockedApps: [],
     blockedCategories: [],
-    blockedWebDomains: []
+    blockedWebDomains: [],
+    selectedDevice: 'qr'
   });
   
   const [schedules, setSchedules] = useState<AppBlockSchedule[]>([]);
-  
-  // Add this state
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
+  const [selectedDevice, setSelectedDevice] = useState<'qr' | 'nfc'>('qr');
   
-  // Load schedules and find the one we're editing
+  // Load the ONE schedule we care about
   useEffect(() => {
     const loadSchedules = async () => {
       try {
+        console.log('🔍 Loading THE schedule...');
         const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
         if (savedSchedules) {
           const parsed = JSON.parse(savedSchedules);
-          // Convert string dates back to Date objects
-          const loadedSchedules = parsed.map((s: any) => ({
-            ...s,
-            startTime: new Date(s.startTime),
-            endTime: new Date(s.endTime)
-          }));
-          setSchedules(loadedSchedules);
+          console.log('📋 Found saved schedules:', parsed.length);
           
-          // Find the schedule we're editing
-          if (!isNew) {
-            const existingSchedule = loadedSchedules.find((s: AppBlockSchedule) => s.id === scheduleId);
-            if (existingSchedule) {
-              setSchedule(existingSchedule);
-            }
+          // Find OUR main schedule
+          const mainSchedule = parsed.find((s: any) => s.id === FIXED_SCHEDULE_ID);
+          if (mainSchedule) {
+            console.log('✅ Found main schedule:', {
+              apps: mainSchedule.blockedApps?.length || 0,
+              categories: mainSchedule.blockedCategories?.length || 0,
+              websites: mainSchedule.blockedWebDomains?.length || 0
+            });
+            
+            setSchedule({
+              ...mainSchedule,
+              startTime: new Date(mainSchedule.startTime),
+              endTime: new Date(mainSchedule.endTime),
+              blockedApps: Array.isArray(mainSchedule.blockedApps) ? mainSchedule.blockedApps : [],
+              blockedCategories: Array.isArray(mainSchedule.blockedCategories) ? mainSchedule.blockedCategories : [],
+              blockedWebDomains: Array.isArray(mainSchedule.blockedWebDomains) ? mainSchedule.blockedWebDomains : []
+            });
+          } else {
+            console.log('📋 No main schedule found, will create new one');
           }
+          
+          setSchedules(parsed);
+        } else {
+          console.log('📋 No saved schedules found');
         }
       } catch (error) {
-        console.error('Error loading app block schedules:', error);
+        console.error('Error loading schedules:', error);
       }
     };
     
     loadSchedules();
-  }, [scheduleId, isNew]);
+  }, []);
   
   // Open app selection picker
   const selectApps = async () => {
     if (Platform.OS === 'ios' && ScreenTimeBridge) {
       try {
+        console.log('🎯 Opening app selection picker...');
         // Pass the schedule ID to the picker
         const result = await ScreenTimeBridge.showAppSelectionPicker(schedule.id);
         
         if (result && Object.keys(result).length > 0) {
-          console.log('Selected apps:', result);
+          console.log('✅ Selected apps result:', {
+            apps: result.apps?.length || 0,
+            categories: result.categories?.length || 0,
+            websites: result.webDomains?.length || 0
+          });
           
           // Update the schedule with the selected apps
           setSchedule(prev => ({
@@ -156,6 +177,8 @@ export default function EditScheduleScreen() {
             blockedCategories: result.categories || [],
             blockedWebDomains: result.webDomains || []
           }));
+        } else {
+          console.log('❌ No apps selected or empty result');
         }
       } catch (error) {
         console.error('Error selecting apps:', error);
@@ -166,120 +189,70 @@ export default function EditScheduleScreen() {
     }
   };
   
-  // Save the schedule with improved error handling and data validation
+  // Save the schedule - ALWAYS update the same schedule
   const saveSchedule = async () => {
     try {
-      console.log("Saving schedule with ID:", schedule.id);
+      console.log('💾 Saving THE schedule...');
       
-      // Get the current time
-      const now = new Date();
-      
-      // Create a new Date object for the end time
-      const endTime = new Date(schedule.endTime);
-      
-      // Set the date part of endTime to today
-      endTime.setFullYear(now.getFullYear());
-      endTime.setMonth(now.getMonth());
-      endTime.setDate(now.getDate());
-      
-      // Now check if we need to adjust the date:
-      // 1. If end time is earlier than current time, move to tomorrow
-      if (endTime < now) {
-        console.log("End time is earlier than current time, moving to tomorrow");
-        endTime.setDate(endTime.getDate() + 1);
+      // Validate that we have some apps/websites selected
+      if ((!schedule.blockedApps || schedule.blockedApps.length === 0) &&
+          (!schedule.blockedCategories || schedule.blockedCategories.length === 0) &&
+          (!schedule.blockedWebDomains || schedule.blockedWebDomains.length === 0)) {
+        Alert.alert(
+          'No Apps Selected', 
+          'Please select at least one app, category, or website to block.',
+          [{ text: 'OK' }]
+        );
+        return;
       }
-      
-      console.log("Final end time:", endTime);
-      
-      // Update the schedule with adjusted end time and current start time
+
+      // Create updated schedule with FIXED ID
       const updatedSchedule = {
         ...schedule,
-        startTime: new Date(), // Set start time to current time
-        endTime: endTime,      // Use the adjusted end time
-        isActive: true         // Ensure it's active
+        id: FIXED_SCHEDULE_ID, // Always use the same ID
+        isActive: false,
+        blockedApps: schedule.blockedApps || [],
+        blockedCategories: schedule.blockedCategories || [],
+        blockedWebDomains: schedule.blockedWebDomains || []
       };
       
-      // Create a copy of all schedules
-      let allSchedules = [...schedules];
+      console.log('📝 Schedule to save:', {
+        id: updatedSchedule.id,
+        apps: updatedSchedule.blockedApps.length,
+        categories: updatedSchedule.blockedCategories.length,
+        websites: updatedSchedule.blockedWebDomains.length
+      });
       
-      // Find if this schedule already exists
-      const existingIndex = allSchedules.findIndex(s => s.id === updatedSchedule.id);
+      // CLEAN SLATE: Remove all old schedules and save only ONE
+      const cleanSchedules = [updatedSchedule];
       
-      // If it exists, handle removing the old one first
-      if (existingIndex !== -1) {
-        console.log("Found existing schedule, removing it completely");
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(cleanSchedules));
+      console.log('💾 Successfully saved ONLY ONE schedule to AsyncStorage');
+      
+      // Verify the save
+      const savedData = await AsyncStorage.getItem('appBlockSchedules');
+      if (savedData) {
+        const parsedData = JSON.parse(savedData);
+        console.log('✅ Verified: Now have', parsedData.length, 'schedule(s)');
         
-        // First, remove all shields and stop monitoring
-        if (Platform.OS === 'ios' && ScreenTimeBridge) {
-          try {
-            // Remove all shields
-            await ScreenTimeBridge.removeAllShields();
-            console.log('All shields removed');
-            
-            // Stop monitoring for this schedule
-            await ScreenTimeBridge.stopMonitoringForSchedule(updatedSchedule.id, 0);
-            console.log('Successfully stopped monitoring');
-          } catch (error) {
-            console.error('Error stopping monitoring:', error);
-            // Continue anyway
-          }
-        }
+        Alert.alert(
+          'Settings Saved!', 
+          `Your blocking settings have been saved. Apps are NOT blocked yet. Tap "Bliss Alarm" to activate blocking when ready.`,
+          [{ text: 'OK' }]
+        );
         
-        // Replace the existing schedule
-        allSchedules[existingIndex] = updatedSchedule;
-        console.log(`Replacing schedule at index ${existingIndex}`);
-      } else {
-        // Add as new schedule
-        allSchedules.push(updatedSchedule);
-        console.log("Adding new schedule");
+        router.replace('/(tabs)/appblock');
       }
       
-      // Save to AsyncStorage
-      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(allSchedules));
-      console.log("Saved schedules to AsyncStorage");
-      
-      // Apply the schedule to ScreenTime
-      if (Platform.OS === 'ios' && ScreenTimeBridge) {
-        const result = await ScreenTimeBridge.applyAppBlockSchedule(updatedSchedule);
-        console.log("Applied updated schedule to ScreenTime:", result);
-      }
-      
-      // Navigate to app blocking tab
-      router.replace('/(tabs)/appblock');
     } catch (error) {
-      console.error('Error saving schedule:', error);
-      Alert.alert('Error', 'Failed to save schedule. Please try again.');
+      console.error('💥 Error saving schedule:', error);
+      Alert.alert('Save Failed', 'Failed to save your settings. Please try again.');
     }
   };
   
   // Delete the schedule
   const deleteSchedule = async () => {
     try {
-      // First deactivate the schedule
-      const deactivatedSchedule = {
-        ...schedule,
-        isActive: false
-      };
-      
-      // Apply the deactivated schedule to remove all blocks
-      if (Platform.OS === 'ios' && ScreenTimeBridge) {
-        await ScreenTimeBridge.applyAppBlockSchedule(deactivatedSchedule);
-        console.log("Deactivated schedule for deletion");
-        
-        // Use the methods we know work
-        try {
-          // First, remove all shields
-          await ScreenTimeBridge.removeAllShields();
-          console.log('All shields removed for deletion');
-          
-          // Then stop monitoring for this schedule
-          await ScreenTimeBridge.stopMonitoringForSchedule(schedule.id, 0);
-          console.log('Successfully stopped monitoring for deletion');
-        } catch (error) {
-          console.error('Error stopping monitoring for deletion:', error);
-        }
-      }
-      
       // Remove from AsyncStorage
       const savedSchedulesJson = await AsyncStorage.getItem('appBlockSchedules');
       if (savedSchedulesJson) {
@@ -288,10 +261,9 @@ export default function EditScheduleScreen() {
         await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
       }
       
-      // Navigate to app blocking tab
+      // Navigate back to app blocking tab
       router.replace('/(tabs)/appblock');
     } catch (error) {
-      console.error('Error deleting schedule:', error);
       Alert.alert('Error', 'Failed to delete schedule. Please try again.');
     }
   };
@@ -328,17 +300,31 @@ export default function EditScheduleScreen() {
       />
       
       <ScrollView style={styles.container} contentContainerStyle={styles.contentContainer}>
+        {/* Spacer to push content to bottom */}
+        <View style={styles.topSpacer} />
+        
+        {/* Block Device Selection */}
         <View style={styles.formGroup}>
-          <Text style={styles.formLabel}>Name</Text>
-          <TextInput
-            style={styles.formInput}
-            value={schedule.name}
-            onChangeText={(text) => setSchedule({...schedule, name: text})}
-            placeholder="Enter blocker name"
-            placeholderTextColor="#666"
-          />
+          <Text style={styles.formLabel}>Block Device</Text>
+          <View style={styles.deviceOptions}>
+            <TouchableOpacity 
+              style={[styles.deviceOption, selectedDevice === 'qr' && styles.deviceOptionSelected]}
+              onPress={() => setSelectedDevice('qr')}
+            >
+              <Ionicons name="qr-code-outline" size={24} color="#fff" />
+              <Text style={styles.deviceOptionText}>QR Code</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.deviceOption, selectedDevice === 'nfc' && styles.deviceOptionSelected]}
+              onPress={() => setSelectedDevice('nfc')}
+            >
+              <Ionicons name="card-outline" size={24} color="#fff" />
+              <Text style={styles.deviceOptionText}>NFC Card</Text>
+            </TouchableOpacity>
+          </View>
         </View>
         
+        {/* Blocked Apps Selection */}
         <View style={styles.formGroup}>
           <Text style={styles.formLabel}>Blocked Apps</Text>
           <TouchableOpacity 
@@ -360,17 +346,6 @@ export default function EditScheduleScreen() {
           webDomains={schedule.blockedWebDomains} 
         />
         
-        <View style={styles.formGroup}>
-          <Text style={styles.formLabel}>End Time</Text>
-          <TouchableOpacity 
-            style={styles.timeInput}
-            onPress={() => setShowEndTimePicker(true)}
-          >
-            <Text style={styles.timeInputText}>{formatTime(schedule.endTime)}</Text>
-            <Ionicons name="chevron-down" size={20} color="#8E8E93" />
-          </TouchableOpacity>
-        </View>
-        
         <View style={styles.spacer} />
       </ScrollView>
       
@@ -391,37 +366,6 @@ export default function EditScheduleScreen() {
           </TouchableOpacity>
         )}
       </View>
-      
-      {/* Time Picker Modal for iOS */}
-      {Platform.OS === 'ios' && showEndTimePicker && (
-        <View style={styles.timePickerContainer}>
-          <View style={styles.timePickerHeader}>
-            <Text style={styles.timePickerTitle}>Select End Time</Text>
-            <TouchableOpacity onPress={() => setShowEndTimePicker(false)}>
-              <Text style={styles.timePickerDone}>Done</Text>
-            </TouchableOpacity>
-          </View>
-          <DateTimePicker
-            value={schedule.endTime}
-            mode="time"
-            display="spinner"
-            onChange={handleEndTimeChange}
-            textColor="#FFFFFF"
-            style={styles.timePicker}
-          />
-        </View>
-      )}
-      
-      {/* Time Picker for Android */}
-      {Platform.OS === 'android' && showEndTimePicker && (
-        <DateTimePicker
-          value={schedule.endTime}
-          mode="time"
-          is24Hour={false}
-          display="default"
-          onChange={handleEndTimeChange}
-        />
-      )}
     </SafeAreaView>
   );
 }
@@ -601,5 +545,34 @@ const styles = StyleSheet.create({
     height: 200,
     width: '100%',
     color: '#FFFFFF',
+  },
+  topSpacer: {
+    height: 100, // Adjust this value based on your design
+  },
+  deviceOptions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+  },
+  deviceOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+    borderRadius: 12,
+    backgroundColor: '#1C1C1E',
+  },
+  deviceOptionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
+  },
+  deviceOptionSelected: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
   },
 }); 

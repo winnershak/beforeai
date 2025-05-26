@@ -168,8 +168,6 @@ export default function AppBlockScreen() {
   
   // Add this function to check for schedules that need the End Block button
   const checkScheduleEndTimes = () => {
-    console.log("🔍 Immediately checking schedule end times");
-    
     // Force a re-render to update the UI immediately
     setRefreshTrigger(prev => prev + 1);
     
@@ -188,38 +186,29 @@ export default function AppBlockScreen() {
     React.useCallback(() => {
       const loadSchedules = async () => {
         try {
-          console.log("🔄 Reloading schedules from storage");
           const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
           if (savedSchedules) {
             const parsed = JSON.parse(savedSchedules);
             // Convert string dates back to Date objects AND ensure all arrays exist
             const schedules = parsed.map((schedule: AppBlockSchedule) => {
-              // Ensure endTime is a proper Date object
-              const endTime = new Date(schedule.endTime);
-              
               return {
                 ...schedule,
                 startTime: new Date(schedule.startTime),
-                endTime: endTime,
+                endTime: new Date(schedule.endTime),
                 // Ensure these arrays exist
                 blockedApps: Array.isArray(schedule.blockedApps) ? schedule.blockedApps : [],
                 blockedWebDomains: Array.isArray(schedule.blockedWebDomains) ? schedule.blockedWebDomains : [],
-                blockedCategories: Array.isArray(schedule.blockedCategories) ? schedule.blockedCategories : []
+                blockedCategories: Array.isArray(schedule.blockedCategories) ? schedule.blockedCategories : [],
+                // PRESERVE the isActive state from storage - don't force it to false!
+                isActive: schedule.isActive || false
               };
             });
             
-            console.log("Loaded schedules with dates:", schedules.map((s: AppBlockSchedule) => ({
-              id: s.id,
-              endTime: s.endTime.toLocaleString()
-            })));
-            
             setSchedules(schedules);
-            
-            // IMMEDIATELY check for schedules that need the End Block button
-            setTimeout(checkScheduleEndTimes, 100);
+            console.log('📱 Loaded schedules with preserved state:', schedules.length, 'schedules');
           } else {
-            // If no schedules, set empty array
             setSchedules([]);
+            console.log('📱 No saved settings found');
           }
         } catch (error) {
           console.error('Error loading app block schedules:', error);
@@ -247,13 +236,6 @@ export default function AppBlockScreen() {
       loadSchedules();
       loadReminderSettings();
       checkSnoozeStatus();
-      
-      // Run the check again after a short delay to ensure everything is loaded
-      const immediateCheck = setTimeout(checkScheduleEndTimes, 500);
-      
-      return () => {
-        clearTimeout(immediateCheck);
-      };
     }, [])
   );
   
@@ -419,31 +401,38 @@ export default function AppBlockScreen() {
   const applyAppBlockSchedule = async (schedule: AppBlockSchedule) => {
     if (Platform.OS === 'ios') {
       try {
-        console.log("🔒 Applying app block schedule from main screen");
         if (ScreenTimeBridge) {
+          console.log('🔥 Applying app block schedule:', {
+            id: schedule.id,
+            apps: schedule.blockedApps?.length || 0,
+            categories: schedule.blockedCategories?.length || 0,
+            websites: schedule.blockedWebDomains?.length || 0,
+            isActive: schedule.isActive
+          });
+          
           // Convert the schedule to a format that can be passed to Swift
-          // Keep time fields in the data but they won't be used for blocking
           const scheduleData = {
             id: schedule.id,
             startTime: schedule.startTime.toISOString(),
             endTime: schedule.endTime.toISOString(),
-            blockedApps: schedule.blockedApps,
-            blockedCategories: schedule.blockedCategories,
-            blockedWebDomains: schedule.blockedWebDomains,
+            blockedApps: schedule.blockedApps || [],
+            blockedCategories: schedule.blockedCategories || [],
+            blockedWebDomains: schedule.blockedWebDomains || [],
             daysOfWeek: schedule.daysOfWeek,
             isActive: schedule.isActive
           };
           
-          console.log("📤 Sending schedule data:", JSON.stringify(scheduleData));
-          console.log("📱 Blocked apps count:", schedule.blockedApps.length);
-          
           const result = await ScreenTimeBridge.applyAppBlockSchedule(scheduleData);
-          console.log("📥 Result from native module:", result);
+          console.log('✅ ScreenTimeBridge result:', result);
+          
+          return result;
         } else {
-          console.log("⚠️ ScreenTimeBridge not available");
+          console.error('❌ ScreenTimeBridge is not available');
         }
       } catch (error) {
-        console.error('❌ Error applying app block schedule:', error);
+        console.error('💥 Error applying app block schedule:', error);
+        // Re-throw the error so we know something went wrong
+        throw error;
       }
     }
   };
@@ -479,12 +468,9 @@ export default function AppBlockScreen() {
     const newSchedules = [...schedules];
     newSchedules[index].isActive = !newSchedules[index].isActive;
     
-    console.log(`🔄 Toggling schedule ${newSchedules[index].id} to ${newSchedules[index].isActive ? 'active' : 'inactive'}`);
-    
     setSchedules(newSchedules);
     
     // Apply the updated schedule
-    console.log("🔒 Applying updated schedule after toggle");
     await applyAppBlockSchedule(newSchedules[index]);
   };
   
@@ -553,19 +539,17 @@ export default function AppBlockScreen() {
   
   // Replace the entire registerSchedulesWithSystem function with this simplified version
   const registerSchedulesWithSystem = async () => {
-    // Skip the background registration entirely since it's causing errors
-    // and you don't need the 15-minute minimum requirement
-    console.log("Skipping background registration due to short schedule duration");
+    console.log("🔄 Applying schedules directly (skipping background registration)");
     
     // Just apply the schedules directly without registering for background monitoring
     for (const schedule of schedules) {
       if (schedule.isActive && Platform.OS === 'ios' && ScreenTimeBridge) {
         try {
+          console.log(`🎯 Applying active schedule: ${schedule.id}`);
           // Apply the schedule directly
           await applyAppBlockSchedule(schedule);
-          console.log(`Applied schedule ${schedule.id} directly`);
         } catch (error) {
-          console.error(`Error applying schedule ${schedule.id}:`, error);
+          console.error(`💥 Error applying schedule ${schedule.id}:`, error);
         }
       }
     }
@@ -590,20 +574,10 @@ export default function AppBlockScreen() {
     
     // Check if we're past the end time
     const now = new Date();
-    
-    // Parse the end time and ensure it's a proper Date object
     const endTime = new Date(schedule.endTime);
     
-    // Debug with full date and time
-    console.log(`Schedule ${schedule.id}: now=${now.toLocaleString()}, end=${endTime.toLocaleString()}, isPastEndTime=${now >= endTime}`);
-    
-    // If current time is past the end time, suggest removing the block
-    if (now >= endTime) {
-      return false;
-    }
-    
-    // Otherwise, the schedule is active
-    return true;
+    // Simple millisecond-precise comparison
+    return now.getTime() > endTime.getTime();
   };
   
   // Function to format schedule time for display
@@ -682,9 +656,6 @@ export default function AppBlockScreen() {
     const now = new Date();
     const endTime = new Date(schedule.endTime);
     
-    // Debug with full date and time
-    console.log(`Schedule ${schedule.id}: now=${now.toLocaleString()}, end=${endTime.toLocaleString()}, isPastEndTime=${now.getTime() > endTime.getTime()}`);
-    
     // Simple millisecond-precise comparison
     return now.getTime() > endTime.getTime();
   };
@@ -751,17 +722,6 @@ export default function AppBlockScreen() {
               End available at {schedule.endTime.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
             </Text>
           </View>
-          
-          {/* Show End Block button only when schedule is active AND truly past adjusted end time */}
-          {schedule.isActive && isPastEndTime(schedule) && (
-            <TouchableOpacity 
-              style={styles.endBlockButton}
-              onPress={() => handleEndBlock(schedule.id)}
-            >
-              <Ionicons name="stop-circle-outline" size={18} color="#FF453A" />
-              <Text style={styles.endBlockText}>End Block</Text>
-            </TouchableOpacity>
-          )}
         </View>
       </TouchableOpacity>
     );
@@ -864,7 +824,6 @@ export default function AppBlockScreen() {
       if (Platform.OS === 'ios' && ScreenTimeBridge) {
         try {
           await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, minutes);
-          console.log("Monitoring paused for schedule:", scheduleId);
         } catch (error) {
           console.error("Error pausing monitoring:", error);
         }
@@ -973,6 +932,157 @@ export default function AppBlockScreen() {
     }
   };
   
+  // Update the handleEndPermanentBlock function - remove confirmation dialog
+  const handleEndPermanentBlock = async () => {
+    try {
+      console.log('🔓 Stop Blocking button tapped...');
+      console.log('📊 Current schedules state:', schedules.map(s => ({ id: s.id, isActive: s.isActive })));
+      
+      // No confirmation dialog - just stop blocking immediately
+      try {
+        console.log('🛑 Stopping all blocking...');
+        
+        // If on iOS, use ScreenTimeBridge to completely stop monitoring
+        if (Platform.OS === 'ios' && ScreenTimeBridge) {
+          // First, remove all shields immediately
+          await ScreenTimeBridge.removeAllShields();
+          console.log('🛡️ All shields removed');
+          
+          // Stop monitoring for all schedules
+          for (const schedule of schedules) {
+            if (schedule.isActive) {
+              await ScreenTimeBridge.stopMonitoringForSchedule(schedule.id, 0);
+              console.log(`🔥 Stopped monitoring for ${schedule.id}`);
+            }
+          }
+        }
+        
+        // Set all schedules to inactive (but keep the saved settings)
+        const inactiveSchedules = schedules.map(s => ({
+          ...s,
+          isActive: false
+        }));
+        
+        console.log('💾 Saving inactive schedules to storage...');
+        setSchedules(inactiveSchedules);
+        await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(inactiveSchedules));
+        
+        console.log('✅ All blocking stopped successfully');
+        Alert.alert('Blocking Stopped!', 'All apps and websites have been unblocked.');
+      } catch (error) {
+        console.error('💥 Error stopping blocking:', error);
+        Alert.alert('Error', 'Failed to stop blocking. Please try again.');
+      }
+    } catch (error) {
+      console.error('💥 Error handling stop blocking:', error);
+    }
+  };
+
+  // Simplified handleBlockNow function - no fallbacks, just block
+  const handleBlockNow = async () => {
+    try {
+      console.log('🚀 Bliss Alarm tapped - checking for saved settings...');
+      
+      // Look for OUR main schedule specifically
+      const FIXED_SCHEDULE_ID = 'main-schedule';
+      const mainSchedule = schedules.find(s => s.id === FIXED_SCHEDULE_ID);
+      
+      if (!mainSchedule) {
+        console.log('❌ No main schedule found');
+        Alert.alert(
+          'No Settings Found', 
+          'Please configure your blocking settings first.',
+          [
+            {
+              text: 'Configure Now',
+              onPress: () => createNewSchedule()
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
+        return;
+      }
+      
+      // Use the main schedule's settings
+      console.log('📋 Using main schedule settings:', {
+        apps: mainSchedule.blockedApps?.length || 0,
+        categories: mainSchedule.blockedCategories?.length || 0,
+        websites: mainSchedule.blockedWebDomains?.length || 0
+      });
+      
+      // Validate that the schedule has apps to block
+      if ((!mainSchedule.blockedApps || mainSchedule.blockedApps.length === 0) &&
+          (!mainSchedule.blockedCategories || mainSchedule.blockedCategories.length === 0) &&
+          (!mainSchedule.blockedWebDomains || mainSchedule.blockedWebDomains.length === 0)) {
+        console.log('❌ No apps configured in saved settings');
+        Alert.alert(
+          'No Apps Configured', 
+          'Please configure which apps and websites to block first.',
+          [
+            {
+              text: 'Configure Now',
+              onPress: () => createNewSchedule()
+            },
+            {
+              text: 'Cancel',
+              style: 'cancel'
+            }
+          ]
+        );
+        return;
+      }
+      
+      console.log('🔥 NOW ACTIVATING PERMANENT BLOCKING');
+      
+      // Create a permanent schedule that blocks forever
+      const now = new Date();
+      const farFuture = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000); // 1 year from now (effectively permanent)
+      
+      const permanentSchedule = {
+        ...mainSchedule,
+        id: FIXED_SCHEDULE_ID,
+        name: 'Permanent Block',
+        startTime: now,
+        endTime: farFuture,
+        isActive: true
+      };
+      
+      // Apply the permanent block - THIS IS WHERE BLOCKING ACTUALLY HAPPENS
+      await applyAppBlockSchedule(permanentSchedule);
+      console.log('✅ PERMANENT Blocking applied successfully');
+      
+      // Update the existing schedule instead of creating a new one
+      const updatedSchedules = schedules.map(s => 
+        s.id === FIXED_SCHEDULE_ID ? permanentSchedule : s
+      );
+      
+      setSchedules(updatedSchedules);
+      await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
+      
+      // Count total items being blocked
+      const totalApps = (mainSchedule.blockedApps?.length || 0) + 
+                       (mainSchedule.blockedCategories?.length || 0) * 10; // Estimate 10 apps per category
+      const totalWebsites = mainSchedule.blockedWebDomains?.length || 0;
+      const totalItems = totalApps + totalWebsites;
+      
+      Alert.alert(
+        'Apps Blocked Forever!', 
+        `${totalItems} apps and websites are now PERMANENTLY blocked. Tap "Stop Blocking" below to unblock them.`,
+        [{ text: 'OK' }]
+      );
+      
+    } catch (error) {
+      console.error('💥 Error activating permanent block:', error);
+      Alert.alert('Error', 'Failed to activate blocking. Please try again.');
+    }
+  };
+  
+  // Check if there's currently an active permanent block
+  const hasActivePermanentBlock = schedules.some(s => s.isActive === true);
+
   return (
     <>
       <Stack.Screen 
@@ -1078,21 +1188,53 @@ export default function AppBlockScreen() {
           </View>
         )}
         
-        {/* Schedules List */}
-        <ScrollView style={styles.schedulesList}>
-          {schedules.map((schedule, index) => renderScheduleCard(schedule, index))}
-        </ScrollView>
-        
-        {/* Add New Schedule Button - Only show if no schedules exist */}
-        {schedules.length === 0 && (
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={createNewSchedule}
-          >
-            <Ionicons name="add-circle" size={22} color="#fff" />
-            <Text style={styles.addButtonText}>New Sleep Time</Text>
-          </TouchableOpacity>
+        {/* Show different content based on blocking status */}
+        {hasActivePermanentBlock ? (
+          // Show "Apps Blocked" status WITHOUT the End Block button
+          <View style={styles.blockedStateContainer}>
+            <View style={styles.blockedStatusCard}>
+              <Ionicons name="shield-checkmark" size={48} color="#FF453A" />
+              <Text style={styles.blockedTitle}>Apps Blocked</Text>
+              <Text style={styles.blockedSubtitle}>Your selected apps are currently blocked</Text>
+            </View>
+          </View>
+        ) : (
+          // Show Bliss Alarm Card when not blocked
+          <View style={styles.emptyStateContainer}>
+            <TouchableOpacity
+              style={styles.blockNowCard}
+              onPress={handleBlockNow}
+            >
+              <View style={styles.blockNowContent}>
+                <Text style={styles.blockNowTitle}>Bliss Alarm</Text>
+                <Text style={styles.blockNowSubtitle}>Tap to Activate</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
         )}
+
+        {/* Edit Button / Stop Blocking Button - Sticky at bottom */}
+        <View style={styles.editButtonContainer}>
+          {hasActivePermanentBlock ? (
+            // Show red "Stop Blocking" button when blocking is active
+            <TouchableOpacity
+              style={styles.stopBlockingButton}
+              onPress={handleEndPermanentBlock}
+            >
+              <Ionicons name="stop-circle-outline" size={20} color="#fff" />
+              <Text style={styles.stopBlockingButtonText}>Stop Blocking</Text>
+            </TouchableOpacity>
+          ) : (
+            // Show blue "Edit Settings" button when not blocking
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={createNewSchedule}
+            >
+              <Ionicons name="settings-outline" size={20} color="#fff" />
+              <Text style={styles.editButtonText}>Edit Settings</Text>
+            </TouchableOpacity>
+          )}
+        </View>
         
         {/* Time Pickers */}
         {(showStartPicker || showEndPicker) && (
@@ -1173,115 +1315,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 16,
   },
-  schedulesList: {
-    flex: 1,
-    marginBottom: 80,
-  },
-  scheduleCard: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 16,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  scheduleHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  scheduleNameContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  activeIndicator: {
-    marginRight: 10,
-  },
-  activeIndicatorDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  activeIndicatorDotOn: {
-    backgroundColor: '#34C759',
-  },
-  activeIndicatorDotOff: {
-    backgroundColor: '#8E8E93',
-  },
-  activeIndicatorDotSnoozed: {
-    backgroundColor: '#0A84FF',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  activeIndicatorDotScheduled: {
-    backgroundColor: '#FF9500', // Orange color for scheduled but not active
-  },
-  scheduleName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  scheduleDetails: {
-    backgroundColor: '#2C2C2E',
-    borderRadius: 12,
-    padding: 16,
-  },
-  scheduleInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  scheduleInfoText: {
-    color: '#FFFFFF',
-    marginLeft: 8,
-    fontSize: 14,
-  },
-  scheduleActions: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  scheduleActionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    padding: 12,
-    borderRadius: 16,
-  },
-  scheduleActionText: {
-    color: '#0A84FF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  addButton: {
-    position: 'absolute',
-    bottom: 16,
-    left: 16,
-    right: 16,
-    backgroundColor: '#007AFF',
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginLeft: 8,
-  },
   timePickerContainer: {
     position: 'absolute',
     bottom: 0,
@@ -1321,58 +1354,6 @@ const styles = StyleSheet.create({
   sleepTimePicker: {
     height: 200,
     width: '100%',
-  },
-  snoozeInfoContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(10, 132, 255, 0.1)',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-  },
-  snoozeInfoContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  snoozeInfoText: {
-    color: '#0A84FF',
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  snoozeEndButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  snoozeEndButtonText: {
-    color: '#0A84FF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  statusBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginLeft: 8,
-  },
-  statusBadgeActive: {
-    backgroundColor: 'rgba(52, 199, 89, 0.2)',
-  },
-  statusBadgeSnoozed: {
-    backgroundColor: 'rgba(10, 132, 255, 0.2)',
-  },
-  statusBadgeScheduled: {
-    backgroundColor: 'rgba(255, 149, 0, 0.2)', // Orange background for scheduled
-  },
-  statusBadgeEnded: {
-    backgroundColor: 'rgba(255, 69, 58, 0.2)',
-  },
-  statusBadgeText: {
-    fontSize: 12,
-    color: '#fff',
-    fontWeight: '600',
   },
   sleepReminderCard: {
     backgroundColor: '#2C2C2E',
@@ -1456,6 +1437,110 @@ const styles = StyleSheet.create({
   pickerContainer: {
     paddingVertical: 20,
   },
+  editButtonContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#000',
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#333',
+  },
+  editButton: {
+    backgroundColor: '#0A84FF',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  editButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
+  },
+  emptyStateContainer: {
+    position: 'absolute',
+    top: 200,
+    left: 0,
+    right: 0,
+    bottom: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  blockNowCard: {
+    backgroundColor: '#000000',
+    borderRadius: 16,
+    width: 320,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#007AFF',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 122, 255, 0.3)',
+  },
+  blockNowContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  blockNowTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    color: '#fff',
+  },
+  blockNowSubtitle: {
+    fontSize: 15,
+    color: '#999',
+  },
+  scheduleCard: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  scheduleHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  scheduleNameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  scheduleName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff',
+  },
+  scheduleDetails: {
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+    padding: 16,
+  },
+  scheduleInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  scheduleInfoText: {
+    color: '#FFFFFF',
+    marginLeft: 8,
+    fontSize: 14,
+  },
   scheduleTimeRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1474,53 +1559,86 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '500',
   },
-  removeBlockButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 69, 58, 0.1)',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  removeBlockText: {
-    color: '#FF453A',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
   endBlockButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 69, 58, 0.1)',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  endBlockText: {
-    color: '#FF453A',
-    fontSize: 14,
-    fontWeight: '600',
-    marginLeft: 8,
-  },
-  stickyButtonContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#000',
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-  createButton: {
-    backgroundColor: '#0A84FF',
+    backgroundColor: '#FF453A',
     borderRadius: 12,
     padding: 16,
     alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    width: 200,
   },
-  createButtonText: {
+  endBlockText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+    marginLeft: 8,
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    marginLeft: 8,
+  },
+  statusBadgeActive: {
+    backgroundColor: 'rgba(52, 199, 89, 0.2)',
+  },
+  statusBadgeSnoozed: {
+    backgroundColor: 'rgba(10, 132, 255, 0.2)',
+  },
+  statusBadgeEnded: {
+    backgroundColor: 'rgba(255, 69, 58, 0.2)',
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  blockedStateContainer: {
+    position: 'absolute',
+    top: 200,
+    left: 0,
+    right: 0,
+    bottom: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  blockedStatusCard: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 16,
+    width: 320,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#FF453A',
+  },
+  blockedTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    color: '#FF453A',
+  },
+  blockedSubtitle: {
+    fontSize: 15,
+    color: '#999',
+    textAlign: 'center',
+  },
+  stopBlockingButton: {
+    backgroundColor: '#FF453A',
+    borderRadius: 12,
+    padding: 16,
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+  },
+  stopBlockingButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginLeft: 8,
   },
 }); 
