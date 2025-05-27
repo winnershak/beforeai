@@ -20,6 +20,8 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { format } from 'date-fns';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
+import NfcManager, { NfcTech, Ndef } from 'react-native-nfc-manager';
+import * as Haptics from 'expo-haptics';
 
 const { ScreenTimeBridge, SleepNotificationModule } = NativeModules;
 
@@ -979,7 +981,75 @@ export default function AppBlockScreen() {
     }
   };
 
-  // Simplified handleBlockNow function - no fallbacks, just block
+  // Add this new function for NFC scanning
+  const handleNFCScanning = async () => {
+    try {
+      console.log('🔍 Starting NFC scanning...');
+      
+      // Check if NFC is supported
+      const isSupported = await NfcManager.isSupported();
+      console.log('📱 NFC isSupported result:', isSupported);
+      
+      if (!isSupported) {
+        Alert.alert('NFC Not Supported', 'This device does not support NFC.');
+        return false;
+      }
+
+      // Start NFC Manager
+      await NfcManager.start();
+      console.log('✅ NFC Manager started successfully');
+      
+      // Request NFC technology with native iOS dialog
+      await NfcManager.requestTechnology(NfcTech.Ndef, {
+        alertMessage: 'Hold your Bliss Alarm NFC card near the phone to activate blocking'
+      });
+      
+      const tag = await NfcManager.getTag();
+      
+      if (tag) {
+        // Read NDEF message
+        if (tag.ndefMessage && tag.ndefMessage.length > 0) {
+          const ndefRecord = tag.ndefMessage[0];
+          const payload = ndefRecord.payload;
+          
+          // Convert payload to string
+          let text = '';
+          if (payload && payload.length > 0) {
+            // Skip the language code bytes (usually first 3 bytes for Text records)
+            const textBytes = payload.slice(3);
+            text = String.fromCharCode(...textBytes);
+          }
+          
+          console.log('NFC card data:', text);
+          
+          // Check if this is a valid Bliss Alarm card
+          if (text.includes("BLISS-ALARM-2025-01")) {
+            if (Platform.OS === 'ios') {
+              Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            }
+            
+            await NfcManager.cancelTechnologyRequest();
+            return true; // Valid card found
+          } else {
+            await NfcManager.cancelTechnologyRequest();
+            Alert.alert('Invalid Card', 'This is not a valid Bliss Alarm NFC card.');
+            return false;
+          }
+        } else {
+          await NfcManager.cancelTechnologyRequest();
+          Alert.alert('Invalid Card', 'This NFC card does not contain valid Bliss Alarm data.');
+          return false;
+        }
+      }
+      
+      return false;
+    } catch (error) {
+      console.log('NFC scanning stopped or cancelled');
+      return false;
+    }
+  };
+
+  // Modify the handleBlockNow function
   const handleBlockNow = async () => {
     try {
       console.log('🚀 Bliss Alarm tapped - checking for saved settings...');
@@ -1009,21 +1079,18 @@ export default function AppBlockScreen() {
       
       console.log('📋 Schedule device type:', mainSchedule.selectedDevice);
       
-      // Check if NFC is selected - show native iOS NFC dialog immediately
+      // Check if NFC is selected - scan NFC card first
       if (mainSchedule.selectedDevice === 'nfc') {
-        console.log('🔵 NFC device selected - opening native NFC scanner');
-        // Navigate directly to NFC scanner which will show the native iOS dialog
-        router.push('/appblock/nfc-scanner');
-        return; // Stop here - don't block yet
+        console.log('🔵 NFC device selected - starting NFC scan');
+        const nfcSuccess = await handleNFCScanning();
+        
+        if (!nfcSuccess) {
+          console.log('❌ NFC scan failed or cancelled');
+          return; // Don't proceed with blocking if NFC scan failed
+        }
+        
+        console.log('✅ Valid NFC card detected - proceeding with blocking');
       }
-      
-      // For QR code, proceed with immediate blocking
-      console.log('📋 Using main schedule settings:', {
-        apps: mainSchedule.blockedApps?.length || 0,
-        categories: mainSchedule.blockedCategories?.length || 0,
-        websites: mainSchedule.blockedWebDomains?.length || 0,
-        device: mainSchedule.selectedDevice
-      });
       
       // Validate that the schedule has apps to block
       if ((!mainSchedule.blockedApps || mainSchedule.blockedApps.length === 0) &&

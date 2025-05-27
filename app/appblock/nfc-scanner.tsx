@@ -6,17 +6,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
 import NfcManager, { NfcTech, Ndef, NfcEvents } from 'react-native-nfc-manager';
 
-// Update the mock NFC Manager at the top of the file
-const NfcManagerMock = {
-  isSupported: () => Promise.resolve(false),
-  start: () => Promise.resolve(),
-  requestTechnology: (tech?: any) => Promise.resolve(), // Make parameter optional
-  getTag: () => Promise.resolve(null),
-  cancelTechnologyRequest: () => Promise.resolve(),
-};
-
-const NfcTechMock = { Ndef: 'Ndef' };
-
 export default function NFCScanner() {
   const router = useRouter();
   const [isScanning, setIsScanning] = useState(false);
@@ -39,19 +28,23 @@ export default function NFCScanner() {
 
   const initNFC = async () => {
     try {
+      console.log('🔍 Checking NFC support...');
       const isSupported = await NfcManager.isSupported();
+      console.log('📱 NFC isSupported result:', isSupported);
+      
       if (!isSupported) {
-        Alert.alert('NFC Not Supported', 'This device does not support NFC.');
-        router.back();
-        return;
+        console.log('⚠️ NFC not supported, but trying anyway...');
+        // Don't return here - let's try anyway for debugging
       }
 
+      console.log('🚀 Starting NFC Manager...');
       await NfcManager.start();
+      console.log('✅ NFC Manager started successfully');
       
       // Start scanning immediately
       startNFCScanning();
     } catch (error) {
-      console.error('Error initializing NFC:', error);
+      console.error('💥 Error initializing NFC:', error);
       Alert.alert('NFC Error', 'Failed to initialize NFC. Please try again.');
     }
   };
