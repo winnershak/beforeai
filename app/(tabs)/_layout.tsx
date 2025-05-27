@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Platform, View, Text, ActivityIndicator } from 'react-native';
+import { Platform, View, Text, ActivityIndicator, Alert } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useRootNavigationState } from 'expo-router';
@@ -31,7 +31,7 @@ export default function TabLayout() {
         const isPremium = await RevenueCatService.checkLocalSubscriptionStatus();
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
-        if (quizCompleted !== 'true' && !isPremium) {
+        if (quizCompleted !== 'true') {
           setTimeout(() => {
             router.replace('/quiz');
           }, 0);
@@ -96,9 +96,44 @@ export default function TabLayout() {
       <Tabs.Screen
         name="tutorial"
         options={{
-          title: 'Tutorial',
-          tabBarIcon: ({ color }) => Ionicons ? <Ionicons name="book-outline" size={28} color={color} /> : null,
+          title: 'Secret',
+          tabBarIcon: ({ color }) => (
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <Ionicons name="book-outline" size={28} color={color} />
+              {!isPremium && (
+                <Ionicons 
+                  name="lock-closed" 
+                  size={12} 
+                  color="#FFD700" 
+                  style={{ position: 'absolute', top: -5, right: -5 }} 
+                />
+              )}
+            </View>
+          ),
           headerShown: false,
+        }}
+        listeners={{
+          tabPress: (e) => {
+            if (!isPremium) {
+              // Prevent default navigation
+              e.preventDefault();
+              // Show premium upgrade prompt
+              Alert.alert(
+                'Premium Feature',
+                'The Secret section is only available for premium users.',
+                [
+                  {
+                    text: 'Maybe Later',
+                    style: 'cancel'
+                  },
+                  {
+                    text: 'Upgrade',
+                    onPress: () => router.push('/quiz/yes')
+                  }
+                ]
+              );
+            }
+          }
         }}
       />
       <Tabs.Screen

@@ -96,7 +96,7 @@ export default function EditScheduleScreen() {
   const FIXED_SCHEDULE_ID = 'main-schedule';
   
   const [schedule, setSchedule] = useState<AppBlockSchedule>({
-    id: FIXED_SCHEDULE_ID, // Always use the same ID
+    id: FIXED_SCHEDULE_ID,
     name: 'App Blocker',
     startTime: new Date(),
     endTime: new Date(Date.now() + 60 * 60 * 1000),
@@ -105,13 +105,14 @@ export default function EditScheduleScreen() {
     blockedApps: [],
     blockedCategories: [],
     blockedWebDomains: [],
-    selectedDevice: 'qr'
+    selectedDevice: 'nfc'
   });
   
   const [schedules, setSchedules] = useState<AppBlockSchedule[]>([]);
   const [showEndTimePicker, setShowEndTimePicker] = useState(false);
   const [hasQRCode, setHasQRCode] = useState(false);
   const [hasNFCCard, setHasNFCCard] = useState(false);
+  const [isPremium, setIsPremium] = useState(false);
   
   // Add function to save device selection immediately
   const saveDeviceSelection = async (device: 'qr' | 'nfc') => {
@@ -376,39 +377,51 @@ export default function EditScheduleScreen() {
           <Text style={styles.formLabel}>Block Device</Text>
           <View style={styles.deviceOptions}>
             <TouchableOpacity 
-              style={[styles.deviceOption, schedule.selectedDevice === 'qr' && styles.deviceOptionSelected]}
-              onPress={() => saveDeviceSelection('qr')}
-            >
-              <Ionicons name="qr-code-outline" size={24} color="#fff" />
-              <Text style={styles.deviceOptionText}>QR Code</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
               style={[styles.deviceOption, schedule.selectedDevice === 'nfc' && styles.deviceOptionSelected]}
               onPress={() => saveDeviceSelection('nfc')}
             >
               <Ionicons name="card-outline" size={24} color="#fff" />
               <Text style={styles.deviceOptionText}>NFC Card</Text>
             </TouchableOpacity>
-          </View>
-          
-          {/* Show appropriate setup button based on device selection */}
-          {schedule.selectedDevice === 'qr' && (
+            
+            {/* QR Code option - Premium only */}
             <TouchableOpacity 
-              style={[styles.qrSetupButton, hasQRCode && styles.qrSetupButtonSaved]}
-              onPress={() => router.push('/appblock/qr-setup')}
+              style={[
+                styles.deviceOption, 
+                schedule.selectedDevice === 'qr' && styles.deviceOptionSelected,
+                !isPremium && styles.deviceOptionPremium
+              ]}
+              onPress={async () => {
+                if (!isPremium) {
+                  // Show premium upgrade prompt
+                  Alert.alert(
+                    'Premium Feature',
+                    'QR Code blocking is a premium feature. Upgrade to unlock.',
+                    [
+                      {
+                        text: 'Maybe Later',
+                        style: 'cancel'
+                      },
+                      {
+                        text: 'Upgrade',
+                        onPress: () => router.push('/quiz/yes')
+                      }
+                    ]
+                  );
+                  return;
+                }
+                saveDeviceSelection('qr');
+              }}
             >
-              <Ionicons 
-                name={hasQRCode ? "checkmark-circle" : "qr-code"} 
-                size={20} 
-                color={hasQRCode ? "#34C759" : "#0A84FF"} 
-              />
-              <Text style={[styles.qrSetupButtonText, hasQRCode && styles.qrSetupButtonTextSaved]}>
-                {hasQRCode ? "QR Code Saved" : "Setup QR Code"}
-              </Text>
-              <Ionicons name="chevron-forward" size={18} color="#8E8E93" />
+              <View style={styles.deviceOptionContent}>
+                <Ionicons name="qr-code-outline" size={24} color="#fff" />
+                <Text style={styles.deviceOptionText}>QR Code</Text>
+                {!isPremium && (
+                  <Ionicons name="lock-closed" size={16} color="#FFD700" style={styles.premiumLock} />
+                )}
+              </View>
             </TouchableOpacity>
-          )}
-          {/* No setup needed for NFC - all cards have the same string */}
+          </View>
         </View>
         
         {/* Blocked Apps Selection */}
@@ -662,29 +675,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#007AFF',
     borderColor: '#007AFF',
   },
-  qrSetupButton: {
+  deviceOptionPremium: {
     backgroundColor: '#1C1C1E',
-    borderRadius: 10,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginTop: 12,
-    borderWidth: 1,
     borderColor: '#3A3A3C',
   },
-  qrSetupButtonText: {
-    color: '#0A84FF',
-    fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-    marginLeft: 12,
+  deviceOptionContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  qrSetupButtonSaved: {
-    backgroundColor: '#1C2E1C',
-    borderColor: '#34C759',
-  },
-  qrSetupButtonTextSaved: {
-    color: '#34C759',
+  premiumLock: {
+    marginLeft: 8,
   },
 }); 

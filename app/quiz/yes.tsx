@@ -76,6 +76,7 @@ export default function YesScreen() {
         if (userName) {
           setPersonName(userName);
         }
+        await AsyncStorage.setItem('quizCompleted', 'true');
       } catch (error) {
         console.error('Error fetching user name:', error);
       }
@@ -184,12 +185,21 @@ export default function YesScreen() {
 
       if (success) {
         console.log('Purchase successful!');
-        await AsyncStorage.setItem('isPremium', 'true');
-        await AsyncStorage.setItem('quizCompleted', 'true');
+        
+        // Ensure all storage operations complete before navigation
+        await Promise.all([
+          AsyncStorage.setItem('isPremium', 'true'),
+          AsyncStorage.setItem('quizCompleted', 'true'),
+          AsyncStorage.setItem('lastVerifiedSubscription', new Date().toISOString())
+        ]);
+        
+        // Small delay to ensure storage is written
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         await requestNotificationPermissions();
         
         // Navigate to main app
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/appblock');
       } else {
         console.log('Purchase failed or was cancelled');
         Alert.alert("Purchase Failed", "We couldn't complete your subscription. Please try again.");
@@ -214,11 +224,19 @@ export default function YesScreen() {
       
       if (restored) {
         console.log('Purchases restored successfully!');
-        await AsyncStorage.setItem('isPremium', 'true');
-        await AsyncStorage.setItem('quizCompleted', 'true');
+        
+        // Ensure all storage operations complete
+        await Promise.all([
+          AsyncStorage.setItem('isPremium', 'true'),
+          AsyncStorage.setItem('quizCompleted', 'true'),
+          AsyncStorage.setItem('lastVerifiedSubscription', new Date().toISOString())
+        ]);
+        
+        // Small delay to ensure storage is written
+        await new Promise(resolve => setTimeout(resolve, 100));
         
         // Navigate to main app
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/appblock');
       } else {
         console.log('No purchases to restore');
         Alert.alert("No Subscription Found", "We couldn't find any active subscriptions to restore.");
@@ -257,6 +275,20 @@ export default function YesScreen() {
     return {
       price: pkg.product.priceString
     };
+  };
+
+  // Add this function inside the YesScreen component:
+  const handleContinueWithBasic = async () => {
+    try {
+      // Mark quiz as completed but not premium
+      await AsyncStorage.setItem('quizCompleted', 'true');
+      await AsyncStorage.setItem('isPremium', 'false');
+      
+      // Navigate to main app
+      router.replace('/(tabs)');
+    } catch (error) {
+      console.error('Error continuing with basic version:', error);
+    }
   };
 
   return (
@@ -316,8 +348,6 @@ export default function YesScreen() {
                     </View>
                   </ScrollView>
                 </View>
-                
-                <View style={styles.spacer} />
                 
                 {/* Subscription options */}
                 <View style={styles.subscriptionContainer}>
@@ -387,6 +417,19 @@ export default function YesScreen() {
                       <Text style={styles.userReviewText}>{review.text}</Text>
                     </View>
                   ))}
+                </View>
+                
+                {/* Move the Try Basic Version button here, after reviews */}
+                <View style={[styles.basicVersionContainer, { marginTop: 30 }]}>
+                  <TouchableOpacity 
+                    style={styles.basicVersionButton}
+                    onPress={handleContinueWithBasic}
+                  >
+                    <Text style={styles.basicVersionText}>Try Basic Version</Text>
+                    <Text style={styles.basicVersionSubtext}>
+                      Some features will be limited
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 
                 {/* Add extra space at the bottom for the sticky button */}
@@ -739,5 +782,26 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#999',
     fontWeight: '500',
+  },
+  basicVersionContainer: {
+    marginTop: 20,
+    marginBottom: 30,
+    paddingHorizontal: 30,
+  },
+  basicVersionButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  basicVersionText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  basicVersionSubtext: {
+    color: '#999',
+    fontSize: 13,
+    marginTop: 4,
   },
 }); 

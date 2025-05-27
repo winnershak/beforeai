@@ -69,18 +69,9 @@ export default function UserInfo() {
           console.warn('Failed to save age:', e);
         }
         
-        try {
-          await AsyncStorage.setItem('quizCompleted', 'true');
-        } catch (e) {
-          console.warn('Failed to save quiz completion status:', e);
-        }
-        
-        // Navigate to calculating screen even if some storage operations failed
         router.push('/quiz/calculating');
       } catch (error) {
         console.error('Error in saveUserInfo:', error);
-        
-        // Navigate anyway to prevent user from being stuck
         router.push('/quiz/calculating');
       }
     }

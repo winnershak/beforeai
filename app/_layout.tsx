@@ -406,24 +406,38 @@ export default function AppLayout() {
   useEffect(() => {
     const checkPremiumAccess = async () => {
       try {
-        // Only check premium status if mounted
         if (!isMounted) return;
         
-        // Check premium status from AsyncStorage only
-        const isPremium = await AsyncStorage.getItem('isPremium');
+        // Check local storage first
+        const localPremium = await AsyncStorage.getItem('isPremium');
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
-        // Set state first
-        setIsPremium(isPremium === 'true');
-        setIsLoading(false);
-        
-        // New navigation logic:
-        if (quizCompleted !== 'true') {
-          setInitialRoute('/quiz');  // Quiz not finished -> quiz
-        } else if (isPremium !== 'true') {
-          setInitialRoute('/quiz/yes');  // Quiz finished but no premium -> yes screen
+        // If we have local premium status, verify with RevenueCat
+        if (localPremium === 'true') {
+          try {
+            const isSubscribed = await RevenueCatService.isSubscribed();
+            if (!isSubscribed) {
+              // Subscription expired, clear local state
+              await AsyncStorage.removeItem('isPremium');
+              setIsPremium(false);
+            } else {
+              setIsPremium(true);
+            }
+          } catch (error) {
+            // If RevenueCat check fails, trust local state for now
+            console.log('RevenueCat check failed, using local state');
+            setIsPremium(true);
+          }
         }
-        // Otherwise it will default to (tabs)
+        
+        // Set initial route based on quiz completion
+        if (quizCompleted !== 'true') {
+          setInitialRoute('/quiz');
+        } else {
+          setInitialRoute('(tabs)/appblock');
+        }
+        
+        setIsLoading(false);
       } catch (error) {
         console.error('Error in premium access check:', error);
         setIsLoading(false);
@@ -451,14 +465,15 @@ export default function AppLayout() {
         if (quizCompleted !== 'true') {
           hasNavigatedToQuizRef.current = true;
           setTimeout(() => {
-            console.log('Safe to navigate now, redirecting to quiz (one-time)');
-            router.replace('/quiz');
+            console.log('Quiz not completed, redirecting to quiz');
+            router.replace('/quiz');  // This should go to quiz/index.tsx
           }, 1000);
-        } else if (isPremium !== 'true') {
+        } else {
+          // Quiz is completed, go to main app
           hasNavigatedToQuizRef.current = true;
           setTimeout(() => {
-            console.log('Quiz completed but no premium, redirecting to yes screen');
-            router.replace('/quiz/yes');
+            console.log('Quiz completed, redirecting to app blocking tab');
+            router.replace('(tabs)/appblock');
           }, 1000);
         }
         
@@ -490,28 +505,75 @@ export default function AppLayout() {
   useEffect(() => {
     const subscription = AppState.addEventListener('change', async (nextAppState) => {
       if (nextAppState === 'active') {
-        // Check if alarm screen is showing before cancelling notifications
-        const alarmScreenShowing = await AsyncStorage.getItem('alarmScreenShowing');
-        if (alarmScreenShowing !== 'true') {
-          console.log('App active - cancelling only alarm notifications');
+        // Check if there's an active snooze that has expired
+        const snoozeEndTimeStr = await AsyncStorage.getItem('snoozeEndTime');
+        const manuallyEnded = await AsyncStorage.getItem('manuallyEndedSnooze');
+        
+        if (snoozeEndTimeStr && !manuallyEnded) {
+          const snoozeEndTime = new Date(snoozeEndTimeStr);
+          const now = new Date();
           
-          // Get all scheduled notifications
-          const scheduledNotifications = await Notifications.getAllScheduledNotificationsAsync();
-          
-          // Cancel only non-sleep reminder notifications
-          for (const notification of scheduledNotifications) {
-            const data = notification.content.data as any;
-            const isSleepReminder = 
-              notification.identifier === "SleepReminder" || 
-              (data && data.notificationType === "sleepReminder");
+          if (now >= snoozeEndTime) {
+            // Snooze has expired, clean up and reapply blocks
+            await AsyncStorage.removeItem('snoozeEndTime');
+            await AsyncStorage.removeItem('appBlockDisabledUntil');
             
-            if (!isSleepReminder) {
-              await Notifications.cancelScheduledNotificationAsync(notification.identifier);
+            // Get the schedule ID if available
+            const scheduleId = await AsyncStorage.getItem('snoozedScheduleId');
+            if (scheduleId && Platform.OS === 'ios' && ScreenTimeBridge) {
+              console.log(`Snooze expired for schedule: ${scheduleId}, reapplying blocks`);
+              
+              // First try to directly reapply the specific schedule
+              try {
+                // This will force the schedule to be reapplied immediately
+                await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
+                console.log(`Successfully reapplied schedule: ${scheduleId}`);
+              } catch (error) {
+                console.error('Error reapplying specific schedule:', error);
+                
+                // Fall back to checking all expired snoozes
+                ScreenTimeBridge.checkForExpiredSnoozes()
+                  .then((result: any) => {
+                    console.log(`Checked for expired snoozes: ${JSON.stringify(result)}`);
+                  })
+                  .catch((err: Error) => console.error('Error checking snoozes:', err));
+              }
+              
+              // Clean up the schedule ID
+              await AsyncStorage.removeItem('snoozedScheduleId');
             }
           }
-        } else {
-          console.log('App active but alarm screen is showing - keeping notifications');
+        } else if (manuallyEnded) {
+          // Clean up if we manually ended
+          await AsyncStorage.removeItem('manuallyEndedSnooze');
         }
+        
+        // Check if there's a completed alarm flag for the active alarm
+        const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
+        if (activeAlarmJson) {
+          const activeAlarm = JSON.parse(activeAlarmJson);
+          const completedAlarmsJson = await AsyncStorage.getItem('completedAlarms');
+          const completedAlarms = completedAlarmsJson ? JSON.parse(completedAlarmsJson) : {};
+          
+          // If this alarm has been completed, clear the active alarm
+          if (completedAlarms[activeAlarm.alarmId]) {
+            console.log(`Alarm ${activeAlarm.alarmId} has been completed, clearing active alarm`);
+            await AsyncStorage.removeItem('activeAlarm');
+            await AsyncStorage.removeItem('alarmRingActive');
+          }
+        }
+        
+        // Just stop any sounds and continue normal app flow
+        stopAlarmSound();
+
+        // Check for expired snoozes when app becomes active
+        ScreenTimeBridge.checkForExpiredSnoozes()
+          .then((result: any) => {
+            if (result.expiredSnoozes > 0) {
+              console.log(`Reapplied ${result.expiredSnoozes} expired snoozes`);
+            }
+          })
+          .catch((err: Error) => console.error('Error checking snoozes:', err));
       }
     });
 

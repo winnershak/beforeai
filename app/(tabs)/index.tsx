@@ -9,6 +9,7 @@ import { scheduleAlarmNotification, cancelAlarmNotification, requestNotification
 import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
+import RevenueCatService from '../services/RevenueCatService';
 
 // Define the Alarm type
 interface Alarm {
@@ -510,6 +511,8 @@ export default function TabOneScreen() {
   const [viewMode, setViewMode] = useState<'alarms' | 'week' | 'month'>('alarms');
   // Add state for wake-up history
   const [wakeupHistory, setWakeupHistory] = useState<WakeupRecord[]>([]);
+  // Add isPremium state
+  const [isPremium, setIsPremium] = useState(false);
 
   // Load alarms from storage
   useEffect(() => {
@@ -858,6 +861,15 @@ export default function TabOneScreen() {
     }, [])
   );
 
+  // Add useEffect to check premium status
+  useEffect(() => {
+    const checkPremium = async () => {
+      const isPremium = await RevenueCatService.checkLocalSubscriptionStatus();
+      setIsPremium(isPremium);
+    };
+    checkPremium();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Notification Permission Banner */}
@@ -1065,11 +1077,38 @@ export default function TabOneScreen() {
       {/* Only show add button in alarms view */}
       {viewMode === 'alarms' && (
         <TouchableOpacity
-          style={styles.addButton}
-          onPress={() => router.push('/new-alarm')}
+          style={[styles.addButton, !isPremium && styles.addButtonPremium]}
+          onPress={async () => {
+            if (!isPremium) {
+              Alert.alert(
+                'Premium Feature',
+                'Creating new alarms is a premium feature. Upgrade to unlock unlimited alarms!',
+                [
+                  {
+                    text: 'Maybe Later',
+                    style: 'cancel'
+                  },
+                  {
+                    text: 'Upgrade',
+                    onPress: () => router.push('/quiz/yes')
+                  }
+                ]
+              );
+              return;
+            }
+            router.push('/new-alarm');
+          }}
         >
           <Ionicons name="add-circle" size={22} color="#fff" />
           <Text style={styles.addButtonText}>New Alarm</Text>
+          {!isPremium && (
+            <Ionicons 
+              name="lock-closed" 
+              size={16} 
+              color="#FFD700" 
+              style={styles.premiumLock} 
+            />
+          )}
         </TouchableOpacity>
       )}
     </SafeAreaView>
@@ -1373,5 +1412,11 @@ const styles = StyleSheet.create({
   calendarDayTimeToday: {
     color: '#007AFF',
     fontWeight: 'bold',
+  },
+  addButtonPremium: {
+    opacity: 0.8,
+  },
+  premiumLock: {
+    marginLeft: 8,
   },
 });
