@@ -417,10 +417,13 @@ export default function AppLayout() {
         setIsPremium(isPremium === 'true');
         setIsLoading(false);
         
-        // Store the navigation target, but don't navigate yet
-        if (quizCompleted !== 'true' && isPremium !== 'true') {
-          setInitialRoute('/quiz');
+        // New navigation logic:
+        if (quizCompleted !== 'true') {
+          setInitialRoute('/quiz');  // Quiz not finished -> quiz
+        } else if (isPremium !== 'true') {
+          setInitialRoute('/quiz/yes');  // Quiz finished but no premium -> yes screen
         }
+        // Otherwise it will default to (tabs)
       } catch (error) {
         console.error('Error in premium access check:', error);
         setIsLoading(false);
@@ -444,15 +447,18 @@ export default function AppLayout() {
         const isPremium = await AsyncStorage.getItem('isPremium');
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
-        // Only navigate if needed
-        if (quizCompleted !== 'true' && isPremium !== 'true') {
-          // Mark that we've navigated using the ref (doesn't cause re-render)
+        // Updated navigation logic to match:
+        if (quizCompleted !== 'true') {
           hasNavigatedToQuizRef.current = true;
-          
-          // Single navigation with delay
           setTimeout(() => {
             console.log('Safe to navigate now, redirecting to quiz (one-time)');
             router.replace('/quiz');
+          }, 1000);
+        } else if (isPremium !== 'true') {
+          hasNavigatedToQuizRef.current = true;
+          setTimeout(() => {
+            console.log('Quiz completed but no premium, redirecting to yes screen');
+            router.replace('/quiz/yes');
           }, 1000);
         }
         
@@ -531,7 +537,7 @@ export default function AppLayout() {
         const quizCompleted = await AsyncStorage.getItem('quizCompleted');
         
         // Only request permissions if we're in the alarms tab specifically
-        if ((isPremium === 'true' || quizCompleted === 'true') && 
+        if ((isPremium === 'true' && quizCompleted === 'true') && 
             initialRoute === '(tabs)') {
           // Check if we're already in the alarms tab
           const currentTab = await AsyncStorage.getItem('currentTab');

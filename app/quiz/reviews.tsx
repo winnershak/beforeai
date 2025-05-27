@@ -89,13 +89,8 @@ export default function SleepFactsScreen() {
         "Help others sleep better.",
         "It helps us reach more people to spread the message of better sleep.",
         [
-          {
-            text: "Maybe Later",
-            onPress: () => router.push('/quiz/study'),
-            style: "cancel"
-          },
           { 
-            text: "Rate 5 Stars", 
+            text: "Rate 5 Stars",
             onPress: async () => {
               // Use the native StoreReview API - this shows the in-app rating dialog
               await StoreReview.requestReview();
@@ -104,7 +99,13 @@ export default function SleepFactsScreen() {
               setTimeout(() => {
                 router.push('/quiz/study');
               }, 1500);
-            }
+            },
+            style: "default", 
+          },
+          {
+            text: "Maybe Later",
+            onPress: () => router.push('/quiz/study'),
+            style: "cancel", 
           }
         ]
       );

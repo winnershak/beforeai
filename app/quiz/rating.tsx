@@ -103,7 +103,7 @@ export default function ReviewsScreen() {
         <View style={styles.stickyButtonContainer}>
           <TouchableOpacity 
             style={styles.button}
-            onPress={() => router.push('/quiz/yes')}
+            onPress={() => router.push('/quiz/analysis')}
           >
             <Text style={styles.buttonText}>Continue</Text>
             <View style={styles.buttonIconContainer}>

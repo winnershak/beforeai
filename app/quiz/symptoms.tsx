@@ -43,10 +43,10 @@ export default function SymptomsPage() {
             
             <View style={styles.symptomsGrid}>
               {[
-                'Feeling unmotivated',
-                'Lack of ambition to pursue goals',
-                'Difficulty concentrating',
-                'General anxiety'
+                'Low motivation',
+                'Trouble focusing',
+                'Brain fog',
+                'Feeling anxious'
               ].map((symptom) => (
                 <TouchableOpacity
                   key={symptom}
@@ -78,11 +78,11 @@ export default function SymptomsPage() {
             
             <View style={styles.symptomsGrid}>
               {[
-                'Weight Gain',
-                'Lack of muscles building',
-                'Worse skin',
+                'Tired or low energy',
+                'Weight gain',
+                'Skin issues',
                 'Headaches',
-                'Weaker immune system'
+                'Getting sick often'
               ].map((symptom) => (
                 <TouchableOpacity
                   key={symptom}
@@ -110,14 +110,16 @@ export default function SymptomsPage() {
           
           {/* Social Symptoms */}
           <View style={styles.categoryContainer}>
-            <Text style={styles.categoryTitle}>Social</Text>
+            <Text style={styles.categoryTitle}>Social & Lifestyle</Text>
             
             <View style={styles.symptomsGrid}>
               {[
-                'Low self-confidence',
-                'Feeling unattractive or unworthy of love',
+                'Low confidence',
                 'Feeling disconnected',
-                'Lack of Patience'
+                'Less patient',
+                'Hard to wake up',
+                'Often late',
+                'Less productive'
               ].map((symptom) => (
                 <TouchableOpacity
                   key={symptom}

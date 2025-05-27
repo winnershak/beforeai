@@ -17,6 +17,8 @@ export default function SettingsScreen() {
     isYearly: boolean;
   } | null>(null);
   
+  const [blockRemovalsLeft, setBlockRemovalsLeft] = useState<number | null>(null);
+  
   // Function to test the AlarmSound native module
   const testAlarmSound = () => {
     console.log('🔊 Testing AlarmSound.configureAudio()...');
@@ -103,12 +105,53 @@ export default function SettingsScreen() {
     });
   };
 
+  // Add this new function to check and update block removal count
+  const getBlockRemovalsLeft = async () => {
+    try {
+      const now = new Date();
+      const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+      
+      const storedData = await AsyncStorage.getItem('blockRemovalData');
+      const data = storedData ? JSON.parse(storedData) : { month: currentMonth, count: 0 };
+      
+      // Reset count if it's a new month
+      if (data.month !== currentMonth) {
+        data.month = currentMonth;
+        data.count = 0;
+        await AsyncStorage.setItem('blockRemovalData', JSON.stringify(data));
+      }
+      
+      const removalsLeft = 3 - data.count;
+      setBlockRemovalsLeft(removalsLeft);
+      return removalsLeft;
+    } catch (error) {
+      console.error('Error checking block removals:', error);
+      return 0;
+    }
+  };
+
+  // Add this to useEffect to load initial count
+  useEffect(() => {
+    getBlockRemovalsLeft();
+  }, []);
+
+  // Modify the handleRemoveBlocks function
   const handleRemoveBlocks = async () => {
     try {
-      // Show confirmation alert
+      const removalsLeft = await getBlockRemovalsLeft();
+      
+      if (removalsLeft <= 0) {
+        Alert.alert(
+          'Monthly Limit Reached',
+          'You can only remove all blocks 3 times per month. Your limit will reset at the beginning of next month.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+
       Alert.alert(
         'Remove All Blocks',
-        'Are you sure you want to remove all app and website blocks?',
+        `Are you sure you want to remove all app and website blocks? You have ${removalsLeft} out of 3 monthly removals left for this month.`,
         [
           {
             text: 'Cancel',
@@ -119,6 +162,14 @@ export default function SettingsScreen() {
             style: 'destructive',
             onPress: async () => {
               console.log('🔓 Removing all blocks...');
+              
+              // Update the removal count
+              const now = new Date();
+              const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
+              const storedData = await AsyncStorage.getItem('blockRemovalData');
+              const data = storedData ? JSON.parse(storedData) : { month: currentMonth, count: 0 };
+              data.count += 1;
+              await AsyncStorage.setItem('blockRemovalData', JSON.stringify(data));
               
               // Update schedules to inactive
               const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
@@ -140,9 +191,12 @@ export default function SettingsScreen() {
                 }
               }
               
+              // Update the UI with remaining removals
+              await getBlockRemovalsLeft();
+              
               Alert.alert(
                 'Blocks Removed',
-                'All app and website blocks have been removed.',
+                `All app and website blocks have been removed. You have ${removalsLeft - 1} out of 3 monthly removals left for this month.`,
                 [{ text: 'OK' }]
               );
             }
@@ -219,7 +273,9 @@ export default function SettingsScreen() {
           >
             <View style={styles.settingContent}>
               <Ionicons name="shield-outline" size={24} color="#FF3B30" style={styles.settingIcon} />
-              <Text style={[styles.settingText, styles.dangerText]}>Remove All Blocks</Text>
+              <Text style={[styles.settingText, styles.dangerText]}>
+                Remove All Blocks {blockRemovalsLeft !== null && `(${blockRemovalsLeft}/3 monthly)`}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={20} color="#FF3B30" />
           </TouchableOpacity>
@@ -388,5 +444,18 @@ const styles = StyleSheet.create({
   },
   dangerText: {
     color: '#FF3B30',
+  },
+  settingButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#2C2C2E',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  settingTitle: {
+    color: '#fff',
+    fontSize: 17,
   },
 }); 
