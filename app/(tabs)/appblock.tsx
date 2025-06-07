@@ -11,7 +11,9 @@ import {
   Alert,
   NativeModules,
   TextInput,
-  Modal
+  Modal,
+  SafeAreaView,
+  Dimensions
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -22,8 +24,11 @@ import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import * as Notifications from 'expo-notifications';
 import NfcManager, { NfcTech, Ndef } from 'react-native-nfc-manager';
 import * as Haptics from 'expo-haptics';
+import ConfettiCannon from 'react-native-confetti-cannon';
+import { Audio } from 'expo-av';
 
 const { ScreenTimeBridge, SleepNotificationModule } = NativeModules;
+const { width: screenWidth } = Dimensions.get('window');
 
 // Define the app block schedule type
 interface AppBlockSchedule {
@@ -61,6 +66,9 @@ export default function AppBlockScreen() {
   const checkTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [isPastEndTimeState, setIsPastEndTimeState] = useState(false);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showBlockSuccessOverlay, setShowBlockSuccessOverlay] = useState(false);
   
   const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
   
@@ -894,36 +902,30 @@ export default function AppBlockScreen() {
     try {
       console.log(`🔥 DESTROYING block for schedule: ${scheduleId}`);
       
-      // If on iOS, use ScreenTimeBridge to completely stop monitoring
       if (Platform.OS === 'ios' && ScreenTimeBridge) {
         try {
-          // First, remove all shields immediately
           await ScreenTimeBridge.removeAllShields();
           console.log('🛡️ All shields removed');
           
-          // Then stop monitoring for this schedule
           await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
           console.log('🔥 Successfully stopped monitoring');
           
-          // Update the UI to show the block is completely inactive
           const updatedSchedules = schedules.map(s => {
             if (s.id === scheduleId) {
               return {
                 ...s,
                 isActive: false,
-                // Set end time to now to ensure it's considered past
                 endTime: new Date()
               };
             }
             return s;
           });
           
-          // Update state and save to AsyncStorage
           setSchedules(updatedSchedules);
           await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
           
-          // Show confirmation to user
-          Alert.alert('Block Destroyed', 'App blocking has been completely deactivated.');
+          // Simple confirmation without alert
+          console.log('✅ Block destroyed successfully');
         } catch (error) {
           console.error('💥 Error destroying block:', error);
           Alert.alert('Error', 'Failed to destroy block. Please try again.');
@@ -1023,7 +1025,7 @@ export default function AppBlockScreen() {
           console.log('NFC card data:', text);
           
           // Check if this is a valid Bliss Alarm card
-          if (text.includes("BLISS-ALARM-2025-01")) {
+          if (text.toUpperCase().includes("BLISS-ALARM-2025-01")) {
             if (Platform.OS === 'ios') {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
@@ -1046,6 +1048,89 @@ export default function AppBlockScreen() {
     } catch (error) {
       console.log('NFC scanning stopped or cancelled');
       return false;
+    }
+  };
+
+  // Add this new function after handleNFCScanning
+  const handleUnblockWithNFC = async () => {
+    try {
+      console.log('🔓 Starting NFC scan to unblock...');
+      
+      // Check if NFC is supported
+      const isSupported = await NfcManager.isSupported();
+      if (!isSupported) {
+        Alert.alert('NFC Not Supported', 'This device does not support NFC.');
+        return;
+      }
+
+      // Start NFC Manager
+      await NfcManager.start();
+      
+      // Request NFC technology with system dialog
+      await NfcManager.requestTechnology(NfcTech.Ndef, {
+        alertMessage: 'Hold your Bliss Alarm NFC card near the phone to end blocking'
+      });
+      
+      const tag = await NfcManager.getTag();
+      
+      if (tag && tag.ndefMessage && tag.ndefMessage.length > 0) {
+        const ndefRecord = tag.ndefMessage[0];
+        const payload = ndefRecord.payload;
+        
+        // Convert payload to string
+        let text = '';
+        if (payload && payload.length > 0) {
+          const textBytes = payload.slice(3);
+          text = String.fromCharCode(...textBytes);
+        }
+        
+        console.log('NFC card data:', text);
+        
+        // Check if this is a valid Bliss Alarm card
+        if (text.toUpperCase().includes("BLISS-ALARM-2025-01")) {
+          console.log('🔓 Ending blocking via NFC scan...');
+          
+          // End all blocking
+          if (Platform.OS === 'ios' && ScreenTimeBridge) {
+            await ScreenTimeBridge.removeAllShields();
+            console.log('🛡️ All shields removed');
+            
+            // Stop monitoring for all schedules
+            for (const schedule of schedules) {
+              if (schedule.isActive) {
+                await ScreenTimeBridge.stopMonitoringForSchedule(schedule.id, 0);
+              }
+            }
+          }
+          
+          // Set all schedules to inactive
+          const inactiveSchedules = schedules.map(s => ({
+            ...s,
+            isActive: false
+          }));
+          
+          setSchedules(inactiveSchedules);
+          await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(inactiveSchedules));
+          
+          // Vibration feedback
+          if (Platform.OS === 'ios') {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          }
+          
+          // No alert - just silent success
+          await NfcManager.cancelTechnologyRequest();
+        } else {
+          await NfcManager.cancelTechnologyRequest();
+          Alert.alert('Invalid Card', 'This is not a valid Bliss Alarm NFC card.');
+        }
+      }
+    } catch (error) {
+      console.log('NFC scan cancelled or failed');
+      try {
+        await NfcManager.cancelTechnologyRequest();
+      } catch (cleanupError) {
+        console.log('NFC cleanup error:', cleanupError);
+      }
     }
   };
 
@@ -1141,19 +1226,18 @@ export default function AppBlockScreen() {
       setSchedules(updatedSchedules);
       await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(updatedSchedules));
       
-      // Count total items being blocked
-      const totalApps = (mainSchedule.blockedApps?.length || 0) + 
-                       (mainSchedule.blockedCategories?.length || 0) * 10; // Estimate 10 apps per category
-      const totalWebsites = mainSchedule.blockedWebDomains?.length || 0;
-      const totalItems = totalApps + totalWebsites;
+      // Show beautiful red success overlay
+      setShowBlockSuccessOverlay(true);
       
-      const deviceType = mainSchedule.selectedDevice === 'nfc' ? 'NFC card' : 'QR code';
+      // Vibration feedback
+      if (Platform.OS === 'ios') {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      }
       
-      Alert.alert(
-        'Apps Blocked Forever!', 
-        `${totalItems} apps and websites are now PERMANENTLY blocked. Use your ${deviceType} to unblock them.`,
-        [{ text: 'OK' }]
-      );
+      // Hide overlay after 3 seconds
+      setTimeout(() => {
+        setShowBlockSuccessOverlay(false);
+      }, 3000);
       
     } catch (error) {
       console.error('💥 Error activating permanent block:', error);
@@ -1179,6 +1263,19 @@ export default function AppBlockScreen() {
           headerTintColor: '#fff',
         }} 
       />
+      
+      {/* Confetti celebration - make it more visible */}
+      {showConfetti && (
+        <ConfettiCannon
+          count={200}
+          origin={{x: screenWidth/2, y: -50}}
+          explosionSpeed={400}
+          fallSpeed={2500}
+          colors={['#00FFFF', '#800080', '#FFFF00', '#00FF00', '#FF0000', '#FFA500']}
+          autoStart={true}
+          fadeOut={true}
+        />
+      )}
       
       <View style={styles.container}>
         {/* Sleep Reminder Card - TOP POSITION */}
@@ -1271,13 +1368,17 @@ export default function AppBlockScreen() {
         
         {/* Show different content based on blocking status */}
         {hasActivePermanentBlock ? (
-          // Show "Apps Blocked" status
+          // Show glowing Bliss Alarm card when blocked
           <View style={styles.blockedStateContainer}>
-            <View style={styles.blockedStatusCard}>
-              <Ionicons name="shield-checkmark" size={48} color="#FF453A" />
-              <Text style={styles.blockedTitle}>Apps Blocked</Text>
-              <Text style={styles.blockedSubtitle}>Your selected apps are currently blocked</Text>
-            </View>
+            <TouchableOpacity
+              style={styles.blockNowCardBlocked}
+              disabled={true}
+            >
+              <View style={styles.blockNowContent}>
+                <Text style={styles.blockNowTitleBlocked}>Bliss Alarm</Text>
+                <Text style={styles.blockNowSubtitleBlocked}>Active</Text>
+              </View>
+            </TouchableOpacity>
           </View>
         ) : (
           // Show Bliss Alarm Card when not blocked
@@ -1304,7 +1405,7 @@ export default function AppBlockScreen() {
                 // Check which device type is selected
                 const mainSchedule = schedules.find(s => s.id === 'main-schedule');
                 if (mainSchedule?.selectedDevice === 'nfc') {
-                  router.push('/appblock/nfc-scanner');
+                  handleUnblockWithNFC(); // Direct NFC scan - no navigation
                 } else {
                   router.push('/appblock/qr-scanner');
                 }
@@ -1366,6 +1467,16 @@ export default function AppBlockScreen() {
           </View>
         )}
       </View>
+      
+      {/* Block Success Overlay - Beautiful red screen */}
+      {showBlockSuccessOverlay && (
+        <View style={styles.blockSuccessOverlay}>
+          <View style={styles.blockSuccessContent}>
+            <Text style={styles.blockSuccessEmoji}>😎</Text>
+            <Text style={styles.blockSuccessTitle}>Apps Blocked!</Text>
+          </View>
+        </View>
+      )}
     </>
   );
 }
@@ -1558,12 +1669,13 @@ const styles = StyleSheet.create({
   },
   emptyStateContainer: {
     position: 'absolute',
-    top: 200,
+    top: 150,
     left: 0,
     right: 0,
     bottom: 100,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   blockNowCard: {
     backgroundColor: '#000000',
@@ -1691,7 +1803,7 @@ const styles = StyleSheet.create({
   },
   blockedStateContainer: {
     position: 'absolute',
-    top: 200,
+    top: 150,
     left: 0,
     right: 0,
     bottom: 100,
@@ -1740,5 +1852,91 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  successOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FF3B30',
+    zIndex: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+  },
+  successText: {
+    color: '#fff',
+    fontSize: 32,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  blockNowCardBlocked: {
+    backgroundColor: '#000000',
+    borderRadius: 16,
+    width: 320,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#FF453A',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 25,
+    elevation: 8,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 69, 58, 0.5)',
+  },
+  blockNowTitleBlocked: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    color: '#FF453A',
+  },
+  blockNowSubtitleBlocked: {
+    fontSize: 15,
+    color: '#FF453A',
+  },
+  blockSuccessOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#FF3B30',
+    zIndex: 9999,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 30,
+  },
+  blockSuccessContent: {
+    alignItems: 'center',
+    padding: 40,
+    paddingTop: 120,
+  },
+  blockSuccessEmoji: {
+    fontSize: 80,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  blockSuccessTitle: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    textAlign: 'center',
+    marginBottom: 12,
+    letterSpacing: 1,
+  },
+  blockSuccessSubtitle: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.9)',
+    textAlign: 'center',
+    fontWeight: '500',
   },
 }); 

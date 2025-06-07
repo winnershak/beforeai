@@ -92,6 +92,13 @@ const formatTime = (time: string): string => {
   return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
 };
 
+// Add this helper function to format time in 24-hour format
+const formatTime24Hour = (time: string): string => {
+  // The time is already in HH:MM format, so we just need to ensure proper padding
+  const [hours, minutes] = time.split(':').map(Number);
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+};
+
 // Add this helper function to find the next alarm day
 const getNextAlarmDay = (days: string[], today: number): number | null => {
   if (!days || days.length === 0) return null;
@@ -459,18 +466,19 @@ interface WakeupRecord {
   alarmId: string;
 }
 
-// Add this function to generate calendar days for the month view
-const generateCalendarDays = (wakeupHistory: WakeupRecord[]) => {
+// Update generateCalendarDays to accept month offset
+const generateCalendarDays = (wakeupHistory: WakeupRecord[], monthOffset: number = 0) => {
   const today = new Date();
-  const currentMonth = today.getMonth();
-  const currentYear = today.getFullYear();
+  const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+  const currentMonth = targetDate.getMonth();
+  const currentYear = targetDate.getFullYear();
   
-  // Create a date for the first day of the month
+  // Create a date for the first day of the target month
   const firstDay = new Date(currentYear, currentMonth, 1);
   // Get the day of the week for the first day (0 = Sunday, 6 = Saturday)
   const firstDayOfWeek = firstDay.getDay();
   
-  // Get the last day of the month
+  // Get the last day of the target month
   const lastDay = new Date(currentYear, currentMonth + 1, 0);
   const daysInMonth = lastDay.getDate();
   
@@ -485,9 +493,15 @@ const generateCalendarDays = (wakeupHistory: WakeupRecord[]) => {
   // Add cells for each day of the month
   for (let i = 1; i <= daysInMonth; i++) {
     const date = new Date(currentYear, currentMonth, i);
-    const dateString = date.toISOString().split('T')[0];
+    // Fix the date string to use local date instead of UTC
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const dateString = `${year}-${month}-${day}`;
+    
     const record = wakeupHistory.find((r: WakeupRecord) => r.date === dateString);
-    const isToday = i === today.getDate();
+    // Check if it's today (only if we're viewing current month)
+    const isToday = monthOffset === 0 && i === today.getDate() && currentMonth === today.getMonth() && currentYear === today.getFullYear();
     
     days.push({ date, record, isToday });
   }
@@ -513,6 +527,9 @@ export default function TabOneScreen() {
   const [wakeupHistory, setWakeupHistory] = useState<WakeupRecord[]>([]);
   // Add isPremium state
   const [isPremium, setIsPremium] = useState(false);
+  // Add navigation state for week and month
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week, -1 = last week, 1 = next week
+  const [currentMonthOffset, setCurrentMonthOffset] = useState(0); // 0 = current month, -1 = last month, 1 = next month
 
   // Load alarms from storage
   useEffect(() => {
@@ -802,30 +819,6 @@ export default function TabOneScreen() {
     }
   };
 
-  // Add function to get week data
-  const getWeekData = () => {
-    const today = new Date();
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(today.getDate() - 7);
-    
-    return wakeupHistory.filter(record => {
-      const recordDate = new Date(record.date);
-      return recordDate >= oneWeekAgo && recordDate <= today;
-    });
-  };
-
-  // Add function to get month data
-  const getMonthData = () => {
-    const today = new Date();
-    const oneMonthAgo = new Date();
-    oneMonthAgo.setMonth(today.getMonth() - 1);
-    
-    return wakeupHistory.filter(record => {
-      const recordDate = new Date(record.date);
-      return recordDate >= oneMonthAgo && recordDate <= today;
-    });
-  };
-
   // Add function to format date for display
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -847,7 +840,43 @@ export default function TabOneScreen() {
     const avgHours = Math.floor(avgMinutes / 60);
     const avgMins = avgMinutes % 60;
     
-    return `${avgHours}:${avgMins.toString().padStart(2, '0')}`;
+    return `${avgHours.toString().padStart(2, '0')}:${avgMins.toString().padStart(2, '0')}`;
+  };
+
+  // Add these functions inside the component, after loadWakeupHistory
+  const getWeekDataWithOffset = (weekOffset: number = 0) => {
+    const today = new Date();
+    const targetDate = new Date(today);
+    targetDate.setDate(today.getDate() + (weekOffset * 7));
+    
+    const oneWeekBefore = new Date(targetDate);
+    oneWeekBefore.setDate(targetDate.getDate() - 6);
+    
+    const oneWeekAfter = new Date(targetDate);
+    oneWeekAfter.setDate(targetDate.getDate() + 1);
+    
+    return wakeupHistory.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate >= oneWeekBefore && recordDate < oneWeekAfter;
+    });
+  };
+
+  const getMonthDataWithOffset = (monthOffset: number = 0) => {
+    const today = new Date();
+    const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset, 1);
+    const startOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth(), 1);
+    const endOfMonth = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0);
+    
+    return wakeupHistory.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate >= startOfMonth && recordDate <= endOfMonth;
+    });
+  };
+
+  const getMonthName = (monthOffset: number = 0) => {
+    const today = new Date();
+    const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset);
+    return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
   // Add this inside your component, after the other useEffect hooks
@@ -987,43 +1016,78 @@ export default function TabOneScreen() {
           <View style={styles.historyHeader}>
             <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
             <Text style={styles.historyAverage}>
-              Average: {calculateAverageTime(getWeekData())}
+              Average: {calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))}
             </Text>
           </View>
           
-          {getWeekData().length > 0 ? (
-            <View style={styles.weekContainer}>
-              {Array.from({ length: 7 }).map((_, index) => {
-                const date = new Date();
-                date.setDate(date.getDate() - (6 - index));
-                const dateString = date.toISOString().split('T')[0];
-                
-                // Find if we have a record for this date
-                const record = wakeupHistory.find((r: WakeupRecord) => r.date === dateString);
-                const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-                
-                return (
-                  <View key={index} style={styles.weekDay}>
-                    <Text style={styles.weekDayName}>{dayName}</Text>
-                    {record ? (
-                      <Text style={[
-                        styles.weekDayTime,
-                        date.toDateString() === new Date().toDateString() ? styles.weekDayTimeToday : null
-                      ]}>
-                        {formatTime(record.time)}
-                      </Text>
-                    ) : (
-                      <Text style={styles.weekDayNoTime}>-</Text>
-                    )}
-                  </View>
-                );
-              })}
-            </View>
-          ) : (
-            <View style={styles.emptyHistory}>
-              <Text style={styles.emptyHistoryText}>No wake-up data for this week</Text>
-            </View>
-          )}
+          {/* Week Navigation */}
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity 
+              style={styles.navButton}
+              onPress={() => setCurrentWeekOffset(currentWeekOffset - 1)}
+            >
+              <Ionicons name="chevron-back" size={20} color="#007AFF" />
+              <Text style={styles.navButtonText}>Previous Week</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.currentPeriodText}>
+              {currentWeekOffset === 0 ? 'This Week' : 
+               currentWeekOffset === -1 ? 'Last Week' : 
+               currentWeekOffset === 1 ? 'Next Week' :
+               `${Math.abs(currentWeekOffset)} weeks ${currentWeekOffset < 0 ? 'ago' : 'from now'}`}
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.navButton}
+              onPress={() => setCurrentWeekOffset(currentWeekOffset + 1)}
+            >
+              <Text style={styles.navButtonText}>Next Week</Text>
+              <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.weekContainer}>
+            {Array.from({ length: 7 }).map((_, index) => {
+              const today = new Date();
+              const targetDate = new Date(today);
+              targetDate.setDate(today.getDate() + (currentWeekOffset * 7) - (6 - index));
+              
+              // Fix the date string to use local date
+              const year = targetDate.getFullYear();
+              const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+              const day = String(targetDate.getDate()).padStart(2, '0');
+              const dateString = `${year}-${month}-${day}`;
+              
+              // Find if we have a record for this date
+              const record = wakeupHistory.find((r: WakeupRecord) => r.date === dateString);
+              const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+              
+              // Check if this is today (only if viewing current week)
+              const isToday = currentWeekOffset === 0 && targetDate.toDateString() === today.toDateString();
+              
+              return (
+                <View key={index} style={styles.weekDay}>
+                  <Text style={styles.weekDayName}>{dayName}</Text>
+                  <Text style={[
+                    styles.weekDayDate,
+                    isToday && styles.weekDayDateToday
+                  ]}>
+                    {targetDate.getDate()}
+                  </Text>
+                  {record ? (
+                    <Text style={[
+                      styles.weekDayTime,
+                      isToday ? styles.weekDayTimeToday : null
+                    ]}>
+                      {formatTime24Hour(record.time)}
+                    </Text>
+                  ) : (
+                    <Text style={styles.weekDayNoTime}>-</Text>
+                  )}
+                </View>
+              );
+            })}
+          </View>
         </ScrollView>
       )}
 
@@ -1033,44 +1097,67 @@ export default function TabOneScreen() {
           <View style={styles.historyHeader}>
             <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
             <Text style={styles.historyAverage}>
-              Average: {calculateAverageTime(getMonthData())}
+              Average: {calculateAverageTime(getMonthDataWithOffset(currentMonthOffset))}
             </Text>
           </View>
           
-          {getMonthData().length > 0 ? (
-            <>
-              <View style={styles.calendarHeader}>
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-                  <Text key={index} style={styles.calendarHeaderDay}>{day}</Text>
-                ))}
-              </View>
-              
-              <View style={styles.calendarGrid}>
-                {generateCalendarDays(wakeupHistory).map((day, index) => (
-                  <View key={index} style={styles.calendarDay}>
-                    {day.date ? (
-                      day.record ? (
-                        <Text style={[
-                          styles.calendarDayTime,
-                          day.isToday ? styles.calendarDayTimeToday : null
-                        ]}>
-                          {formatTime(day.record.time)}
-                        </Text>
-                      ) : (
-                        <Text style={styles.calendarDayEmpty}>-</Text>
-                      )
+          {/* Month Navigation */}
+          <View style={styles.navigationContainer}>
+            <TouchableOpacity 
+              style={styles.navButton}
+              onPress={() => setCurrentMonthOffset(currentMonthOffset - 1)}
+            >
+              <Ionicons name="chevron-back" size={20} color="#007AFF" />
+              <Text style={styles.navButtonText}>Previous</Text>
+            </TouchableOpacity>
+            
+            <Text style={styles.currentPeriodText}>
+              {getMonthName(currentMonthOffset)}
+            </Text>
+            
+            <TouchableOpacity 
+              style={styles.navButton}
+              onPress={() => setCurrentMonthOffset(currentMonthOffset + 1)}
+            >
+              <Text style={styles.navButtonText}>Next</Text>
+              <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+            </TouchableOpacity>
+          </View>
+          
+          <View style={styles.calendarHeader}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+              <Text key={index} style={styles.calendarHeaderDay}>{day}</Text>
+            ))}
+          </View>
+          
+          <View style={styles.calendarGrid}>
+            {generateCalendarDays(wakeupHistory, currentMonthOffset).map((day, index) => (
+              <View key={index} style={styles.calendarDay}>
+                {day.date ? (
+                  <>
+                    <Text style={[
+                      styles.calendarDayNumber,
+                      day.isToday ? styles.calendarDayNumberToday : null
+                    ]}>
+                      {day.date.getDate()}
+                    </Text>
+                    {day.record ? (
+                      <Text style={[
+                        styles.calendarDayTime,
+                        day.isToday ? styles.calendarDayTimeToday : null
+                      ]}>
+                        {formatTime24Hour(day.record.time)}
+                      </Text>
                     ) : (
-                      <Text style={styles.calendarDayEmpty}></Text>
+                      <Text style={styles.calendarDayEmpty}>-</Text>
                     )}
-                  </View>
-                ))}
+                  </>
+                ) : (
+                  <Text style={styles.calendarDayEmpty}></Text>
+                )}
               </View>
-            </>
-          ) : (
-            <View style={styles.emptyHistory}>
-              <Text style={styles.emptyHistoryText}>No wake-up data for this month</Text>
-            </View>
-          )}
+            ))}
+          </View>
         </ScrollView>
       )}
 
@@ -1355,11 +1442,17 @@ const styles = StyleSheet.create({
   weekDayName: {
     color: '#999',
     fontSize: 12,
+    marginBottom: 4,
+  },
+  weekDayDate: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '500',
     marginBottom: 8,
   },
   weekDayTime: {
     color: '#007AFF',
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: '500',
   },
   weekDayTimeToday: {
@@ -1387,10 +1480,13 @@ const styles = StyleSheet.create({
   },
   calendarDay: {
     width: '14.28%',
-    height: 50,
+    height: 60,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#333',
+    borderRadius: 4,
   },
   calendarDayNumber: {
     color: '#999',
@@ -1403,11 +1499,12 @@ const styles = StyleSheet.create({
   },
   calendarDayTime: {
     color: '#007AFF',
-    fontSize: 14,
+    fontSize: 10,
     fontWeight: '500',
   },
   calendarDayEmpty: {
     color: '#666',
+    fontSize: 10,
   },
   calendarDayTimeToday: {
     color: '#007AFF',
@@ -1418,5 +1515,41 @@ const styles = StyleSheet.create({
   },
   premiumLock: {
     marginLeft: 8,
+  },
+  navigationContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 16,
+    paddingHorizontal: 8,
+    marginBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#333',
+  },
+  navButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 8,
+    minWidth: 80,
+  },
+  navButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '500',
+    marginHorizontal: 4,
+  },
+  currentPeriodText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    textAlign: 'center',
+    flex: 1,
+  },
+  weekDayDateToday: {
+    color: '#007AFF',
+    fontWeight: 'bold',
   },
 });

@@ -77,7 +77,7 @@ export default function NFCScanner() {
           console.log('NFC card data:', text);
           
           // Check if this is a valid Bliss Alarm card
-          if (text.includes("BLISS-ALARM-2025-01")) {
+          if (text.toUpperCase().includes("BLISS-ALARM-2025-01")) {
             if (Platform.OS === 'ios') {
               Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }
@@ -160,12 +160,7 @@ export default function NFCScanner() {
         }
       }
       
-      Alert.alert(
-        'Blocking Ended!',
-        'All apps and websites have been unblocked.',
-        [{ text: 'OK', onPress: () => router.replace('/(tabs)/appblock') }]
-      );
-      
+      router.back();
     } catch (error) {
       console.error('💥 Error ending blocking:', error);
       Alert.alert('Error', 'Failed to end blocking. Please try again.');
