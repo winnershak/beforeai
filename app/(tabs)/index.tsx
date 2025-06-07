@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform, Switch, Image, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform, Switch, Image, ScrollView, Share } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -10,6 +10,7 @@ import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import RevenueCatService from '../services/RevenueCatService';
+import * as ImagePicker from 'expo-image-picker';
 
 // Define the Alarm type
 interface Alarm {
@@ -482,7 +483,7 @@ const generateCalendarDays = (wakeupHistory: WakeupRecord[], monthOffset: number
   const lastDay = new Date(currentYear, currentMonth + 1, 0);
   const daysInMonth = lastDay.getDate();
   
-  // Create an array to hold all calendar cells (up to 42 for a 6x7 grid)
+  // Create an array to hold all calendar cells
   const days = [];
   
   // Add empty cells for days before the first day of the month
@@ -506,10 +507,14 @@ const generateCalendarDays = (wakeupHistory: WakeupRecord[], monthOffset: number
     days.push({ date, record, isToday });
   }
   
-  // Add empty cells to complete the grid if needed
-  const remainingCells = 42 - days.length;
-  for (let i = 0; i < remainingCells; i++) {
-    days.push({ date: null, record: null, isToday: false });
+  // Only add empty cells to complete the CURRENT week, not to fill a full 6x7 grid
+  const totalCells = days.length;
+  const remainder = totalCells % 7;
+  if (remainder !== 0) {
+    const cellsToAdd = 7 - remainder;
+    for (let i = 0; i < cellsToAdd; i++) {
+      days.push({ date: null, record: null, isToday: false });
+    }
   }
   
   return days;
@@ -530,6 +535,11 @@ export default function TabOneScreen() {
   // Add navigation state for week and month
   const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week, -1 = last week, 1 = next week
   const [currentMonthOffset, setCurrentMonthOffset] = useState(0); // 0 = current month, -1 = last month, 1 = next month
+  // Add these state variables for swipe detection
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  // Add state for profile photo
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
 
   // Load alarms from storage
   useEffect(() => {
@@ -899,6 +909,129 @@ export default function TabOneScreen() {
     checkPremium();
   }, []);
 
+  // Add these swipe handler functions
+  const handleTouchStart = (e: any) => {
+    setTouchEnd(null);
+    setTouchStart(e.nativeEvent.pageX);
+  };
+
+  const handleTouchMove = (e: any) => {
+    setTouchEnd(e.nativeEvent.pageX);
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+    
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > 30; // Reduced from 50 for better sensitivity
+    const isRightSwipe = distance < -30; // Reduced from 50 for better sensitivity
+    
+    if (viewMode === 'week') {
+      if (isLeftSwipe) {
+        setCurrentWeekOffset(currentWeekOffset + 1); // Next week
+      } else if (isRightSwipe) {
+        setCurrentWeekOffset(currentWeekOffset - 1); // Previous week
+      }
+    } else if (viewMode === 'month') {
+      if (isLeftSwipe) {
+        setCurrentMonthOffset(currentMonthOffset + 1); // Next month
+      } else if (isRightSwipe) {
+        setCurrentMonthOffset(currentMonthOffset - 1); // Previous month
+      }
+    }
+  };
+
+  const getWeekPeriodText = (weekOffset: number = 0) => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + (weekOffset * 7)); // Start on Sunday
+    
+    const endOfWeek = new Date(startOfWeek);
+    endOfWeek.setDate(startOfWeek.getDate() + 6); // End on Saturday
+    
+    if (weekOffset === 0) {
+      return 'This Week';
+    } else if (weekOffset === -1) {
+      return 'Last Week';
+    } else if (weekOffset === 1) {
+      return 'Next Week';
+    } else {
+      // Show date range for other weeks
+      const startMonth = startOfWeek.toLocaleDateString('en-US', { month: 'short' });
+      const endMonth = endOfWeek.toLocaleDateString('en-US', { month: 'short' });
+      const startDay = startOfWeek.getDate();
+      const endDay = endOfWeek.getDate();
+      
+      if (startMonth === endMonth) {
+        return `${startMonth} ${startDay}-${endDay}`;
+      } else {
+        return `${startMonth} ${startDay} - ${endMonth} ${endDay}`;
+      }
+    }
+  };
+
+  // Load profile photo from storage
+  const loadProfilePhoto = async () => {
+    try {
+      const photo = await AsyncStorage.getItem('profilePhoto');
+      if (photo) {
+        setProfilePhoto(photo);
+      }
+    } catch (error) {
+      console.error('Error loading profile photo:', error);
+    }
+  };
+
+  // Function to pick and save profile photo
+  const pickProfilePhoto = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permission needed', 'Sorry, we need camera roll permissions to upload a photo.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1], // Square aspect ratio
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const photoUri = result.assets[0].uri;
+        setProfilePhoto(photoUri);
+        await AsyncStorage.setItem('profilePhoto', photoUri);
+      }
+    } catch (error) {
+      console.error('Error picking photo:', error);
+    }
+  };
+
+  // Function to share the current view
+  const shareCurrentView = async () => {
+    try {
+      const viewType = viewMode === 'week' ? 'Weekly' : 'Monthly';
+      const period = viewMode === 'week' ? getWeekPeriodText(currentWeekOffset) : getMonthName(currentMonthOffset);
+      const average = viewMode === 'week' 
+        ? calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))
+        : calculateAverageTime(getMonthDataWithOffset(currentMonthOffset));
+      
+      const shareText = `🚀 My ${viewType} Wake-Up Summary\n📅 ${period}\n⏰ Average: ${average}\n\nTracked with Bliss Alarm 💤`;
+      
+      await Share.share({
+        message: shareText,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
+  };
+
+  // Add this with your other useEffect hooks
+  useEffect(() => {
+    loadProfilePhoto();
+  }, []);
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Notification Permission Banner */}
@@ -1014,39 +1147,32 @@ export default function TabOneScreen() {
       {viewMode === 'week' && (
         <ScrollView style={styles.historyContainer}>
           <View style={styles.historyHeader}>
-            <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.periodText}>{getWeekPeriodText(currentWeekOffset)}</Text>
+              <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
+            </View>
             <Text style={styles.historyAverage}>
               Average: {calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))}
             </Text>
           </View>
           
-          {/* Week Navigation */}
-          <View style={styles.navigationContainer}>
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={() => setCurrentWeekOffset(currentWeekOffset - 1)}
-            >
-              <Ionicons name="chevron-back" size={20} color="#007AFF" />
-              <Text style={styles.navButtonText}>Previous Week</Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.currentPeriodText}>
-              {currentWeekOffset === 0 ? 'This Week' : 
-               currentWeekOffset === -1 ? 'Last Week' : 
-               currentWeekOffset === 1 ? 'Next Week' :
-               `${Math.abs(currentWeekOffset)} weeks ${currentWeekOffset < 0 ? 'ago' : 'from now'}`}
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={() => setCurrentWeekOffset(currentWeekOffset + 1)}
-            >
-              <Text style={styles.navButtonText}>Next Week</Text>
-              <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+          {/* Centered Profile Photo */}
+          <View style={styles.profileSection}>
+            <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
+              {profilePhoto ? (
+                <Image source={{ uri: profilePhoto }} style={styles.profilePhotoLarge} />
+              ) : (
+                <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
+              )}
             </TouchableOpacity>
           </View>
           
-          <View style={styles.weekContainer}>
+          <View 
+            style={styles.weekContainer}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {Array.from({ length: 7 }).map((_, index) => {
               const today = new Date();
               const targetDate = new Date(today);
@@ -1088,6 +1214,11 @@ export default function TabOneScreen() {
               );
             })}
           </View>
+          
+          <TouchableOpacity onPress={shareCurrentView} style={styles.shareButtonBottom}>
+            <Ionicons name="share-outline" size={20} color="#007AFF" />
+            <Text style={styles.shareButtonText}>Share Summary</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -1095,32 +1226,23 @@ export default function TabOneScreen() {
       {viewMode === 'month' && (
         <ScrollView style={styles.historyContainer}>
           <View style={styles.historyHeader}>
-            <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
+            <View style={styles.headerLeft}>
+              <Text style={styles.periodText}>{getMonthName(currentMonthOffset)}</Text>
+              <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
+            </View>
             <Text style={styles.historyAverage}>
               Average: {calculateAverageTime(getMonthDataWithOffset(currentMonthOffset))}
             </Text>
           </View>
           
-          {/* Month Navigation */}
-          <View style={styles.navigationContainer}>
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={() => setCurrentMonthOffset(currentMonthOffset - 1)}
-            >
-              <Ionicons name="chevron-back" size={20} color="#007AFF" />
-              <Text style={styles.navButtonText}>Previous</Text>
-            </TouchableOpacity>
-            
-            <Text style={styles.currentPeriodText}>
-              {getMonthName(currentMonthOffset)}
-            </Text>
-            
-            <TouchableOpacity 
-              style={styles.navButton}
-              onPress={() => setCurrentMonthOffset(currentMonthOffset + 1)}
-            >
-              <Text style={styles.navButtonText}>Next</Text>
-              <Ionicons name="chevron-forward" size={20} color="#007AFF" />
+          {/* Centered Profile Photo */}
+          <View style={styles.profileSection}>
+            <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
+              {profilePhoto ? (
+                <Image source={{ uri: profilePhoto }} style={styles.profilePhotoLarge} />
+              ) : (
+                <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
+              )}
             </TouchableOpacity>
           </View>
           
@@ -1130,7 +1252,12 @@ export default function TabOneScreen() {
             ))}
           </View>
           
-          <View style={styles.calendarGrid}>
+          <View 
+            style={styles.calendarGrid}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
+          >
             {generateCalendarDays(wakeupHistory, currentMonthOffset).map((day, index) => (
               <View key={index} style={styles.calendarDay}>
                 {day.date ? (
@@ -1158,6 +1285,10 @@ export default function TabOneScreen() {
               </View>
             ))}
           </View>
+          <TouchableOpacity onPress={shareCurrentView} style={styles.shareButtonBottom}>
+            <Ionicons name="share-outline" size={20} color="#007AFF" />
+            <Text style={styles.shareButtonText}>Share Summary</Text>
+          </TouchableOpacity>
         </ScrollView>
       )}
 
@@ -1375,17 +1506,17 @@ const styles = StyleSheet.create({
   historyHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: 16,
     paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#333',
   },
   blissAlarmBranding: {
-    color: '#5AC8FA', // Light blue color that stands out but isn't too bright
-    fontSize: 16, // Smaller font size
-    fontWeight: '600', // Slightly less bold
-    letterSpacing: 0.5, // Less letter spacing
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '600',
+    letterSpacing: 0.5,
   },
   historyAverage: {
     color: '#007AFF',
@@ -1551,5 +1682,60 @@ const styles = StyleSheet.create({
   weekDayDateToday: {
     color: '#007AFF',
     fontWeight: 'bold',
+  },
+  periodText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  profileSection: {
+    alignItems: 'center',
+    marginBottom: 20,
+    paddingVertical: 8, // Reduced padding since text is separate
+  },
+  profilePhotoContainerLarge: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#007AFF',
+    marginBottom: 12,
+  },
+  profilePhotoLarge: {
+    width: 74,
+    height: 74,
+    borderRadius: 37,
+  },
+  defaultProfileEmojiLarge: {
+    fontSize: 40,
+  },
+  periodInfo: {
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  shareButtonBottom: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+    padding: 16,
+    marginVertical: 20,
+    marginHorizontal: 20,
+  },
+  shareButtonText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
+    marginLeft: 8,
+  },
+  headerLeft: {
+    flexDirection: 'column',
+    alignItems: 'flex-start',
   },
 });
