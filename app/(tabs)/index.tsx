@@ -11,6 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import RevenueCatService from '../services/RevenueCatService';
 import * as ImagePicker from 'expo-image-picker';
+import firestore from '@react-native-firebase/firestore';
+import { getCurrentUser, getUserProfile } from '../config/firebase';
 
 // Define the Alarm type
 interface Alarm {
@@ -29,6 +31,21 @@ interface Alarm {
   volume: number;
   vibration: boolean;
   soundVolume: number;
+}
+
+// Add this interface near the top with other interfaces
+interface WakeUpItem {
+  id: string;
+  actualTime?: string;
+  wakeUpTime?: string;
+  targetTime?: string;
+  message?: string;
+  soundUsed?: string;
+  date?: string;
+  createdAt?: Date;
+  consistency?: {
+    wakeUpsThisWeek: number;
+  };
 }
 
 // Update the time display logic
@@ -520,6 +537,23 @@ const generateCalendarDays = (wakeupHistory: WakeupRecord[], monthOffset: number
   return days;
 };
 
+// Add this function near your other helper functions (around line 1120):
+const formatTweetDateTime = (date: Date | string | undefined | null) => {
+  if (!date) return 'Unknown date';
+  
+  const dateObj = typeof date === 'string' ? new Date(date) : date;
+  if (!dateObj || isNaN(dateObj.getTime())) return 'Invalid date';
+  
+  return dateObj.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric', 
+    year: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true
+  });
+};
+
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const router = useRouter();
@@ -527,7 +561,7 @@ export default function TabOneScreen() {
   const [isCreatingAlarm, setIsCreatingAlarm] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // Add state for view mode
-  const [viewMode, setViewMode] = useState<'alarms' | 'week' | 'month'>('alarms');
+  const [viewMode, setViewMode] = useState<'alarms' | 'week' | 'month' | 'feed'>('alarms');
   // Add state for wake-up history
   const [wakeupHistory, setWakeupHistory] = useState<WakeupRecord[]>([]);
   // Add isPremium state
@@ -540,6 +574,10 @@ export default function TabOneScreen() {
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   // Add state for profile photo
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [myWakeUps, setMyWakeUps] = useState<WakeUpItem[]>([]);
+  const [loadingFeed, setLoadingFeed] = useState(false);
+  const [firebaseUser, setFirebaseUser] = useState(getCurrentUser());
+  const [userProfile, setUserProfile] = useState<any | null>(null);
 
   // Load alarms from storage
   useEffect(() => {
@@ -835,11 +873,11 @@ export default function TabOneScreen() {
     return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
   };
 
-  // Add function to calculate average wake-up time
+  // Update calculate average time to calculate the actual average
   const calculateAverageTime = (records: WakeupRecord[]) => {
     if (records.length === 0) return 'No data';
     
-    let totalMinutes = 0;
+    let totalMinutes = 0; 
     
     records.forEach(record => {
       const [hours, minutes] = record.time.split(':').map(Number);
@@ -886,6 +924,12 @@ export default function TabOneScreen() {
   const getMonthName = (monthOffset: number = 0) => {
     const today = new Date();
     const targetDate = new Date(today.getFullYear(), today.getMonth() + monthOffset);
+    
+    // Check if it's June 2025
+    if (targetDate.getFullYear() === 2025 && targetDate.getMonth() === 5) { // June is month 5 (0-indexed)
+      return 'This Month';
+    }
+    
     return targetDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
   };
 
@@ -1032,6 +1076,140 @@ export default function TabOneScreen() {
     loadProfilePhoto();
   }, []);
 
+  // Load ONLY current user's wake-ups
+  const loadMyWakeUps = async () => {
+    setLoadingFeed(true);
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        console.log('User not signed in');
+        setMyWakeUps([]);
+        return;
+      }
+
+      // Refresh user profile data
+      const profile = await getUserProfile(user.uid);
+      setUserProfile(profile);
+
+      // Load wake-ups from Firebase
+      const snapshot = await firestore()
+        .collection('wakeups')
+        .where('userId', '==', user.uid)
+        .limit(30)
+        .get();
+      
+      const wakeUps = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate(),
+      }));
+      
+      wakeUps.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      
+      setMyWakeUps(wakeUps);
+      console.log(`📱 Loaded ${wakeUps.length} wake-ups from Firebase`);
+    } catch (error) {
+      console.log('Error loading Firebase wake-ups:', error);
+      setMyWakeUps([]);
+    } finally {
+      setLoadingFeed(false);
+    }
+  };
+
+  // Load feed when user switches to feed view
+  useEffect(() => {
+    if (viewMode === 'feed') {
+      loadMyWakeUps();
+    }
+  }, [viewMode]);
+
+  // Refresh feed when returning to tab (same as calendar):
+  useFocusEffect(
+    React.useCallback(() => {
+      if (viewMode === 'feed') {
+        loadMyWakeUps();
+      }
+    }, [viewMode])
+  );
+
+  // Helper function to format exact time
+  const formatExactTime = (timeString: string | undefined) => {
+    if (!timeString) return 'No time recorded';
+    
+    // If it's a full ISO date string
+    if (timeString.includes('T')) {
+      const date = new Date(timeString);
+      return date.toLocaleTimeString('en-US', { 
+        hour: 'numeric', 
+        minute: '2-digit',
+        hour12: true 
+      });
+    }
+    
+    // If it's already in HH:MM format
+    return timeString;
+  };
+
+  // Helper function to format date nicely
+  const formatFeedDate = (date: Date | string | undefined | null) => {
+    if (!date) return 'Unknown date';
+    
+    const today = new Date();
+    const targetDate = new Date(date);
+    
+    if (targetDate.toDateString() === today.toDateString()) {
+      return 'Today';
+    }
+    
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (targetDate.toDateString() === yesterday.toDateString()) {
+      return 'Yesterday';
+    }
+    
+    return targetDate.toLocaleDateString('en-US', { 
+      weekday: 'short',
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  // Add delete function:
+  const deleteWakeUp = async (wakeUpId: string) => {
+    try {
+      const user = getCurrentUser();
+      if (!user) return;
+
+      await firestore()
+        .collection('wakeups')
+        .doc(wakeUpId)
+        .delete();
+
+      // Refresh feed
+      loadMyWakeUps();
+    } catch (error) {
+      console.error('Failed to delete wake-up:', error);
+    }
+  };
+
+  // Load profile when user changes:
+  useEffect(() => {
+    if (firebaseUser) {
+      loadUserProfile();
+    }
+  }, [firebaseUser]);
+
+  const loadUserProfile = async () => {
+    try {
+      if (!firebaseUser) return;
+      const profile = await getUserProfile(firebaseUser.uid);
+      setUserProfile(profile);
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       {/* Notification Permission Banner */}
@@ -1070,6 +1248,12 @@ export default function TabOneScreen() {
           onPress={() => setViewMode('month')}
         >
           <Text style={[styles.viewModeText, viewMode === 'month' && styles.viewModeTextActive]}>Month</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.viewModeButton, viewMode === 'feed' && styles.viewModeButtonActive]}
+          onPress={() => setViewMode('feed')}
+        >
+          <Text style={[styles.viewModeText, viewMode === 'feed' && styles.viewModeTextActive]}>Feed</Text>
         </TouchableOpacity>
       </View>
 
@@ -1194,10 +1378,7 @@ export default function TabOneScreen() {
               return (
                 <View key={index} style={styles.weekDay}>
                   <Text style={styles.weekDayName}>{dayName}</Text>
-                  <Text style={[
-                    styles.weekDayDate,
-                    isToday && styles.weekDayDateToday
-                  ]}>
+                  <Text style={styles.weekDayDate}>
                     {targetDate.getDate()}
                   </Text>
                   {record ? (
@@ -1262,10 +1443,7 @@ export default function TabOneScreen() {
               <View key={index} style={styles.calendarDay}>
                 {day.date ? (
                   <>
-                    <Text style={[
-                      styles.calendarDayNumber,
-                      day.isToday ? styles.calendarDayNumberToday : null
-                    ]}>
+                    <Text style={styles.calendarDayNumber}>
                       {day.date.getDate()}
                     </Text>
                     {day.record ? (
@@ -1290,6 +1468,88 @@ export default function TabOneScreen() {
             <Text style={styles.shareButtonText}>Share Summary</Text>
           </TouchableOpacity>
         </ScrollView>
+      )}
+
+      {/* Feed View - Personal wake-up history */}
+      {viewMode === 'feed' && (
+        <View style={styles.feedContainer}>
+          <View style={styles.feedHeader}>
+            <Text style={styles.feedTitle}>My Wake-Up Journey 🌅</Text>
+            <TouchableOpacity 
+              style={styles.refreshButton}
+              onPress={loadMyWakeUps}
+              disabled={loadingFeed}
+            >
+              <Ionicons 
+                name="refresh" 
+                size={20} 
+                color={loadingFeed ? "#666" : "#007AFF"} 
+              />
+            </TouchableOpacity>
+          </View>
+
+          {loadingFeed ? (
+            <View style={styles.loadingContainer}>
+              <Text style={styles.loadingText}>Loading your wake-ups...</Text>
+            </View>
+          ) : myWakeUps.length > 0 ? (
+            <FlatList
+              data={myWakeUps}
+              keyExtractor={item => item.id}
+              renderItem={({ item }) => (
+                <View style={styles.tweetContainer}>
+                  {/* User Info Header */}
+                  <View style={styles.tweetHeader}>
+                    <Image 
+                      source={{ uri: firebaseUser?.photoURL || 'https://via.placeholder.com/40' }}
+                      style={styles.profilePic}
+                    />
+                    <View style={styles.userInfo}>
+                      <Text style={styles.displayName}>
+                        {userProfile?.displayName || firebaseUser?.displayName || firebaseUser?.email || 'Bliss User'}
+                      </Text>
+                      <Text style={styles.username}>
+                        @{userProfile?.username || firebaseUser?.email?.split('@')[0] || 'blissuser'}
+                      </Text>
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => deleteWakeUp(item.id)}
+                    >
+                      <Text style={styles.deleteText}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {/* Tweet Content - ONLY if there's a real custom message */}
+                  {item.message && item.message.trim() !== '' && (
+                    <View style={styles.tweetContent}>
+                      <Text style={styles.tweetText}>{item.message}</Text>
+                    </View>
+                  )}
+
+                  {/* Date and Time Footer - Always show */}
+                  <View style={styles.tweetFooter}>
+                    <Text style={styles.tweetDateTime}>
+                      {formatTweetDateTime(item.date || item.createdAt)}
+                    </Text>
+                  </View>
+                </View>
+              )}
+              contentContainerStyle={styles.feedContainer}
+              showsVerticalScrollIndicator={false}
+            />
+          ) : (
+            <View style={styles.emptyFeed}>
+              <Text style={styles.emptyFeedTitle}>No wake-ups recorded yet! 🌅</Text>
+              <Text style={styles.emptyFeedText}>
+                Start using your alarms and your wake-up times will appear here
+              </Text>
+              <Text style={styles.emptyFeedSubtext}>
+                Sign in to Firebase to save your wake-up journey
+              </Text>
+            </View>
+          )}
+        </View>
       )}
 
       {/* Only show add button in alarms view */}
@@ -1624,10 +1884,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginBottom: 4,
   },
-  calendarDayNumberToday: {
-    color: '#007AFF',
-    fontWeight: 'bold',
-  },
   calendarDayTime: {
     color: '#007AFF',
     fontSize: 10,
@@ -1679,10 +1935,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     flex: 1,
   },
-  weekDayDateToday: {
-    color: '#007AFF',
-    fontWeight: 'bold',
-  },
   periodText: {
     color: '#fff',
     fontSize: 18,
@@ -1695,23 +1947,23 @@ const styles = StyleSheet.create({
     paddingVertical: 8, // Reduced padding since text is separate
   },
   profilePhotoContainerLarge: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 120,
+    height: 120,
+    borderRadius: 60,
     backgroundColor: '#2C2C2E',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
     borderColor: '#007AFF',
-    marginBottom: 12,
+    marginBottom: 20,
   },
   profilePhotoLarge: {
-    width: 74,
-    height: 74,
-    borderRadius: 37,
+    width: 114,
+    height: 114,
+    borderRadius: 57,
   },
   defaultProfileEmojiLarge: {
-    fontSize: 40,
+    fontSize: 60,
   },
   periodInfo: {
     alignItems: 'center',
@@ -1737,5 +1989,118 @@ const styles = StyleSheet.create({
   headerLeft: {
     flexDirection: 'column',
     alignItems: 'flex-start',
+  },
+  feedContainer: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+  },
+  feedHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  feedTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  refreshButton: {
+    padding: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    color: '#999',
+    fontSize: 16,
+  },
+  feedList: {
+    padding: 20,
+  },
+  tweetContainer: {
+    backgroundColor: '#2C2C2E',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+  },
+  tweetHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  profilePic: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  userInfo: {
+    flexDirection: 'column',
+  },
+  displayName: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  username: {
+    color: '#999',
+    fontSize: 14,
+  },
+  deleteButton: {
+    padding: 4,
+    borderRadius: 12,
+    backgroundColor: '#FF3B30',
+    marginLeft: 8,
+  },
+  deleteText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  tweetContent: {
+    marginBottom: 8,
+  },
+  tweetText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '500',
+  },
+  tweetFooter: {
+    alignItems: 'flex-end',
+  },
+  tweetDateTime: {
+    color: '#999',
+    fontSize: 14,
+  },
+  emptyFeed: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 40,
+  },
+  emptyFeedTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  emptyFeedText: {
+    color: '#999',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 8,
+  },
+  emptyFeedSubtext: {
+    color: '#666',
+    fontSize: 14,
+    textAlign: 'center',
   },
 });

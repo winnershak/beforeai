@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration, Platform, Alert } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio, AVPlaybackStatus } from 'expo-av';
@@ -7,6 +7,7 @@ import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, rese
 import * as Notifications from 'expo-notifications';
 import soundAssets from './sounds';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
+import { saveWakeupToFirestore, getCurrentUser } from './config/firebase';
 
 // Add this type definition at the top of your file
 interface Alarm {
@@ -42,53 +43,98 @@ const stopVibration = () => {
   console.log('Vibration stopped');
 };
 
-// Update the recordWakeupTime function to only record if it's earlier than any existing record for today
-const recordWakeupTime = async (alarmId: string) => {
+// Update the recordWakeupTime function to ALSO save to Firebase:
+const recordWakeupTime = async (alarmId: string, currentAlarm?: Alarm | null) => {
   try {
     const today = new Date();
-    const dateString = today.toISOString().split('T')[0]; // YYYY-MM-DD
+    const dateString = today.toISOString().split('T')[0];
     
-    // Format time with leading zeros
     const hours = today.getHours();
     const minutes = today.getMinutes().toString().padStart(2, '0');
     const timeString = `${hours}:${minutes}`;
-    const currentTimeMinutes = hours * 60 + parseInt(minutes);
+    
+    // 🚫 SKIP: Don't record late night dismissals (00:00 - 02:00)
+    if (hours >= 0 && hours < 2) {
+      console.log('⏰ Skipping late night alarm dismissal (00:00-02:00)');
+      return;
+    }
     
     console.log(`Recording wake-up time: ${dateString} at ${timeString} for alarm ${alarmId}`);
     
-    // Get existing history
+    // 📱 Save to local storage (same as before, but with time filter)
     const historyJson = await AsyncStorage.getItem('wakeupHistory');
     const history = historyJson ? JSON.parse(historyJson) : {};
     
-    // Check if we already have a record for today
+    // Keep earliest time per day logic
     if (history[dateString]) {
-      // Parse existing time
       const [existingHours, existingMinutes] = history[dateString].time.split(':').map(Number);
       const existingTimeMinutes = existingHours * 60 + existingMinutes;
+      const currentTimeMinutes = hours * 60 + parseInt(minutes);
       
-      // Only update if current time is earlier than existing time
       if (currentTimeMinutes < existingTimeMinutes) {
-        history[dateString] = {
-          time: timeString,
-          alarmId: alarmId
-        };
+        history[dateString] = { time: timeString, alarmId: alarmId };
         console.log('Updated with earlier wake-up time');
       } else {
         console.log('Keeping existing earlier wake-up time');
+        return;
       }
     } else {
-      // No existing record for today, add new one
-      history[dateString] = {
-        time: timeString,
-        alarmId: alarmId
-      };
+      history[dateString] = { time: timeString, alarmId: alarmId };
     }
     
-    // Save updated history
     await AsyncStorage.setItem('wakeupHistory', JSON.stringify(history));
     console.log('Successfully recorded wake-up time');
   } catch (error) {
     console.error('Error recording wake-up time:', error);
+  }
+};
+
+// 💾 SAVE: New function to actually save the wake-up
+const saveWakeUpRecord = async (alarmId: string, currentAlarm: Alarm | null, timeString: string, dateString: string) => {
+  try {
+    // ✅ ALWAYS save to Firebase
+    const user = getCurrentUser();
+    if (user) {
+      try {
+        await saveWakeupToFirestore({
+          wakeUpTime: timeString,
+          actualTime: timeString,
+          targetTime: currentAlarm?.time || timeString,
+          date: dateString,
+          message: `Woke up at ${timeString}! 🌅`,
+          soundUsed: currentAlarm?.sound || 'Unknown',
+          alarmId: alarmId
+        });
+        console.log('✅ Wake-up saved to Firebase!');
+      } catch (firebaseError) {
+        console.error('❌ Failed to save to Firebase:', firebaseError);
+      }
+    }
+
+    // ✅ Save to local storage for calendar (earliest only)
+    const historyJson = await AsyncStorage.getItem('wakeupHistory');
+    const history = historyJson ? JSON.parse(historyJson) : {};
+    
+    if (history[dateString]) {
+      const [existingHours, existingMinutes] = history[dateString].time.split(':').map(Number);
+      const existingTimeMinutes = existingHours * 60 + existingMinutes;
+      const [currentHours, currentMinutes] = timeString.split(':').map(Number);
+      const currentTimeMinutes = currentHours * 60 + currentMinutes;
+      
+      if (currentTimeMinutes < existingTimeMinutes) {
+        history[dateString] = { time: timeString, alarmId: alarmId };
+        console.log('Updated with earlier wake-up time');
+      } else {
+        console.log('Keeping existing earlier wake-up time for calendar');
+      }
+    } else {
+      history[dateString] = { time: timeString, alarmId: alarmId };
+    }
+    
+    await AsyncStorage.setItem('wakeupHistory', JSON.stringify(history));
+    console.log('Successfully recorded wake-up time');
+  } catch (error) {
+    console.error('Error saving wake-up record:', error);
   }
 };
 
@@ -484,7 +530,7 @@ export default function AlarmRingScreen() {
       
       // Record wake-up time
       if (currentAlarm) {
-        await recordWakeupTime(currentAlarm.id);
+        await recordWakeupTime(currentAlarm.id, currentAlarm);
       }
       
       // Reset alarm state
@@ -742,7 +788,7 @@ export default function AlarmRingScreen() {
     try {
       // Record wake-up time when alarm is dismissed
       if (currentAlarm) {
-        await recordWakeupTime(currentAlarm.id);
+        await recordWakeupTime(currentAlarm.id, currentAlarm);
       }
       
       // Rest of your existing code...

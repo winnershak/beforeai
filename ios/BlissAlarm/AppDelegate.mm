@@ -4,6 +4,8 @@
 #import <React/RCTLinkingManager.h>
 #import <React/RCTBridgeModule.h>
 #import <UserNotifications/UserNotifications.h>
+#import <Firebase.h>
+#import <GoogleSignIn/GoogleSignIn.h>
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate>
 @end
@@ -24,6 +26,8 @@
   UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
   center.delegate = self;
 
+  [FIRApp configure];
+
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
 
@@ -43,7 +47,7 @@
 
 // Linking API
 - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options {
-  return [super application:application openURL:url options:options] || [RCTLinkingManager application:application openURL:url options:options];
+  return [super application:application openURL:url options:options] || [RCTLinkingManager application:application openURL:url options:options] || [GIDSignIn.sharedInstance handleURL:url];
 }
 
 // Universal Links

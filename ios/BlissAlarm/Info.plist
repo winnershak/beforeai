@@ -39,6 +39,14 @@
           <string>exp+bliss-alarm-clock</string>
         </array>
       </dict>
+      <dict>
+        <key>CFBundleURLName</key>
+        <string>google-signin</string>
+        <key>CFBundleURLSchemes</key>
+        <array>
+          <string>com.googleusercontent.apps.748781286916-o2egm2al46ak0bnnbkkir01ck9qafael</string>
+        </array>
+      </dict>
     </array>
     <key>CFBundleVersion</key>
     <string>110</string>

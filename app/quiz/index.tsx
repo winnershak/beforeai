@@ -198,11 +198,15 @@ export default function QuizIntro() {
                 onPress={() => router.push('/quiz/question1')}
               >
                 <Text style={styles.buttonText}>Start Quiz</Text>
-                <View style={styles.buttonIconContainer}>
-                  <Ionicons name="arrow-forward" size={18} color="#fff" />
-                </View>
               </TouchableOpacity>
               
+              <TouchableOpacity 
+                style={[styles.button, { backgroundColor: '#34C759', marginTop: 15 }]} 
+                onPress={() => router.replace('/(tabs)')}
+              >
+                <Text style={styles.buttonText}>I Have Bliss Alarm Card</Text>
+              </TouchableOpacity>
+
               <TouchableOpacity 
                 style={styles.redeemCodeButton} 
                 onPress={() => router.push('/redemption')}

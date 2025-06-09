@@ -35,8 +35,8 @@ target 'BlissAlarm' do
 
   config = use_native_modules!(config_command)
 
-  use_frameworks! :linkage => podfile_properties['ios.useFrameworks'].to_sym if podfile_properties['ios.useFrameworks']
-  use_frameworks! :linkage => ENV['USE_FRAMEWORKS'].to_sym if ENV['USE_FRAMEWORKS']
+  # Force dynamic frameworks for Firebase compatibility
+  use_frameworks! :linkage => :dynamic
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -65,8 +65,6 @@ target 'BlissAlarm' do
       end
     end
     
-    # apply_reanimated_post_install_workaround(installer)
-    
     installer.pods_project.targets.each do |target|
       target.build_configurations.each do |config|
         # Force C++20 which has proper template definitions
@@ -75,16 +73,26 @@ target 'BlissAlarm' do
         config.build_settings['OTHER_CXXFLAGS'] = '-std=c++20'
         config.build_settings['CLANG_CXX_LIBRARY'] = 'libc++'
         
+        # Fix Firebase Swift header generation
+        if target.name.include?('Firebase')
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+          config.build_settings['SWIFT_OBJC_INTERFACE_HEADER_NAME'] = "#{target.name}-Swift.h"
+          config.build_settings['SWIFT_OBJC_BRIDGING_HEADER'] = ''
+        end
+        
         # Add additional settings for ReactCommon specifically
         if target.name == 'ReactCommon'
           config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
           config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'FOLLY_NO_CONFIG=1'
         end
         
-        # Fix RNReanimated missing version string
+        # Fix RNReanimated missing version string AND missing RCTEventDispatcher
         if target.name == 'RNReanimated'
           config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= ['$(inherited)']
-          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'REANIMATED_VERSION_STRING=\"3.16.7\"'
+          config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] << 'REANIMATED_VERSION_STRING=\"3.18.0\"'
+          # Fix missing RCTEventDispatcher symbol for RN 0.76
+          config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
+          config.build_settings['OTHER_LDFLAGS'] << '-Wl,-U,_OBJC_CLASS_$_RCTEventDispatcher'
         end
       end
     end

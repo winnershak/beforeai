@@ -8,6 +8,9 @@ import RevenueCatService from '../services/RevenueCatService';
 import AlarmSoundModule from '../native-modules/AlarmSoundModule';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
+import { signInWithGoogle, signOut, getCurrentUser, testFirebaseConnection, addTestWakeUp, saveWakeupToFirestore, getUserProfile } from '../config/firebase';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 export default function SettingsScreen() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<{
@@ -18,7 +21,17 @@ export default function SettingsScreen() {
   } | null>(null);
   
   const [blockRemovalsLeft, setBlockRemovalsLeft] = useState<number | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseAuthTypes.User | null>(null);
+  const [userProfile, setUserProfile] = useState<any | null>(null);
   
+  // Check Firebase auth state
+  useEffect(() => {
+    const unsubscribe = auth().onAuthStateChanged((user) => {
+      setFirebaseUser(user);
+    });
+    return unsubscribe;
+  }, []);
+
   // Function to test the AlarmSound native module
   const testAlarmSound = () => {
     console.log('🔊 Testing AlarmSound.configureAudio()...');
@@ -49,6 +62,49 @@ export default function SettingsScreen() {
     } catch (error) {
       console.error('❌ Error debugging sound files:', error);
       Alert.alert('Error', 'Failed to debug sound files. See logs for details.');
+    }
+  };
+
+  // Firebase Login Handler
+  const handleFirebaseLogin = async () => {
+    try {
+      console.log('🔥 User clicked Google Sign-In button');
+      
+      // First test if Firebase works at all
+      console.log('🔥 Testing Firebase connection first...');
+      await testFirebaseConnection();
+      console.log('🔥 Firebase connection test passed!');
+      
+      // Now try Google Sign-In
+      console.log('🔥 Starting Google Sign-In...');
+      const result = await signInWithGoogle();
+      
+      Alert.alert(
+        'SUCCESS! 🎉', 
+        `Signed in as:\n${result.user.email || 'No email'}\n\nUID: ${result.user.uid.substring(0, 12)}...`,
+        [{ text: 'AMAZING!', style: 'default' }]
+      );
+      
+    } catch (error) {
+      console.error('🔥 Firebase login failed:', error);
+      Alert.alert(
+        'Sign-In Failed', 
+        error instanceof Error ? error.message : 'Unknown error occurred',
+        [
+          { text: 'Try Again', style: 'default' },
+          { text: 'Check Logs', style: 'cancel' }
+        ]
+      );
+    }
+  };
+
+  // Firebase Logout Handler
+  const handleFirebaseLogout = async () => {
+    try {
+      await signOut();
+      Alert.alert('Signed Out', 'Successfully signed out of Firebase');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to sign out');
     }
   };
 
@@ -209,6 +265,60 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleTestWakeUp = async () => {
+    try {
+      await addTestWakeUp();
+      Alert.alert('Success!', 'Test wake-up added to Firebase! Check your Feed tab.');
+    } catch (error) {
+      Alert.alert('Error', `Failed to add test wake-up: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
+    }
+  };
+
+  const handleAddTestWakeUps = async () => {
+    try {
+      const user = getCurrentUser();
+      if (!user) {
+        Alert.alert('Error', 'Please sign in first');
+        return;
+      }
+
+      // Add 3 test wake-ups with just the essentials
+      const testData = [
+        { time: '07:30', date: '2025-06-08', message: 'Feeling great this morning! 🌅' },
+        { time: '06:45', date: '2025-06-07', message: 'Early bird today!' },
+        { time: '08:15', date: '2025-06-06', message: '' }, // No message
+      ];
+
+      for (const test of testData) {
+        await saveWakeupToFirestore({
+          wakeUpTime: test.time,
+          date: test.date,
+          message: test.message,
+        });
+      }
+
+      Alert.alert('Success!', 'Added 3 test wake-ups to your feed!');
+    } catch (error) {
+      Alert.alert('Error', `Failed to add test data: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  };
+
+  const loadUserProfile = async () => {
+    try {
+      const user = getCurrentUser();
+      if (user) {
+        const profile = await getUserProfile(user.uid);
+        setUserProfile(profile);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
+
+  const handleEditProfile = () => {
+    router.push('/settings/profile');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -262,6 +372,80 @@ export default function SettingsScreen() {
             </View>
             <Ionicons name="chevron-forward" size={20} color="#666" />
           </TouchableOpacity>
+        </View>
+
+        {/* Account Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Account</Text>
+          
+          {!firebaseUser ? (
+            <TouchableOpacity
+              style={[styles.settingItem, { backgroundColor: '#007AFF' }]}
+              onPress={handleFirebaseLogin}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="logo-google" size={24} color="#FFFFFF" style={styles.settingIcon} />
+                <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Sign In with Google</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
+          ) : (
+            <>
+              <View style={[styles.settingItem, { backgroundColor: '#34C759' }]}>
+                <View style={styles.settingContent}>
+                  <Ionicons name="person-circle" size={24} color="#FFFFFF" style={styles.settingIcon} />
+                  <View>
+                    <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Signed In</Text>
+                    <Text style={[styles.settingText, { color: '#FFFFFF', fontSize: 14, opacity: 0.8 }]}>
+                      {firebaseUser.displayName || firebaseUser.email || 'Bliss User'}
+                    </Text>
+                  </View>
+                </View>
+              </View>
+              
+              <TouchableOpacity
+                style={[styles.settingItem, { backgroundColor: '#FF3B30' }]}
+                onPress={handleFirebaseLogout}
+              >
+                <View style={styles.settingContent}>
+                  <Ionicons name="log-out" size={24} color="#FFFFFF" style={styles.settingIcon} />
+                  <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Sign Out</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+
+              {firebaseUser && (
+                <TouchableOpacity
+                  style={[styles.settingItem, { backgroundColor: '#34C759' }]}
+                  onPress={handleAddTestWakeUps}
+                >
+                  <View style={styles.settingContent}>
+                    <Ionicons name="flask" size={24} color="#FFFFFF" style={styles.settingIcon} />
+                    <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Add Test Wake-Up Data</Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+                </TouchableOpacity>
+              )}
+
+              {firebaseUser && (
+                <TouchableOpacity
+                  style={[styles.settingItem]}
+                  onPress={handleEditProfile}
+                >
+                  <View style={styles.settingContent}>
+                    <Ionicons name="person-circle" size={24} color="#007AFF" style={styles.settingIcon} />
+                    <View>
+                      <Text style={styles.settingText}>Edit Profile</Text>
+                      <Text style={[styles.settingText, { fontSize: 14, opacity: 0.7 }]}>
+                        @{userProfile?.username || 'Set username'}
+                      </Text>
+                    </View>
+                  </View>
+                  <Ionicons name="chevron-forward" size={20} color="#666" />
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -455,6 +639,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   settingTitle: {
+    color: '#fff',
+    fontSize: 17,
+  },
+  menuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#2C2C2E',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+  },
+  menuText: {
     color: '#fff',
     fontSize: 17,
   },
