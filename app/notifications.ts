@@ -630,12 +630,15 @@ export function handleNotification(notification: Notifications.Notification) {
       console.error('Error cancelling notifications:', error);
     });
     
-    // Load and play the alarm sound
+    // FIRST: Save the current volume before doing anything!
+    console.log('Saving original volume before alarm...');
+
+    // NOW play the alarm sound (which will automatically save volume and set to max)
     if (data.sound && !global.currentAlarmSound) {
-      console.log('Starting to play alarm sound:', data.sound, 'at volume', data.soundVolume || 1);
-      playAlarmSound(data.sound, data.soundVolume || 1);
+      console.log('Starting to play alarm sound:', data.sound);
+      playAlarmSound(data.sound, data.soundVolume || 1); // Just play - it already saves volume internally
     }
-    
+      
     // Store the alarm data in AsyncStorage for recovery
     AsyncStorage.setItem('currentAlarmData', JSON.stringify({
       alarmId: data.alarmId,

@@ -167,48 +167,19 @@ class AlarmSound: NSObject {
   
   @objc
   func stopAlarmSound(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
-    // Capture resolver and rejecter before async block to avoid escaping issues
     let capturedResolver = resolver
     let capturedRejecter = rejecter
     
     DispatchQueue.main.async {
-      // First attempt to restore volume
-      self.volumeControl.restoreOriginalVolume(
-        { _ in print("🔊 First attempt to restore original volume") },
-        rejecter: { _, _, _ in print("❌ Failed to restore system volume") }
-      )
-      
-      // Cancel any timers
       self.timer?.invalidate()
       self.timer = nil
-      
-      // Stop playback
       self.audioPlayer?.stop()
       self.audioPlayer = nil
       
-      // Multiple restoration attempts with increasing delays
-      let delays = [0.5, 1.0, 2.0]
-      for (index, delay) in delays.enumerated() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-          self.volumeControl.restoreOriginalVolume(
-            { _ in print("�� Volume restoration attempt #\(index + 2)") },
-            rejecter: { _, _, _ in print("❌ Failed on volume restoration attempt #\(index + 2)") }
-          )
-          
-          // On the last attempt, also deactivate the audio session
-          if index == delays.count - 1 {
-            do {
-              try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
-              print("✅ Audio session deactivated")
-            } catch {
-              print("❌ Failed to deactivate audio session: \(error)")
-            }
-          }
-        }
-      }
+      // FIXED: Correct method call WITH the rejecter: label
+      self.volumeControl.restoreOriginalVolume(capturedResolver, rejecter: capturedRejecter)
       
-      capturedResolver(true)
-      print("✅ Alarm sound stopped, multiple volume restoration attempts scheduled.")
+      print("✅ Alarm sound stopped, volume restored.")
     }
   }
   
@@ -329,5 +300,15 @@ class AlarmSound: NSObject {
   @objc
   func isPlayingAlarmSound(_ resolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) {
     resolver(audioPlayer != nil && audioPlayer!.isPlaying)
+  }
+
+  @objc
+  func saveOriginalVolume(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      let currentVolume = AVAudioSession.sharedInstance().outputVolume
+      self.volumeControl.originalVolume = currentVolume
+      print("💾 Saved original volume: \(currentVolume)")
+      resolver(currentVolume)
+    }
   }
 } 

@@ -7,7 +7,9 @@ import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, rese
 import * as Notifications from 'expo-notifications';
 import soundAssets from './sounds';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
+import SystemVolumeModule from './native-modules/SystemVolumeModule';
 import { saveWakeupToFirestore, getCurrentUser } from './config/firebase';
+
 
 // Add this type definition at the top of your file
 interface Alarm {
@@ -135,6 +137,54 @@ const saveWakeUpRecord = async (alarmId: string, currentAlarm: Alarm | null, tim
     console.log('Successfully recorded wake-up time');
   } catch (error) {
     console.error('Error saving wake-up record:', error);
+  }
+};
+
+// Add this function to alarm-ring.tsx (around line 140)
+const disableAlarm = async (alarmId: string) => {
+  try {
+    const alarmsJson = await AsyncStorage.getItem('alarms');
+    if (alarmsJson) {
+      const alarms = JSON.parse(alarmsJson);
+      const updatedAlarms = alarms.map((alarm: any) => {
+        if (alarm.id === alarmId) {
+          return { ...alarm, enabled: false };
+        }
+        return alarm;
+      });
+      await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+      console.log(`Alarm ${alarmId} disabled after successful mission`);
+    }
+  } catch (error) {
+    console.error('Error disabling alarm:', error);
+  }
+};
+
+// Add these new functions after the disableAlarm function (around line 150)
+const setCurrentPlayingAlarm = async (alarmId: string) => {
+  await AsyncStorage.setItem('currentPlayingAlarm', alarmId);
+};
+
+const getCurrentPlayingAlarm = async (): Promise<string | null> => {
+  return await AsyncStorage.getItem('currentPlayingAlarm');
+};
+
+const clearCurrentPlayingAlarm = async () => {
+  await AsyncStorage.removeItem('currentPlayingAlarm');
+};
+
+// Add this function to manually restore volume
+const restoreSystemVolume = async () => {
+  try {
+    // Get the original volume before the alarm started
+    const originalVolume = await AsyncStorage.getItem('originalSystemVolume');
+    if (originalVolume) {
+      // Use SystemVolumeModule instead of AlarmSoundModule
+      await SystemVolumeModule.restoreOriginalVolume();
+      console.log('Attempted to restore original volume:', originalVolume);
+    }
+  } catch (error) {
+    console.error('Error restoring volume:', error);
   }
 };
 
@@ -480,7 +530,7 @@ export default function AlarmRingScreen() {
     };
   }, []);
 
-  // This useEffect will handle sound playback
+  // Update the useEffect that handles sound playback (around line 507)
   useEffect(() => {
     console.log('Sound management useEffect running');
     
@@ -489,6 +539,12 @@ export default function AlarmRingScreen() {
         if (Platform.OS === 'ios') {
           console.log('Playing sound with AlarmSoundModule:', soundName, volume);
           await AlarmSoundModule.playAlarmSound(soundName, volume);
+          
+          // Mark this alarm as currently playing (for ALL alarms, not just ones with missions)
+          if (params.alarmId) {
+            await setCurrentPlayingAlarm(params.alarmId as string);
+          }
+          
           setIsPlaying(true);
         }
       } catch (error) {
@@ -496,41 +552,60 @@ export default function AlarmRingScreen() {
       }
     };
 
-    playSound();
+    // Play sound for ALL alarms (not just ones with currentAlarm set)
+    if (params.alarmId) {
+      playSound();
+    }
     
     return () => {
       console.log('Sound management useEffect cleanup');
-      if (Platform.OS === 'ios') {
-        AlarmSoundModule.stopAlarmSound().catch((err: Error) => 
-          console.error('Error stopping sound:', err)
-        );
-      }
+      // Don't stop sound in cleanup - let stopSound() handle it properly
     };
-  }, [soundName, volume]);
+  }, [soundName, volume, params.alarmId]);
 
+  // Update the stopSound function to call this:
   const stopSound = async () => {
     try {
-      console.log('Stopping alarm sound');
+      console.log('Stopping alarm sound for alarm:', currentAlarm?.id || params.alarmId);
       
-      // First, stop the sound using the native module
-      await AlarmSoundModule.stopAlarmSound();
+      // Get the alarm ID from either currentAlarm or params
+      const alarmId = currentAlarm?.id || (params.alarmId as string);
       
-      // Add a second attempt after a short delay
-      setTimeout(async () => {
-        try {
-          console.log('Making second attempt to stop alarm sound');
-          await AlarmSoundModule.stopAlarmSound();
-        } catch (error) {
-          console.error('Error in second attempt to stop alarm sound:', error);
-        }
-      }, 1000);
+      // Check if this alarm is the one currently playing sound
+      const currentPlayingAlarmId = await getCurrentPlayingAlarm();
       
-      // Stop vibration
+      if (currentPlayingAlarmId === alarmId) {
+        console.log('This alarm is currently playing, stopping global sound');
+        
+        // FIXED: Single call to stop alarm sound - let Swift handle volume restoration
+        await AlarmSoundModule.stopAlarmSound();
+        
+        // Clear the currently playing alarm
+        await clearCurrentPlayingAlarm();
+      } else {
+        console.log('This alarm is not currently playing sound, skipping global sound stop');
+      }
+      
+      // FIXED: Disable the alarm when stopping sound (mission completed)
+      if (alarmId) {
+        await disableAlarm(alarmId);
+      }
+      
+      // Stop vibration (only for this alarm)
       stopVibration();
       
       // Record wake-up time
       if (currentAlarm) {
         await recordWakeupTime(currentAlarm.id, currentAlarm);
+      }
+      
+      // Clear the active alarm if it matches this alarm
+      const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
+      if (activeAlarmJson) {
+        const activeAlarm = JSON.parse(activeAlarmJson);
+        if (activeAlarm.alarmId === alarmId) {
+          await AsyncStorage.removeItem('activeAlarm');
+        }
       }
       
       // Reset alarm state

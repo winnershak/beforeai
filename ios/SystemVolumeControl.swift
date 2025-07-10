@@ -4,22 +4,23 @@ import AVFoundation
 
 @objc(SystemVolumeControl)
 class SystemVolumeControl: NSObject {
+  var originalVolume: Float = 0.5
   private var volumeView: MPVolumeView?
-  private var originalVolume: Float = 0.5
+  
+  // NEW: Save volume without changing it
+  @objc
+  func saveOriginalVolume(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      self.originalVolume = AVAudioSession.sharedInstance().outputVolume
+      print("💾 Saved original volume: \(self.originalVolume)")
+      resolver(self.originalVolume)
+    }
+  }
   
   @objc
   func setSystemVolume(_ volume: NSNumber, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
-    // PRODUCTION SAFETY: Don't modify volume at startup in production
-    let isProduction = Bundle.main.object(forInfoDictionaryKey: "IS_PRODUCTION") as? Bool ?? false
-    if isProduction {
-      print("Production build: Bypassing volume control for stability")
-      resolver(true)
-      return
-    }
-    
     DispatchQueue.main.async {
-      // Store original volume to restore later if needed
-      self.originalVolume = AVAudioSession.sharedInstance().outputVolume
+      // DON'T save original volume here anymore!
       
       // Create hidden volume view if needed
       if self.volumeView == nil {
@@ -31,11 +32,11 @@ class SystemVolumeControl: NSObject {
         }
       }
       
-      // Find the slider in the volume view
+      // Set volume to max
       if let volumeView = self.volumeView,
          let volumeSlider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
-        // Set the volume
         volumeSlider.value = volume.floatValue
+        print("🔊 Set volume to: \(volume.floatValue) (original saved as: \(self.originalVolume))")
         resolver(true)
       } else {
         rejecter("error", "Could not find volume slider", nil)
@@ -43,10 +44,20 @@ class SystemVolumeControl: NSObject {
     }
   }
   
+  // Keep restore the same
   @objc
-  func restoreOriginalVolume(_ resolver: @escaping RCTPromiseResolveBlock,
-                             rejecter: @escaping RCTPromiseRejectBlock) {
-    self.setSystemVolume(NSNumber(value: self.originalVolume), resolver: resolver, rejecter: rejecter)
+  func restoreOriginalVolume(_ resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+    DispatchQueue.main.async {
+      if let volumeView = self.volumeView,
+         let volumeSlider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
+        volumeSlider.value = self.originalVolume
+        print("✅ Volume restored to: \(self.originalVolume)")
+        resolver(true)
+      } else {
+        print("❌ Could not find volume slider for restoration")
+        rejecter("error", "Could not find volume slider", nil)
+      }
+    }
   }
   
   @objc

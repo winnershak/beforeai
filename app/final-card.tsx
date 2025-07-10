@@ -109,6 +109,9 @@ export default function FinalCardScanner() {
         
         stopAlarmSound();
         
+        // FIXED: Disable the alarm instead of just removing activeAlarm
+        await disableAlarm(params.alarmId as string);
+        
         // Clear the active alarm
         await AsyncStorage.removeItem('activeAlarm');
         
@@ -249,6 +252,25 @@ export default function FinalCardScanner() {
   const handleRetryNFC = () => {
     if (!scanning) {
       startNFCScanning();
+    }
+  };
+
+  const disableAlarm = async (alarmId: string) => {
+    try {
+      const alarmsJson = await AsyncStorage.getItem('alarms');
+      if (alarmsJson) {
+        const alarms = JSON.parse(alarmsJson);
+        const updatedAlarms = alarms.map((alarm: any) => {
+          if (alarm.id === alarmId) {
+            return { ...alarm, enabled: false };
+          }
+          return alarm;
+        });
+        await AsyncStorage.setItem('alarms', JSON.stringify(updatedAlarms));
+        console.log(`Alarm ${alarmId} disabled after successful mission`);
+      }
+    } catch (error) {
+      console.error('Error disabling alarm:', error);
     }
   };
 
