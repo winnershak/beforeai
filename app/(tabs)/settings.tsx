@@ -427,6 +427,22 @@ export default function SettingsScreen() {
                 </TouchableOpacity>
               )}
 
+              {/* NEW: Quiz button */}
+              <TouchableOpacity
+                style={[styles.settingItem, { backgroundColor: '#FF9500' }]}
+                onPress={async () => {
+                  // Mark quiz as incomplete temporarily for debugging
+                  await AsyncStorage.setItem('quizCompleted', 'false');
+                  router.replace('/quiz');
+                }}
+              >
+                <View style={styles.settingContent}>
+                  <Ionicons name="help-circle" size={24} color="#FFFFFF" style={styles.settingIcon} />
+                  <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Debug Onboarding Quiz</Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+              </TouchableOpacity>
+
               {firebaseUser && (
                 <TouchableOpacity
                   style={[styles.settingItem]}

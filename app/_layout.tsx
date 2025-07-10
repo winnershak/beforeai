@@ -836,6 +836,7 @@ export default function AppLayout() {
             <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/yes" options={{ headerShown: false }} />
             <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
+            <Stack.Screen name="final-card" options={{ headerShown: false, gestureEnabled: false }} />
             <Stack.Screen 
               name="snooze-confirmation" 
               options={{

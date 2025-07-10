@@ -202,16 +202,13 @@ export default function QuizIntro() {
               
               <TouchableOpacity 
                 style={[styles.button, { backgroundColor: '#34C759', marginTop: 15 }]} 
-                onPress={() => router.replace('/(tabs)')}
+                onPress={async () => {
+                  // Mark quiz as completed so they don't get redirected back
+                  await AsyncStorage.setItem('quizCompleted', 'true');
+                  router.replace('/(tabs)');
+                }}
               >
                 <Text style={styles.buttonText}>I Have Bliss Alarm Card</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity 
-                style={styles.redeemCodeButton} 
-                onPress={() => router.push('/redemption')}
-              >
-                <Text style={styles.redeemCodeText}>Have a redemption code?</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>
@@ -269,51 +266,7 @@ export default function QuizIntro() {
         </View>
       </Modal>
       
-      <Modal
-        visible={showRedeemCodeModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowRedeemCodeModal(false)}
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalHeader}>Enter Promo Code</Text>
-            
-            <TextInput 
-              style={styles.modalInput}
-              placeholder="Enter your code here"
-              placeholderTextColor="#999"
-              value={promoCode}
-              onChangeText={setPromoCode}
-              autoCapitalize="characters"
-            />
-            
-            <View style={styles.appmodalButtons}>
-              <TouchableOpacity 
-                style={styles.cancelButton}
-                onPress={() => {
-                  setPromoCode('');
-                  setShowRedeemCodeModal(false);
-                }}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={styles.redeemButton}
-                onPress={handleCodeRedemption}
-                disabled={redeeming}
-              >
-                {redeeming ? (
-                  <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                  <Text style={styles.redeemButtonText}>Redeem</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* Remove the Redemption Code Modal */}
     </>
   );
 }

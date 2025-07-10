@@ -6,6 +6,13 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Define mission types with emojis
 const missions = [
   {
+    id: 'blisscard',
+    name: 'Bliss Alarm Card',
+    emoji: '💳',
+    description: 'Scan your Bliss Alarm Card to turn off the alarm',
+    needsConfig: false
+  },
+  {
     id: 'math',
     name: 'Math',
     emoji: '🔢',
@@ -78,6 +85,11 @@ export default function MissionSelector() {
       
       // Route to the appropriate configuration page based on mission type
       switch (mission.id) {
+        case 'blisscard':
+          // For Bliss Alarm Card, go directly back to new-alarm (no config needed)
+          router.push('/new-alarm');
+          break;
+        
         case 'math':
           // Navigate to math configuration
           router.push('/mission/math');

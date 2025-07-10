@@ -362,11 +362,10 @@ export default function YesScreen() {
                     <View style={styles.planContent}>
                       <View style={styles.planLeftContent}>
                         <Text style={styles.planTitle}>Monthly</Text>
-                        <Text style={styles.planPrice}>{getPackageDetails('monthly').price}</Text>
+                        <Text style={styles.planDaily}>$0.43 per day</Text>
                       </View>
                       <View style={styles.planRightContent}>
-                        <Text style={styles.planDaily}>$0.43</Text>
-                        <Text style={styles.perDayText}>per day</Text>
+                        <Text style={styles.planPrice}>{getPackageDetails('monthly').price}</Text>
                       </View>
                     </View>
                   </TouchableOpacity>
@@ -387,12 +386,11 @@ export default function YesScreen() {
                       <View style={styles.planContent}>
                         <View style={styles.planLeftContent}>
                           <Text style={styles.planTitle}>Yearly</Text>
-                          <Text style={styles.planPrice}>{getPackageDetails('yearly').price}</Text>
+                          <Text style={styles.planDaily}>$0.14 per day</Text>
                           <Text style={styles.savingsText}>Save 50%</Text>
                         </View>
                         <View style={styles.planRightContent}>
-                          <Text style={styles.planDaily}>$0.14</Text>
-                          <Text style={styles.perDayText}>per day</Text>
+                          <Text style={styles.planPrice}>{getPackageDetails('yearly').price}</Text>
                         </View>
                       </View>
                     </TouchableOpacity>
@@ -564,14 +562,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   planPrice: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 16,
-    marginBottom: 5,
+    color: '#FFFFFF', // Main price color
+    fontSize: 26,     // Larger font for main price
+    fontWeight: '700',
   },
   planDaily: {
-    color: '#FFFFFF',
-    fontSize: 26,
-    fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.7)', // Lighter color for per day price
+    fontSize: 16,     // Smaller font for per day price
   },
   perDayText: {
     color: 'rgba(255, 255, 255, 0.7)',

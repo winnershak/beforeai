@@ -686,7 +686,6 @@ export default function AlarmRingScreen() {
             break;
           case 'qr':
           case 'qr/barcode': 
-            // Use push instead of replace to keep alarm-ring in the navigation stack
             router.replace('/final-qr');
             break;
           case 'wordle':
@@ -694,6 +693,10 @@ export default function AlarmRingScreen() {
             break;
           case 'cookiejam':
             router.replace('/final-cookiejam');
+            break;
+          case 'bliss alarm card':
+          case 'blisscard':
+            router.replace('/final-card');
             break;
           default:
             console.warn('Unknown mission type:', mission);
@@ -724,6 +727,8 @@ export default function AlarmRingScreen() {
       return 'Steps';
     } else if (missionName === 'cookie jam' || missionType === 'cookiejam') {
       return 'CookieJam';
+    } else if (missionName === 'bliss alarm card' || missionType === 'blisscard') {
+      return 'Bliss Card';
     }
     
     return '';

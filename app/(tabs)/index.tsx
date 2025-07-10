@@ -1087,9 +1087,14 @@ export default function TabOneScreen() {
         return;
       }
 
-      // Refresh user profile data
-      const profile = await getUserProfile(user.uid);
-      setUserProfile(profile);
+      // Try to refresh user profile data, but don't let it block wake-ups loading
+      try {
+        const profile = await getUserProfile(user.uid);
+        setUserProfile(profile);
+      } catch (profileError) {
+        console.log('Error loading profile (continuing anyway):', profileError);
+        // Continue loading wake-ups even if profile fails
+      }
 
       // Load wake-ups from Firebase
       const snapshot = await firestore()
@@ -1555,38 +1560,13 @@ export default function TabOneScreen() {
       {/* Only show add button in alarms view */}
       {viewMode === 'alarms' && (
         <TouchableOpacity
-          style={[styles.addButton, !isPremium && styles.addButtonPremium]}
-          onPress={async () => {
-            if (!isPremium) {
-              Alert.alert(
-                'Premium Feature',
-                'Creating new alarms is a premium feature. Upgrade to unlock unlimited alarms!',
-                [
-                  {
-                    text: 'Maybe Later',
-                    style: 'cancel'
-                  },
-                  {
-                    text: 'Upgrade',
-                    onPress: () => router.push('/quiz/yes')
-                  }
-                ]
-              );
-              return;
-            }
+          style={styles.addButton}
+          onPress={() => {
             router.push('/new-alarm');
           }}
         >
           <Ionicons name="add-circle" size={22} color="#fff" />
           <Text style={styles.addButtonText}>New Alarm</Text>
-          {!isPremium && (
-            <Ionicons 
-              name="lock-closed" 
-              size={16} 
-              color="#FFD700" 
-              style={styles.premiumLock} 
-            />
-          )}
         </TouchableOpacity>
       )}
     </SafeAreaView>
