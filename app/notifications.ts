@@ -536,10 +536,8 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
     
     console.log(`Scheduling notification for: ${scheduledDate.toLocaleString()}`);
     
-    // Cancel any existing notification for this alarm
-    if (alarm.id) {
-      await cancelAlarmNotification(alarm.id);
-    }
+    // When disabling an alarm, make sure to cancel its notifications
+    await cancelAlarmNotification(alarm.id);
     
     // Schedule the actual notification with the unique ID
     const scheduledNotificationId = await Notifications.scheduleNotificationAsync({
@@ -607,7 +605,7 @@ export function handleNotification(notification: Notifications.Notification) {
     const data = notification.request.content.data;
     console.log('Handling notification with data:', data);
     
-    // Check if we're already handling an alarm - prevent double sounds
+    // Add check to prevent duplicate alarm screens
     if (isHandlingNotification) {
       console.log('Already handling a notification, ignoring duplicate');
       return;

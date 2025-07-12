@@ -612,7 +612,7 @@ export default function AlarmRingScreen() {
       await resetAlarmState();
       
       // Navigate back to the alarms screen
-      router.replace('/(tabs)');
+      router.replace('/alarm-success');
     } catch (error) {
       console.error('Error stopping alarm sound:', error);
       
@@ -719,6 +719,12 @@ export default function AlarmRingScreen() {
 
   const handleStartMission = async () => {
     try {
+      // Stop the alarm sound immediately when mission starts
+      await stopSound();
+      
+      // Then continue with mission logic...
+      // Navigate to mission screen, etc.
+      
       // Stop vibration
       stopVibration();
       

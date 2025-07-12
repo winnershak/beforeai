@@ -5,7 +5,7 @@ import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { scheduleAlarmNotification, cancelAlarmNotification, requestNotificationPermissions } from '../notifications';
+import { scheduleAlarmNotification, cancelAlarmNotification } from '../notifications';
 import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -661,6 +661,7 @@ export default function TabOneScreen() {
     fixAlarmEmojis();
   }, []);
 
+  // The toggleAlarm function already has the right logic:
   const toggleAlarm = async (id: string) => {
     try {
       const updatedAlarms = alarms.map(alarm => {
@@ -679,7 +680,7 @@ export default function TabOneScreen() {
           if (updatedAlarm.enabled) {
             scheduleAlarmNotification(updatedAlarm);
           } else {
-            cancelAlarmNotification(id);
+            cancelAlarmNotification(id); // This line needs the import to work
           }
           return updatedAlarm;
         }
