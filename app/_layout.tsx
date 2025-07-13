@@ -472,8 +472,8 @@ export default function AppLayout() {
           // Quiz is completed, go to main app
           hasNavigatedToQuizRef.current = true;
           setTimeout(() => {
-            console.log('Quiz completed, redirecting to app blocking tab');
-            router.replace('(tabs)/appblock');
+            console.log('Quiz completed, redirecting to main alarms tab');
+            router.replace('(tabs)');  // Changed from '(tabs)/appblock' to '(tabs)'
           }, 1000);
         }
         

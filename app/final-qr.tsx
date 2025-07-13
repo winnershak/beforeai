@@ -144,9 +144,8 @@ export default function FinalQRScanner() {
           if (scannedCode === target) {
             console.log('✅ QR code match!');
             stopAlarmSound();
-            // Use navigate instead of replace for better horizontal transitions
-            console.log('Navigating to scan complete screen using proper navigation');
-            router.navigate('/mission/scan-complete');
+            // Skip the built-in success screen and go directly to Instagram success
+            router.replace('/alarm-success');
           } else {
             console.log('❌ Wrong QR code!');
             console.log('Navigating to QR failure screen');
@@ -160,9 +159,8 @@ export default function FinalQRScanner() {
         } else {
           console.log('No target code set, accepting any code');
           stopAlarmSound();
-          // Navigate to new success screen
-          console.log('Navigating to scan complete screen');
-          router.navigate('/mission/scan-complete');
+          // Skip the built-in success screen and go directly to Instagram success
+          router.replace('/alarm-success');
         }
       }
     }

@@ -54,7 +54,6 @@ export const signInWithGoogle = async () => {
     });
     
     if (!idToken) {
-      console.error('🔥 No idToken found anywhere in userInfo:', JSON.stringify(userInfo, null, 2));
       throw new Error('Google Sign-In failed to return idToken');
     }
     
@@ -71,12 +70,6 @@ export const signInWithGoogle = async () => {
     return result;
     
   } catch (error) {
-    console.error('🔥 Google Sign-In Error Details:', {
-      code: error.code,
-      message: error.message,
-      nativeErrorMessage: error.nativeErrorMessage,
-      userInfo: error.userInfo,
-    });
     
     // Better error messages
     if (error.code === '12501' || error.code === 'sign_in_cancelled') {

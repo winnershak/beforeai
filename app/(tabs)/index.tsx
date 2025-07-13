@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform, Switch, Image, ScrollView, Share } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, Linking, Platform, Switch, Image, ScrollView } from 'react-native';
 import { Link, router, useLocalSearchParams } from 'expo-router';
 import { AlarmItem } from '@/components/AlarmItem';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,10 @@ import RevenueCatService from '../services/RevenueCatService';
 import * as ImagePicker from 'expo-image-picker';
 import firestore from '@react-native-firebase/firestore';
 import { getCurrentUser, getUserProfile } from '../config/firebase';
+// Add these new imports for Instagram sharing
+import { captureRef } from 'react-native-view-shot';
+import * as MediaLibrary from 'expo-media-library';
+import Share from 'react-native-share';
 
 // Define the Alarm type
 interface Alarm {
@@ -579,6 +583,10 @@ export default function TabOneScreen() {
   const [firebaseUser, setFirebaseUser] = useState(getCurrentUser());
   const [userProfile, setUserProfile] = useState<any | null>(null);
 
+  // Add refs for capturing the views
+  const weekViewRef = useRef<View>(null);
+  const monthViewRef = useRef<View>(null);
+
   // Load alarms from storage
   useEffect(() => {
     loadAlarms();
@@ -1053,22 +1061,52 @@ export default function TabOneScreen() {
     }
   };
 
-  // Function to share the current view
-  const shareCurrentView = async () => {
+  // Replace the shareCurrentView function with this new Instagram share function
+  const shareToInstagramStory = async () => {
     try {
+      console.log('📸 Starting Instagram story share...');
+      
+      // Determine which view to capture
+      const viewRef = viewMode === 'week' ? weekViewRef : monthViewRef;
       const viewType = viewMode === 'week' ? 'Weekly' : 'Monthly';
-      const period = viewMode === 'week' ? getWeekPeriodText(currentWeekOffset) : getMonthName(currentMonthOffset);
-      const average = viewMode === 'week' 
-        ? calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))
-        : calculateAverageTime(getMonthDataWithOffset(currentMonthOffset));
       
-      const shareText = `🚀 My ${viewType} Wake-Up Summary\n📅 ${period}\n⏰ Average: ${average}\n\nTracked with Bliss Alarm 💤`;
-      
-      await Share.share({
-        message: shareText,
+      if (!viewRef.current) {
+        Alert.alert('Error', 'Unable to capture view. Please try again.');
+        return;
+      }
+
+      // Capture the current view
+      console.log(`📱 Capturing ${viewType} view...`);
+      const uri = await captureRef(viewRef.current, {
+        format: 'png',
+        quality: 1.0,
+        result: 'tmpfile',
       });
-    } catch (error) {
-      console.error('Error sharing:', error);
+
+      console.log('✅ View captured successfully:', uri);
+
+      // Check if Instagram is installed
+      const canOpenInstagram = await Linking.canOpenURL('instagram-stories://share');
+      if (!canOpenInstagram) {
+        Alert.alert('Instagram Required', 'Please install Instagram to share to stories');
+        return;
+      }
+
+      // Share to Instagram Stories using the same method as alarm-success
+      const shareOptions = {
+        stickerImage: uri,
+        social: Share.Social.INSTAGRAM_STORIES as any,
+        appId: '1104244401532187',
+        backgroundBottomColor: '#1a1a2e',
+        backgroundTopColor: '#1a1a2e',
+      };
+      
+      await Share.shareSingle(shareOptions);
+      console.log('✅ Successfully shared to Instagram Stories!');
+      
+    } catch (error: any) {
+      console.error('💥 Error sharing to Instagram:', error);
+      Alert.alert('Sharing Error', 'Unable to share to Instagram. Please try again.');
     }
   };
 
@@ -1255,12 +1293,6 @@ export default function TabOneScreen() {
         >
           <Text style={[styles.viewModeText, viewMode === 'month' && styles.viewModeTextActive]}>Month</Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.viewModeButton, viewMode === 'feed' && styles.viewModeButtonActive]}
-          onPress={() => setViewMode('feed')}
-        >
-          <Text style={[styles.viewModeText, viewMode === 'feed' && styles.viewModeTextActive]}>Feed</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Alarms View */}
@@ -1336,75 +1368,78 @@ export default function TabOneScreen() {
       {/* Week View */}
       {viewMode === 'week' && (
         <ScrollView style={styles.historyContainer}>
-          <View style={styles.historyHeader}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.periodText}>{getWeekPeriodText(currentWeekOffset)}</Text>
-              <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
+          <View ref={weekViewRef} style={styles.captureContainer}>
+            <View style={styles.historyHeader}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.periodText}>{getWeekPeriodText(currentWeekOffset)}</Text>
+                <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
+              </View>
+              <Text style={styles.historyAverage}>
+                Average: {calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))}
+              </Text>
             </View>
-            <Text style={styles.historyAverage}>
-              Average: {calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))}
-            </Text>
-          </View>
-          
-          {/* Centered Profile Photo */}
-          <View style={styles.profileSection}>
-            <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
-              {profilePhoto ? (
-                <Image source={{ uri: profilePhoto }} style={styles.profilePhotoLarge} />
-              ) : (
-                <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-          
-          <View 
-            style={styles.weekContainer}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {Array.from({ length: 7 }).map((_, index) => {
-              const today = new Date();
-              const targetDate = new Date(today);
-              targetDate.setDate(today.getDate() + (currentWeekOffset * 7) - (6 - index));
-              
-              // Fix the date string to use local date
-              const year = targetDate.getFullYear();
-              const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-              const day = String(targetDate.getDate()).padStart(2, '0');
-              const dateString = `${year}-${month}-${day}`;
-              
-              // Find if we have a record for this date
-              const record = wakeupHistory.find((r: WakeupRecord) => r.date === dateString);
-              const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
-              
-              // Check if this is today (only if viewing current week)
-              const isToday = currentWeekOffset === 0 && targetDate.toDateString() === today.toDateString();
-              
-              return (
-                <View key={index} style={styles.weekDay}>
-                  <Text style={styles.weekDayName}>{dayName}</Text>
-                  <Text style={styles.weekDayDate}>
-                    {targetDate.getDate()}
-                  </Text>
-                  {record ? (
-                    <Text style={[
-                      styles.weekDayTime,
-                      isToday ? styles.weekDayTimeToday : null
-                    ]}>
-                      {formatTime24Hour(record.time)}
+            
+            {/* Centered Profile Photo */}
+            <View style={styles.profileSection}>
+              <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
+                {profilePhoto ? (
+                  <Image source={{ uri: profilePhoto }} style={styles.profilePhotoLarge} />
+                ) : (
+                  <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            
+            <View 
+              style={styles.weekContainer}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {Array.from({ length: 7 }).map((_, index) => {
+                const today = new Date();
+                const targetDate = new Date(today);
+                targetDate.setDate(today.getDate() + (currentWeekOffset * 7) - (6 - index));
+                
+                // Fix the date string to use local date
+                const year = targetDate.getFullYear();
+                const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+                const day = String(targetDate.getDate()).padStart(2, '0');
+                const dateString = `${year}-${month}-${day}`;
+                
+                // Find if we have a record for this date
+                const record = wakeupHistory.find((r: WakeupRecord) => r.date === dateString);
+                const dayName = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+                
+                // Check if this is today (only if viewing current week)
+                const isToday = currentWeekOffset === 0 && targetDate.toDateString() === today.toDateString();
+                
+                return (
+                  <View key={index} style={styles.weekDay}>
+                    <Text style={styles.weekDayName}>{dayName}</Text>
+                    <Text style={styles.weekDayDate}>
+                      {targetDate.getDate()}
                     </Text>
-                  ) : (
-                    <Text style={styles.weekDayNoTime}>-</Text>
-                  )}
-                </View>
-              );
-            })}
+                    {record ? (
+                      <Text style={[
+                        styles.weekDayTime,
+                        isToday ? styles.weekDayTimeToday : null
+                      ]}>
+                        {formatTime24Hour(record.time)}
+                      </Text>
+                    ) : (
+                      <Text style={styles.weekDayNoTime}>-</Text>
+                    )}
+                  </View>
+                );
+              })}
+            </View>
+            
           </View>
           
-          <TouchableOpacity onPress={shareCurrentView} style={styles.shareButtonBottom}>
-            <Ionicons name="share-outline" size={20} color="#007AFF" />
-            <Text style={styles.shareButtonText}>Share Summary</Text>
+          <TouchableOpacity onPress={shareToInstagramStory} style={styles.shareButtonBottom}>
+            <Ionicons name="logo-instagram" size={20} color="#fff" />
+            <Text style={styles.shareButtonText}>Share to Instagram Story</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -1412,66 +1447,70 @@ export default function TabOneScreen() {
       {/* Month View */}
       {viewMode === 'month' && (
         <ScrollView style={styles.historyContainer}>
-          <View style={styles.historyHeader}>
-            <View style={styles.headerLeft}>
-              <Text style={styles.periodText}>{getMonthName(currentMonthOffset)}</Text>
-              <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
-            </View>
-            <Text style={styles.historyAverage}>
-              Average: {calculateAverageTime(getMonthDataWithOffset(currentMonthOffset))}
-            </Text>
-          </View>
-          
-          {/* Centered Profile Photo */}
-          <View style={styles.profileSection}>
-            <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
-              {profilePhoto ? (
-                <Image source={{ uri: profilePhoto }} style={styles.profilePhotoLarge} />
-              ) : (
-                <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.calendarHeader}>
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
-              <Text key={index} style={styles.calendarHeaderDay}>{day}</Text>
-            ))}
-          </View>
-          
-          <View 
-            style={styles.calendarGrid}
-            onTouchStart={handleTouchStart}
-            onTouchMove={handleTouchMove}
-            onTouchEnd={handleTouchEnd}
-          >
-            {generateCalendarDays(wakeupHistory, currentMonthOffset).map((day, index) => (
-              <View key={index} style={styles.calendarDay}>
-                {day.date ? (
-                  <>
-                    <Text style={styles.calendarDayNumber}>
-                      {day.date.getDate()}
-                    </Text>
-                    {day.record ? (
-                      <Text style={[
-                        styles.calendarDayTime,
-                        day.isToday ? styles.calendarDayTimeToday : null
-                      ]}>
-                        {formatTime24Hour(day.record.time)}
-                      </Text>
-                    ) : (
-                      <Text style={styles.calendarDayEmpty}>-</Text>
-                    )}
-                  </>
-                ) : (
-                  <Text style={styles.calendarDayEmpty}></Text>
-                )}
+          <View ref={monthViewRef} style={styles.captureContainer}>
+            <View style={styles.historyHeader}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.periodText}>{getMonthName(currentMonthOffset)}</Text>
+                <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
               </View>
-            ))}
+              <Text style={styles.historyAverage}>
+                Average: {calculateAverageTime(getMonthDataWithOffset(currentMonthOffset))}
+              </Text>
+            </View>
+            
+            {/* Centered Profile Photo */}
+            <View style={styles.profileSection}>
+              <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
+                {profilePhoto ? (
+                  <Image source={{ uri: profilePhoto }} style={styles.profilePhotoLarge} />
+                ) : (
+                  <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+            
+            <View style={styles.calendarHeader}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, index) => (
+                <Text key={index} style={styles.calendarHeaderDay}>{day}</Text>
+              ))}
+            </View>
+            
+            <View 
+              style={styles.calendarGrid}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+            >
+              {generateCalendarDays(wakeupHistory, currentMonthOffset).map((day, index) => (
+                <View key={index} style={styles.calendarDay}>
+                  {day.date ? (
+                    <>
+                      <Text style={styles.calendarDayNumber}>
+                        {day.date.getDate()}
+                      </Text>
+                      {day.record ? (
+                        <Text style={[
+                          styles.calendarDayTime,
+                          day.isToday ? styles.calendarDayTimeToday : null
+                        ]}>
+                          {formatTime24Hour(day.record.time)}
+                        </Text>
+                      ) : (
+                        <Text style={styles.calendarDayEmpty}>-</Text>
+                      )}
+                    </>
+                  ) : (
+                    <Text style={styles.calendarDayEmpty}></Text>
+                  )}
+                </View>
+              ))}
+            </View>
+            
           </View>
-          <TouchableOpacity onPress={shareCurrentView} style={styles.shareButtonBottom}>
-            <Ionicons name="share-outline" size={20} color="#007AFF" />
-            <Text style={styles.shareButtonText}>Share Summary</Text>
+          
+          <TouchableOpacity onPress={shareToInstagramStory} style={styles.shareButtonBottom}>
+            <Ionicons name="logo-instagram" size={20} color="#fff" />
+            <Text style={styles.shareButtonText}>Share to Instagram Story</Text>
           </TouchableOpacity>
         </ScrollView>
       )}
@@ -2083,5 +2122,36 @@ const styles = StyleSheet.create({
     color: '#666',
     fontSize: 14,
     textAlign: 'center',
+  },
+  // Add new styles for Instagram sharing
+  captureContainer: {
+    backgroundColor: '#1C1C1E',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  instagramShareButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#E4405F', // Instagram brand color
+    borderRadius: 16,
+    padding: 18,
+    marginVertical: 24,
+    marginHorizontal: 20,
+    shadowColor: '#E4405F',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  instagramShareText: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '600',
+    marginLeft: 10,
+    letterSpacing: 0.5,
   },
 });

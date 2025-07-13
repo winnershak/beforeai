@@ -20,15 +20,29 @@ class SystemVolumeControl: NSObject {
   @objc
   func setSystemVolume(_ volume: NSNumber, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
-      // DON'T save original volume here anymore!
+      // Store the original volume before changing it
+      if let volumeView = self.volumeView,
+         let volumeSlider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
+        self.originalVolume = volumeSlider.value
+      }
       
-      // Create hidden volume view if needed
+      // Create volume view if it doesn't exist
       if self.volumeView == nil {
-        self.volumeView = MPVolumeView(frame: CGRect(x: -1000, y: -1000, width: 1, height: 1))
-        if let volumeView = self.volumeView, 
-           let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+        self.volumeView = MPVolumeView(frame: CGRect.zero)
+        self.volumeView?.showsVolumeSlider = true
+        // Fix: Remove deprecated showsRouteButton for iOS 13+
+        if #available(iOS 13.0, *) {
+          // Don't set showsRouteButton on iOS 13+
+        } else {
+          self.volumeView?.showsRouteButton = false
+        }
+        self.volumeView?.isHidden = true
+        
+        // Add to a window
+        if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
            let window = windowScene.windows.first {
-          window.addSubview(volumeView)
+          // Fix: Use self.volumeView instead of volumeView!
+          window.addSubview(self.volumeView!)
         }
       }
       
@@ -39,7 +53,9 @@ class SystemVolumeControl: NSObject {
         print("🔊 Set volume to: \(volume.floatValue) (original saved as: \(self.originalVolume))")
         resolver(true)
       } else {
-        rejecter("error", "Could not find volume slider", nil)
+        print("⚠️ Could not find volume slider for setting - this is normal on app startup")
+        // Don't throw an error, just resolve with false to indicate volume wasn't set
+        resolver(false)
       }
     }
   }
@@ -54,8 +70,9 @@ class SystemVolumeControl: NSObject {
         print("✅ Volume restored to: \(self.originalVolume)")
         resolver(true)
       } else {
-        print("❌ Could not find volume slider for restoration")
-        rejecter("error", "Could not find volume slider", nil)
+        print("⚠️ Could not find volume slider for restoration - this is normal on app startup")
+        // Don't throw an error, just resolve with false to indicate volume wasn't restored
+        resolver(false)
       }
     }
   }

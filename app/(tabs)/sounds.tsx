@@ -256,39 +256,71 @@ export default function SoundsScreen() {
   // Function to load a sound
   const loadSound = async (soundName: string) => {
     try {
-      // If already in cache, use cached sound
+      console.log(`🎵 Loading sound: ${soundName}`);
+      
+      // If already in cache, use cached sound but ensure it's set to loop
       if (soundObjectCache.has(soundName)) {
+        console.log(`📦 Using cached sound for: ${soundName}`);
         const cachedSound = soundObjectCache.get(soundName);
+        
+        // Check current loop status
+        try {
+          const status = await cachedSound.getStatusAsync();
+          console.log(`🔄 Cached sound ${soundName} loop status:`, status.isLoaded ? status.isLooping : 'not loaded');
+          
+          if (status.isLoaded) {
+            await cachedSound.setIsLoopingAsync(true);
+            console.log(`✅ Set looping to true for cached sound: ${soundName}`);
+          }
+        } catch (error) {
+          console.log(`❌ Error setting loop on cached sound ${soundName}:`, error);
+        }
+        
         return cachedSound;
       }
 
       const soundAsset = soundAssets[soundName];
       if (!soundAsset) {
-        console.error(`Sound asset not found for ${soundName}`);
+        console.error(`❌ Sound asset not found for ${soundName}`);
         return null;
       }
       
-      // Create the sound with progressive loading (isStreaming: true)
+      console.log(`🆕 Creating new sound for: ${soundName}`);
+      
+      // Create the sound with looping enabled
       const { sound: newSound } = await Audio.Sound.createAsync(
         soundAsset,
-        { volume, isLooping: true, progressUpdateIntervalMillis: 100 }, // Set sounds to loop continuously
-        // This onPlaybackStatusUpdate allows us to start playing before fully loaded
-        (status) => {
-          if (status.isLoaded && !status.isPlaying && status.isBuffering) {
-            // Sound is buffering enough to start playing
-            console.log(`${soundName} ready to start playing`);
-          }
+        { 
+          volume, 
+          isLooping: true, 
+          progressUpdateIntervalMillis: 100 
         },
-        // Enable streaming mode for progressive loading
-        true
+        // Status update callback
+        (status) => {
+          if (status.isLoaded) {
+            console.log(`📊 ${soundName} status - isLooping: ${status.isLooping}, isPlaying: ${status.isPlaying}`);
+          }
+        }
       );
+      
+      console.log(`🎯 Created sound for: ${soundName}`);
+      
+      // Double-check that looping is enabled
+      try {
+        await newSound.setIsLoopingAsync(true);
+        const status = await newSound.getStatusAsync();
+        console.log(`🔄 New sound ${soundName} final loop status:`, status.isLoaded ? status.isLooping : 'not loaded yet');
+      } catch (error) {
+        console.log(`❌ Error setting loop on new sound ${soundName}:`, error);
+      }
       
       // Cache for future use
       soundObjectCache.set(soundName, newSound);
+      console.log(`💾 Cached sound: ${soundName}`);
       
       return newSound;
     } catch (error) {
-      console.error('Error loading sound:', error);
+      console.error(`❌ Error loading sound ${soundName}:`, error);
       return null;
     }
   };
@@ -319,6 +351,8 @@ export default function SoundsScreen() {
         return;
       }
       
+      console.log(`🎵 Starting playSound for: ${soundName}`);
+      
       // Set current sound name immediately for UI responsiveness
       setCurrentSound(soundName);
       
@@ -341,7 +375,7 @@ export default function SoundsScreen() {
         
         // Verify sound loaded properly
         if (!soundToPlay) {
-          console.log(`Could not load sound: ${soundName}`);
+          console.log(`❌ Could not load sound: ${soundName}`);
           // Rollback UI states since sound failed to load
           setIsPlaying(false);
           setPlayingSounds(prev => {
@@ -354,14 +388,32 @@ export default function SoundsScreen() {
       }
       
       try {
+        // CRITICAL FIX: Set looping BEFORE playing
+        console.log(`🔄 Setting looping to true for ${soundName}`);
+        await soundToPlay.setIsLoopingAsync(true);
+        
+        // Verify looping is set
+        const statusAfterLoop = await soundToPlay.getStatusAsync();
+        console.log(`✅ After setIsLoopingAsync - ${soundName} isLooping: ${statusAfterLoop.isLoaded ? statusAfterLoop.isLooping : 'not loaded'}`);
+        
         // For UI state, we'll keep the most recently played sound as "current"
         if (!sound) {
           setSound(soundToPlay);
         }
         
-        // Set volume then play
+        // Set volume
         await soundToPlay.setVolumeAsync(volume);
+        
+        // Add this logging before playing:
+        const statusBeforePlay = await soundToPlay.getStatusAsync();
+        console.log(`🎮 About to play ${soundName} - isLooping: ${statusBeforePlay.isLoaded ? statusBeforePlay.isLooping : 'not loaded'}`);
+        
+        // Play the sound
         await soundToPlay.playAsync();
+        
+        // Add this logging after playing starts:
+        const statusAfterPlay = await soundToPlay.getStatusAsync();
+        console.log(`▶️ Started playing ${soundName} - isLooping: ${statusAfterPlay.isLoaded ? statusAfterPlay.isLooping : 'not loaded'}, isPlaying: ${statusAfterPlay.isPlaying}`);
         
         // Save last played sound
         await AsyncStorage.setItem('lastPlayedSound', soundName);
@@ -371,7 +423,7 @@ export default function SoundsScreen() {
           setTimeRemaining(timer * 60);
         }
       } catch (e) {
-        console.log(`Error playing sound ${soundName}:`, e);
+        console.log(`❌ Error playing sound ${soundName}:`, e);
         // Rollback UI states if play fails
         setIsPlaying(false);
         setPlayingSounds(prev => {
@@ -381,7 +433,7 @@ export default function SoundsScreen() {
         });
       }
     } catch (error) {
-      console.error('Error playing sound:', error);
+      console.error('❌ Error playing sound:', error);
       // Rollback UI states if anything fails
       setIsPlaying(false);
       setPlayingSounds(prev => {

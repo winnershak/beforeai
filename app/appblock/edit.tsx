@@ -16,6 +16,7 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { Stack, useLocalSearchParams, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import PremiumModal from '../components/PremiumModal';
 
 const { ScreenTimeBridge } = NativeModules;
 
@@ -113,6 +114,7 @@ export default function EditScheduleScreen() {
   const [hasQRCode, setHasQRCode] = useState(false);
   const [hasNFCCard, setHasNFCCard] = useState(false);
   const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
   
   // Add function to save device selection immediately
   const saveDeviceSelection = async (device: 'qr' | 'nfc') => {
@@ -393,21 +395,7 @@ export default function EditScheduleScreen() {
               ]}
               onPress={async () => {
                 if (!isPremium) {
-                  // Show premium upgrade prompt
-                  Alert.alert(
-                    'Premium Feature',
-                    'QR Code blocking is a premium feature. Upgrade to unlock.',
-                    [
-                      {
-                        text: 'Maybe Later',
-                        style: 'cancel'
-                      },
-                      {
-                        text: 'Upgrade',
-                        onPress: () => router.push('/quiz/yes')
-                      }
-                    ]
-                  );
+                  setShowPremiumModal(true);
                   return;
                 }
                 saveDeviceSelection('qr');
@@ -466,6 +454,12 @@ export default function EditScheduleScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      <PremiumModal
+        visible={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        message="QR Code blocking is a premium feature. Upgrade to unlock."
+      />
     </SafeAreaView>
   );
 }

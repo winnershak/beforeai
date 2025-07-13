@@ -237,11 +237,10 @@ export default function FinalTypingScreen() {
       console.error('Error in mission complete handling:', error);
     }
     
-    // Navigate back to home
-    setTimeout(() => {
-      router.replace('/');
-    }, 2000);
+    // Skip the built-in success screen and go directly to Instagram success
+    router.replace('/alarm-success');
 
+    // Keep the stats update code (lines 246-291) but remove the navigation delay
     if (phrasesCompleted >= totalPhrases) {
       try {
         // Update mission-specific count
@@ -263,7 +262,7 @@ export default function FinalTypingScreen() {
         await AsyncStorage.setItem('userXP', newXP.toString());
         
         // Update streak
-        const currentDate = new Date().toISOString().split('T')[0]; // Today's date
+        const currentDate = new Date().toISOString().split('T')[0];
         const lastCompletionDate = await AsyncStorage.getItem('lastCompletionDate');
         const currentStreak = await AsyncStorage.getItem('currentStreak');
         let newStreak = 1;
@@ -274,10 +273,8 @@ export default function FinalTypingScreen() {
           const yesterday = yesterdayDate.toISOString().split('T')[0];
           
           if (lastCompletionDate === yesterday) {
-            // Completed yesterday, increment streak
             newStreak = parseInt(currentStreak) + 1;
           } else if (lastCompletionDate === currentDate) {
-            // Already completed today, maintain streak
             newStreak = parseInt(currentStreak);
           }
         }
@@ -342,12 +339,7 @@ export default function FinalTypingScreen() {
           />
         </View>
         
-        {missionCompleted ? (
-          <View style={styles.completionContainer}>
-            <Text style={styles.completionText}>Mission Complete!</Text>
-            <Text style={styles.completionSubtext}>Returning to home...</Text>
-          </View>
-        ) : timeExpired ? (
+        {timeExpired ? (
           <View style={styles.completionContainer}>
             <Text style={styles.failedText}>Time Expired!</Text>
             <Text style={styles.completionSubtext}>Alarm will continue...</Text>

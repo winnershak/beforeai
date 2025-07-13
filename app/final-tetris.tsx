@@ -843,16 +843,12 @@ export default function FinalTetrisGame() {
     touchStartY.current = null;
   };
 
-  // Fix the checkWinCondition function with direct navigation
+  // Replace the entire checkWinCondition function (lines 847-891) with this:
   const checkWinCondition = () => {
     if (linesClearedRef.current > 0) {
       // Win condition: clear just one line
       console.log('Win condition met! Lines cleared:', linesClearedRef.current);
       setGameOver(true);
-      
-      // Show success animation
-      setShowSuccess(true);
-      setShowConfetti(true);
       
       // Stop the game loop
       if (gameLoopRef.current) {
@@ -869,30 +865,8 @@ export default function FinalTetrisGame() {
       // Stop the alarm
       stopAlarm();
       
-      // Play completion sound
-      if (completeSound) {
-        completeSound.replayAsync();
-      }
-      
-      // Use direct navigation with setTimeout instead of animation callback
-      console.log('Setting up navigation timeout');
-      setTimeout(() => {
-        console.log('Direct navigation timeout fired - going to home screen');
-        // Use the most direct navigation possible
-        router.navigate('/(tabs)');
-      }, 3000);
-      
-      // Still show the animation but don't rely on it for navigation
-      Animated.sequence([
-        Animated.timing(successOpacity, {
-          toValue: 1,
-          duration: 1000,
-          useNativeDriver: true
-        }),
-        Animated.delay(2000)
-      ]).start(() => {
-        console.log('Animation complete - navigation should happen via timeout');
-      });
+      // Skip the built-in success screen and go directly to Instagram success
+      router.replace('/alarm-success');
     }
   };
   
@@ -918,23 +892,7 @@ export default function FinalTetrisGame() {
       />
       
       <View style={styles.container}>
-        {/* Success message - simplified to match Wordle */}
-        {showSuccess && (
-          <Animated.View style={[styles.successContainer, { opacity: successOpacity }]}>
-            <Text style={styles.successText}>MISSION COMPLETE!</Text>
-          </Animated.View>
-        )}
         
-        {/* Confetti cannon */}
-        {showConfetti && (
-          <ConfettiCannon
-            count={200}
-            origin={{x: screenWidth/2, y: 0}}
-            explosionSpeed={350}
-            fallSpeed={3000}
-            colors={['#00FFFF', '#800080', '#FFFF00', '#00FF00', '#FF0000', '#0000FF', '#FFA500']}
-          />
-        )}
         
         {/* Game info */}
         <View style={styles.infoContainer}>

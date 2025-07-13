@@ -115,11 +115,8 @@ export default function FinalCardScanner() {
         // Clear the active alarm
         await AsyncStorage.removeItem('activeAlarm');
         
-        // Show success and navigate home
-        setShowSuccess(true);
-        setTimeout(() => {
-          router.replace('/(tabs)');
-        }, 2000);
+        // Skip the built-in success screen and go directly to Instagram success
+        router.replace('/alarm-success');
         
       } else {
         console.log('❌ Not a Bliss Alarm Card!');
@@ -242,7 +239,7 @@ export default function FinalCardScanner() {
           onPress: async () => {
             stopAlarmSound();
             await AsyncStorage.removeItem('activeAlarm');
-            router.replace('/(tabs)');
+            router.replace('/alarm-success');
           }
         }
       ]
@@ -295,12 +292,6 @@ export default function FinalCardScanner() {
             >
               <Text style={styles.exitButtonText}>Back to Alarm</Text>
             </TouchableOpacity>
-          </View>
-        ) : showSuccess ? (
-          <View style={styles.completionContainer}>
-            <Text style={styles.successText}>MISSION COMPLETE!</Text>
-            <Text style={styles.completionSubText}>Alarm Dismissed</Text>
-            <Ionicons name="checkmark-circle" size={80} color="#34C759" />
           </View>
         ) : (
           <>

@@ -160,12 +160,16 @@ export default function FinalWordleGame() {
           })
         ]).start();
         
-        // Show alert after a delay to allow confetti to be seen
+        // 1. Replace the success alert (lines 164-168) with direct navigation:
+        // Change this:
         setTimeout(() => {
-          Alert.alert('Congratulations!', 'You guessed the word!', [
-            { text: 'OK', onPress: () => completeGame(true) }
-          ]);
-        }, 2500);
+          // Clear the timer
+          if (timerRef.current) clearInterval(timerRef.current);
+          
+          // Skip the alert and success screen, go directly to Instagram success
+          router.replace('/alarm-success');
+        }, 100); // Much shorter delay
+        
       } else if (newGuesses.length >= 6) {
         setGameOver(true);
         Alert.alert('Game Over', `The word was ${targetWord}`, [
@@ -215,49 +219,8 @@ export default function FinalWordleGame() {
     // Clear the timer
     if (timerRef.current) clearInterval(timerRef.current);
     
-    if (success) {
-      try {
-        // Play success sound if available
-        if (completeSound) {
-          await completeSound.playAsync();
-        }
-        
-        // Show success message and confetti
-        setShowSuccess(true);
-        setShowConfetti(true);
-        
-        // Animate success message
-        Animated.sequence([
-          Animated.timing(successOpacity, {
-            toValue: 1,
-            duration: 500,
-            useNativeDriver: true
-          }),
-          Animated.delay(1500),
-          Animated.timing(successOpacity, {
-            toValue: 0,
-            duration: 500,
-            useNativeDriver: true
-          })
-        ]).start();
-        
-        // Use direct navigation with setTimeout instead of animation callback
-        console.log('Setting up navigation timeout for Wordle');
-        setTimeout(() => {
-          console.log('Direct navigation timeout fired - going to home screen from Wordle');
-          // Use the same navigation method as Tetris
-          router.navigate('/(tabs)');
-        }, 3000);
-        
-      } catch (error) {
-        console.error('Error in completeGame:', error);
-        // Use the same navigation method as Tetris for error case
-        router.navigate('/(tabs)');
-      }
-    } else {
-      // If mission failed, use the same navigation method as Tetris
-      router.navigate('/(tabs)');
-    }
+    // Skip all built-in success screens and go directly to Instagram success
+    router.replace('/alarm-success');
   };
   
   // Get the color for a letter in a guess
@@ -346,23 +309,6 @@ export default function FinalWordleGame() {
       />
       
       <View style={[styles.container, { paddingTop: 60 }]}>
-        {/* Success message */}
-        {showSuccess && (
-          <Animated.View style={[styles.successContainer, { opacity: successOpacity }]}>
-            <Text style={styles.successText}>MISSION COMPLETE!</Text>
-          </Animated.View>
-        )}
-        
-        {/* Confetti cannon */}
-        {showConfetti && (
-          <ConfettiCannon
-            count={200}
-            origin={{x: width/2, y: 0}}
-            explosionSpeed={350}
-            fallSpeed={3000}
-            colors={['#538d4e', '#b59f3b', '#fff', '#ffcc00']}
-          />
-        )}
         
         {/* Timer at the top */}
         <View style={styles.timerContainer}>

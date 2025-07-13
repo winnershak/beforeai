@@ -307,15 +307,12 @@ export default function FinalMathScreen() {
       } else {
         console.log('All problems completed, mission successful');
         await stopSound();
-        setShowCompletion(true);
         
         // Clear the active alarm
         await AsyncStorage.removeItem('activeAlarm');
         
-        // Navigate home after showing completion
-        setTimeout(() => {
-          router.push('/');
-        }, 2000);
+        // Skip the built-in success screen and go directly to Instagram sharing
+        router.replace('/alarm-success');
 
         // Add trophy and stats update
         try {
@@ -563,12 +560,6 @@ export default function FinalMathScreen() {
                 </View>
               ))}
             </View>
-            <TouchableOpacity 
-              style={styles.doneButton}
-              onPress={handleDone}
-            >
-              <Text style={styles.doneText}>Done</Text>
-            </TouchableOpacity>
           </>
         )}
       </View>
@@ -670,16 +661,5 @@ const styles = StyleSheet.create({
   timerLine: {
     height: '100%',
     backgroundColor: '#ff3b30',
-  },
-  doneButton: {
-    backgroundColor: '#ff3b30',
-    padding: 20,
-    alignItems: 'center',
-    borderRadius: 10,
-  },
-  doneText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
   },
 }); 

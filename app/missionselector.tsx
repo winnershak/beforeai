@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
 import { router, useLocalSearchParams, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import PremiumModal from './components/PremiumModal';
+import RevenueCatService from './services/RevenueCatService';
 
 // Define mission types with emojis
 const missions = [
@@ -10,48 +13,57 @@ const missions = [
     name: 'Bliss Alarm Card',
     emoji: '💳',
     description: 'Scan your Bliss Alarm Card to turn off the alarm',
-    needsConfig: false
+    needsConfig: false,
+    isPremium: false  // FREE
   },
   {
     id: 'math',
     name: 'Math',
     emoji: '🔢',
     description: 'Solve math problems to turn off the alarm',
-    needsConfig: true
+    needsConfig: true,
+    isPremium: true   // PREMIUM
   },
   {
     id: 'typing',
     name: 'Typing',
     emoji: '⌨️',
     description: 'Type the phrase correctly to turn off the alarm',
-    needsConfig: true
+    needsConfig: true,
+    isPremium: true   // PREMIUM
   },
   {
     id: 'wordle',
     name: 'Wordle',
     emoji: '🎲',
     description: 'Guess the word to turn off the alarm (Once per day)',
-    needsConfig: false
+    needsConfig: false,
+    isPremium: true   // PREMIUM
   },
   {
     id: 'qr',
     name: 'QR/Barcode',
     emoji: '📱',
     description: 'Scan a specific code to turn off the alarm',
-    needsConfig: true
+    needsConfig: true,
+    isPremium: true   // PREMIUM
   },
   {
     id: 'tetris',
     name: 'Tetris',
     emoji: '🧩',
     description: 'Clear lines in Tetris to turn off the alarm',
-    needsConfig: true
+    needsConfig: true,
+    isPremium: true   // PREMIUM
   }
 ];
 
 export default function MissionSelector() {
   const params = useLocalSearchParams();
   const [selectedMission, setSelectedMission] = useState<string | null>(null);
+  const [isPremium, setIsPremium] = useState(false);
+  const [showPremiumModal, setShowPremiumModal] = useState(false);
+  const [premiumMessage, setPremiumMessage] = useState('');
   
   // Check if a mission was previously selected
   useEffect(() => {
@@ -72,8 +84,23 @@ export default function MissionSelector() {
     
     checkPreviousMission();
   }, [params.selectedMissionId]);
+
+  useEffect(() => {
+    const checkPremium = async () => {
+      const premium = await RevenueCatService.checkLocalSubscriptionStatus();
+      setIsPremium(premium);
+    };
+    checkPremium();
+  }, []);
   
   const handleMissionSelect = async (mission: any) => {
+    // Check if mission requires premium
+    if (mission.isPremium && !isPremium) {
+      setPremiumMessage(`${mission.name} is a premium feature. Upgrade to unlock.`);
+      setShowPremiumModal(true);
+      return;
+    }
+
     try {
       console.log(`Selected mission: ${mission.id}`);
       setSelectedMission(mission.id);
@@ -127,7 +154,8 @@ export default function MissionSelector() {
     <TouchableOpacity
       style={[
         styles.missionItem,
-        selectedMission === item.id && styles.selectedMission
+        selectedMission === item.id && styles.selectedMission,
+        item.isPremium && !isPremium && styles.premiumMission
       ]}
       onPress={() => handleMissionSelect(item)}
     >
@@ -137,6 +165,9 @@ export default function MissionSelector() {
           <Text style={styles.missionName}>{item.name}</Text>
           <Text style={styles.missionDescription}>{item.description}</Text>
         </View>
+        {item.isPremium && !isPremium && (
+          <Ionicons name="lock-closed" size={20} color="#FFD700" style={styles.premiumLock} />
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -150,6 +181,11 @@ export default function MissionSelector() {
         renderItem={renderMissionItem}
         keyExtractor={item => item.id}
         contentContainerStyle={styles.listContent}
+      />
+      <PremiumModal
+        visible={showPremiumModal}
+        onClose={() => setShowPremiumModal(false)}
+        message={premiumMessage}
       />
     </SafeAreaView>
   );
@@ -194,5 +230,13 @@ const styles = StyleSheet.create({
   missionDescription: {
     fontSize: 14,
     color: '#999',
+  },
+  premiumMission: {
+    opacity: 0.6,
+  },
+  premiumLock: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
   },
 }); 

@@ -84,31 +84,13 @@ const sleepFacts = [
 export default function SleepFactsScreen() {
   const requestAppReview = async () => {
     try {
-      // First show our custom message
-      Alert.alert(
-        "Help others sleep better.",
-        "It helps us reach more people to spread the message of better sleep.",
-        [
-          { 
-            text: "Rate 5 Stars",
-            onPress: async () => {
-              // Use the native StoreReview API - this shows the in-app rating dialog
-              await StoreReview.requestReview();
-              
-              // Continue to next screen after a short delay
-              setTimeout(() => {
-                router.push('/quiz/study');
-              }, 1500);
-            },
-            style: "default", 
-          },
-          {
-            text: "Maybe Later",
-            onPress: () => router.push('/quiz/study'),
-            style: "cancel", 
-          }
-        ]
-      );
+      // Go directly to the native App Store review dialog
+      await StoreReview.requestReview();
+      
+      // Continue to next screen after a short delay
+      setTimeout(() => {
+        router.push('/quiz/study');
+      }, 1500);
     } catch (error) {
       console.error('Error in review flow:', error);
       router.push('/quiz/study');

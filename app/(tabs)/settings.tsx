@@ -68,32 +68,20 @@ export default function SettingsScreen() {
   // Firebase Login Handler
   const handleFirebaseLogin = async () => {
     try {
-      console.log('🔥 User clicked Google Sign-In button');
-      
-      // First test if Firebase works at all
-      console.log('🔥 Testing Firebase connection first...');
       await testFirebaseConnection();
-      console.log('🔥 Firebase connection test passed!');
-      
-      // Now try Google Sign-In
-      console.log('🔥 Starting Google Sign-In...');
       const result = await signInWithGoogle();
       
       Alert.alert(
-        'SUCCESS! 🎉', 
-        `Signed in as:\n${result.user.email || 'No email'}\n\nUID: ${result.user.uid.substring(0, 12)}...`,
-        [{ text: 'AMAZING!', style: 'default' }]
+        'Welcome!', 
+        `Successfully signed in as ${result.user.displayName || result.user.email || 'Bliss User'}`,
+        [{ text: 'OK', style: 'default' }]
       );
       
     } catch (error) {
-      console.error('🔥 Firebase login failed:', error);
       Alert.alert(
         'Sign-In Failed', 
-        error instanceof Error ? error.message : 'Unknown error occurred',
-        [
-          { text: 'Try Again', style: 'default' },
-          { text: 'Check Logs', style: 'cancel' }
-        ]
+        'Unable to sign in right now. Please try again.',
+        [{ text: 'OK', style: 'default' }]
       );
     }
   };
@@ -410,35 +398,6 @@ export default function SettingsScreen() {
                 <View style={styles.settingContent}>
                   <Ionicons name="log-out" size={24} color="#FFFFFF" style={styles.settingIcon} />
                   <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Sign Out</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-
-              {firebaseUser && (
-                <TouchableOpacity
-                  style={[styles.settingItem, { backgroundColor: '#34C759' }]}
-                  onPress={handleAddTestWakeUps}
-                >
-                  <View style={styles.settingContent}>
-                    <Ionicons name="flask" size={24} color="#FFFFFF" style={styles.settingIcon} />
-                    <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Add Test Wake-Up Data</Text>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              )}
-
-              {/* NEW: Quiz button */}
-              <TouchableOpacity
-                style={[styles.settingItem, { backgroundColor: '#FF9500' }]}
-                onPress={async () => {
-                  // Mark quiz as incomplete temporarily for debugging
-                  await AsyncStorage.setItem('quizCompleted', 'false');
-                  router.replace('/quiz');
-                }}
-              >
-                <View style={styles.settingContent}>
-                  <Ionicons name="help-circle" size={24} color="#FFFFFF" style={styles.settingIcon} />
-                  <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Debug Onboarding Quiz</Text>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
               </TouchableOpacity>
