@@ -6,7 +6,7 @@ import {
   ScrollView, 
   TouchableOpacity, 
   Switch, 
-  Platform,
+  Platform, 
   Linking,
   Alert,
   NativeModules,

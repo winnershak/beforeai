@@ -89,8 +89,34 @@ TaskManager.defineTask('ALARM_TASK', async ({ data, error }) => {
   }
 });
 
+// Add this helper function at the top:
+const safeJsonParse = (jsonString: string | null) => {
+  try {
+    return jsonString ? JSON.parse(jsonString) : null;
+  } catch {
+    return null;
+  }
+};
+
+const setupGlobalErrorHandler = () => {
+  // Prevent ANY JavaScript error from crashing the app
+  const originalHandler = ErrorUtils.getGlobalHandler();
+  
+  ErrorUtils.setGlobalHandler((error, isFatal) => {
+    console.log('🚨 Caught Error (NON-FATAL):', error.message);
+    
+    // NEVER let errors become fatal - always continue
+    if (originalHandler && !isFatal) {
+      originalHandler(error, false); // Force non-fatal
+    }
+    
+    // Just log and continue - don't crash
+    return;
+  });
+};
+
 export default function AppLayout() {
-  console.log('Loading root layout...');
+  console.log('🚀 App starting...');
 
   const colorScheme = useColorScheme();
   const [loaded, error] = useFonts({
@@ -107,6 +133,7 @@ export default function AppLayout() {
   const alarmTimers = useRef<{[key: string]: NodeJS.Timeout}>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isPremium, setIsPremium] = useState(false);
+  const [isBridgeReady, setIsBridgeReady] = useState(false);
 
   // Add this to track if navigation is safe
   const [isMounted, setIsMounted] = useState(false);
@@ -161,13 +188,13 @@ export default function AppLayout() {
         const alarmsJson = await AsyncStorage.getItem('alarms');
         if (!alarmsJson) return;
         
-        const alarms = JSON.parse(alarmsJson);
+        const alarms = safeJsonParse(alarmsJson);
         
         // IMPORTANT: Don't check for current time and navigate to alarm screen
         // This is causing alarms to trigger immediately
         // Instead, just make sure alarms are scheduled properly
         
-        for (const alarm of alarms) {
+        for (const alarm of alarms || []) {
           if (alarm.enabled) {
             // Just ensure the alarm is scheduled, don't navigate
             await setupAlarmsScheduleAlarmNotification(alarm);
@@ -208,7 +235,109 @@ export default function AppLayout() {
         const pendingAlarmJson = await AsyncStorage.getItem('pendingAlarm');
         
         if (pendingAlarmJson) {
-          const pendingAlarm = JSON.parse(pendingAlarmJson);
+          const pendingAlarm = safeJsonParse(pendingAlarmJson);
+          
+          // Clear the pending navigation
+          await AsyncStorage.removeItem('shouldNavigateToAlarm');
+          await AsyncStorage.removeItem('pendingAlarm');
+          
+          // Navigate to alarm screen
+          router.push({
+            pathname: '/alarm-ring',
+            params: pendingAlarm
+          });
+        }
+      }
+    };
+    
+    checkPendingAlarm();
+  }, []);
+
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        // Single initialization point
+        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+        
+        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+        
+        if (quizCompleted === 'true') {
+          setInitialRoute('(tabs)');
+        } else {
+          setInitialRoute('/quiz');
+        }
+        
+        setIsLoading(false);
+      } catch (error) {
+        console.error('App initialization failed:', error);
+        // Safe fallback
+        setInitialRoute('/quiz');
+        setIsLoading(false);
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  useEffect(() => {
+    async function checkAlarmTime() {
+      if (!isAppReady) {
+        console.log('App not ready for navigation, skipping alarm check');
+        return;
+      }
+      
+      try {
+        const alarmsJson = await AsyncStorage.getItem('alarms');
+        if (!alarmsJson) return;
+        
+        const alarms = safeJsonParse(alarmsJson);
+        
+        // IMPORTANT: Don't check for current time and navigate to alarm screen
+        // This is causing alarms to trigger immediately
+        // Instead, just make sure alarms are scheduled properly
+        
+        for (const alarm of alarms || []) {
+          if (alarm.enabled) {
+            // Just ensure the alarm is scheduled, don't navigate
+            await setupAlarmsScheduleAlarmNotification(alarm);
+          }
+        }
+      } catch (error) {
+        console.error('Error checking alarm time:', error);
+      }
+    }
+
+    // Check when app opens
+    checkAlarmTime();
+
+    // Check when app comes to foreground
+    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        checkAlarmTime();
+      }
+    });
+
+    // Initial setup
+    registerBackgroundTask();
+
+    return () => {
+      subscription.remove();
+    };
+  }, [isAppReady]);
+
+  useEffect(() => {
+    // Set app as ready after first render
+    AsyncStorage.setItem('isAppReady', 'true');
+    
+    // Check for pending alarm navigation
+    const checkPendingAlarm = async () => {
+      const shouldNavigate = await AsyncStorage.getItem('shouldNavigateToAlarm');
+      
+      if (shouldNavigate === 'true') {
+        const pendingAlarmJson = await AsyncStorage.getItem('pendingAlarm');
+        
+        if (pendingAlarmJson) {
+          const pendingAlarm = safeJsonParse(pendingAlarmJson);
           
           // Clear the pending navigation
           await AsyncStorage.removeItem('shouldNavigateToAlarm');
@@ -228,24 +357,33 @@ export default function AppLayout() {
 
   useEffect(() => {
     const checkAccess = async () => {
+      if (!isBridgeReady) return;
+      
       try {
-        const isSubscribed = await RevenueCatService.isSubscribed();
+        // Wrap RevenueCat in multiple layers of protection
+        setTimeout(() => {
+          Promise.resolve()
+            .then(() => RevenueCatService.isSubscribed())
+            .then(result => setIsPremium(result))
+            .catch(error => {
+              console.log('RevenueCat failed (ignored):', error.message);
+              setIsPremium(false); // Safe fallback
+            });
+        }, 3000); // Wait even longer
 
-        if (isSubscribed) {
-          setInitialRoute('(tabs)');
-        } else {
-          setInitialRoute('quiz/yes');
-        }
+        // Set fallback route immediately
+        setInitialRoute('(tabs)');
+        setLoading(false);
+        
       } catch (e) {
-        console.error('RevenueCat failed', e);
-        setInitialRoute('quiz/yes');
-      } finally {
+        console.log('Access check failed (ignored):', e);
+        setInitialRoute('(tabs)');
         setLoading(false);
       }
     };
 
     checkAccess();
-  }, []);
+  }, [isBridgeReady]);
 
   useEffect(() => {
     // Setup notifications after the component is mounted
@@ -302,7 +440,7 @@ export default function AppLayout() {
                 // Fall back to checking all expired snoozes
                 ScreenTimeBridge.checkForExpiredSnoozes()
                   .then((result: any) => {
-                    console.log(`Checked for expired snoozes: ${JSON.stringify(result)}`);
+                    console.log('Checked for expired snoozes:', typeof result, result || 'null');
                   })
                   .catch((err: Error) => console.error('Error checking snoozes:', err));
               }
@@ -319,9 +457,9 @@ export default function AppLayout() {
         // Check if there's a completed alarm flag for the active alarm
         const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
         if (activeAlarmJson) {
-          const activeAlarm = JSON.parse(activeAlarmJson);
+          const activeAlarm = safeJsonParse(activeAlarmJson);
           const completedAlarmsJson = await AsyncStorage.getItem('completedAlarms');
-          const completedAlarms = completedAlarmsJson ? JSON.parse(completedAlarmsJson) : {};
+          const completedAlarms = safeJsonParse(completedAlarmsJson) || {};
           
           // If this alarm has been completed, clear the active alarm
           if (completedAlarms[activeAlarm.alarmId]) {
@@ -335,13 +473,15 @@ export default function AppLayout() {
         stopAlarmSound();
 
         // Check for expired snoozes when app becomes active
-        ScreenTimeBridge.checkForExpiredSnoozes()
-          .then((result: any) => {
-            if (result.expiredSnoozes > 0) {
-              console.log(`Reapplied ${result.expiredSnoozes} expired snoozes`);
-            }
-          })
-          .catch((err: Error) => console.error('Error checking snoozes:', err));
+        setTimeout(() => {
+          ScreenTimeBridge.checkForExpiredSnoozes()
+            .then((result: any) => {
+              if (result.expiredSnoozes > 0) {
+                console.log(`Reapplied ${result.expiredSnoozes} expired snoozes`);
+              }
+            })
+            .catch((err: Error) => console.error('Error checking snoozes:', err));
+        }, 2000);
       }
     });
     
@@ -351,6 +491,8 @@ export default function AppLayout() {
   }, []);
 
   useEffect(() => {
+    if (!isBridgeReady) return; // Add this line!
+    
     const registerBackgroundTasks = async () => {
       try {
         await BackgroundFetch.registerTaskAsync('ALARM_TASK', {
@@ -366,7 +508,7 @@ export default function AppLayout() {
     };
     
     registerBackgroundTasks();
-  }, []);
+  }, [isBridgeReady]); // Change dependency!
 
   useEffect(() => {
     const handleDeepLink = async (event: { url: string }) => {
@@ -434,7 +576,7 @@ export default function AppLayout() {
         if (quizCompleted !== 'true') {
           setInitialRoute('/quiz');
         } else {
-          setInitialRoute('(tabs)/appblock');
+          setInitialRoute('(tabs)/');  // This will go to index tab specifically
         }
         
         setIsLoading(false);
@@ -473,7 +615,7 @@ export default function AppLayout() {
           hasNavigatedToQuizRef.current = true;
           setTimeout(() => {
             console.log('Quiz completed, redirecting to main alarms tab');
-            router.replace('(tabs)');  // Changed from '(tabs)/appblock' to '(tabs)'
+            router.replace('(tabs)/');  // Changed from '(tabs)/appblock' to '(tabs)'
           }, 1000);
         }
         
@@ -488,6 +630,8 @@ export default function AppLayout() {
   }, [segments, isMounted, isAppReady]);
 
   useEffect(() => {
+    if (!isBridgeReady) return; // Add this line!
+    
     async function setupNotifications() {
       // Add notification handler for when app is in background/closed
       const subscription = Notifications.addNotificationReceivedListener((notification) => {
@@ -500,96 +644,36 @@ export default function AppLayout() {
     }
     
     setupNotifications();
+  }, [isBridgeReady]); // Change dependency!
+
+  // Wait for bridge to be ready
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsBridgeReady(true);
+    }, 2000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
+  // Configure native modules after bridge is ready
   useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (nextAppState === 'active') {
-        // Check if there's an active snooze that has expired
-        const snoozeEndTimeStr = await AsyncStorage.getItem('snoozeEndTime');
-        const manuallyEnded = await AsyncStorage.getItem('manuallyEndedSnooze');
-        
-        if (snoozeEndTimeStr && !manuallyEnded) {
-          const snoozeEndTime = new Date(snoozeEndTimeStr);
-          const now = new Date();
-          
-          if (now >= snoozeEndTime) {
-            // Snooze has expired, clean up and reapply blocks
-            await AsyncStorage.removeItem('snoozeEndTime');
-            await AsyncStorage.removeItem('appBlockDisabledUntil');
-            
-            // Get the schedule ID if available
-            const scheduleId = await AsyncStorage.getItem('snoozedScheduleId');
-            if (scheduleId && Platform.OS === 'ios' && ScreenTimeBridge) {
-              console.log(`Snooze expired for schedule: ${scheduleId}, reapplying blocks`);
-              
-              // First try to directly reapply the specific schedule
-              try {
-                // This will force the schedule to be reapplied immediately
-                await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
-                console.log(`Successfully reapplied schedule: ${scheduleId}`);
-              } catch (error) {
-                console.error('Error reapplying specific schedule:', error);
-                
-                // Fall back to checking all expired snoozes
-                ScreenTimeBridge.checkForExpiredSnoozes()
-                  .then((result: any) => {
-                    console.log(`Checked for expired snoozes: ${JSON.stringify(result)}`);
-                  })
-                  .catch((err: Error) => console.error('Error checking snoozes:', err));
-              }
-              
-              // Clean up the schedule ID
-              await AsyncStorage.removeItem('snoozedScheduleId');
-            }
-          }
-        } else if (manuallyEnded) {
-          // Clean up if we manually ended
-          await AsyncStorage.removeItem('manuallyEndedSnooze');
-        }
-        
-        // Check if there's a completed alarm flag for the active alarm
-        const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
-        if (activeAlarmJson) {
-          const activeAlarm = JSON.parse(activeAlarmJson);
-          const completedAlarmsJson = await AsyncStorage.getItem('completedAlarms');
-          const completedAlarms = completedAlarmsJson ? JSON.parse(completedAlarmsJson) : {};
-          
-          // If this alarm has been completed, clear the active alarm
-          if (completedAlarms[activeAlarm.alarmId]) {
-            console.log(`Alarm ${activeAlarm.alarmId} has been completed, clearing active alarm`);
-            await AsyncStorage.removeItem('activeAlarm');
-            await AsyncStorage.removeItem('alarmRingActive');
-          }
-        }
-        
-        // Just stop any sounds and continue normal app flow
-        stopAlarmSound();
-
-        // Check for expired snoozes when app becomes active
-        ScreenTimeBridge.checkForExpiredSnoozes()
-          .then((result: any) => {
-            if (result.expiredSnoozes > 0) {
-              console.log(`Reapplied ${result.expiredSnoozes} expired snoozes`);
-            }
-          })
-          .catch((err: Error) => console.error('Error checking snoozes:', err));
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  // Configure audio session at app start
-  useEffect(() => {
-    if (Platform.OS === 'ios') {
-      // Initialize the audio session properly for silent mode playback
-      AlarmSoundModule.configureAudio();
-      console.log('Configured audio session for silent mode on app startup');
+    if (!isBridgeReady || Platform.OS !== 'ios') return;
+    
+    // Configure audio session
+    AlarmSoundModule.configureAudio();
+    console.log('Configured audio session for silent mode on app startup');
+    
+    // Check for expired snoozes
+    if (ScreenTimeBridge && ScreenTimeBridge.checkForExpiredSnoozes) {
+      ScreenTimeBridge.checkForExpiredSnoozes()
+        .then((result: unknown) => {
+          console.log('Checked for expired snoozes:', typeof result, result || 'null');
+        })
+        .catch((error: Error) => {
+          console.error('Error checking for expired snoozes:', error);
+        });
     }
-  }, []);
+  }, [isBridgeReady]);
 
   useEffect(() => {
     const checkNotificationPermissions = async () => {
@@ -619,20 +703,7 @@ export default function AppLayout() {
   }, [isReady, initialRoute]);
 
   useEffect(() => {
-    // Check for expired snoozes on iOS
-    if (Platform.OS === 'ios' && ScreenTimeBridge && ScreenTimeBridge.checkForExpiredSnoozes) {
-      ScreenTimeBridge.checkForExpiredSnoozes()
-        .then((result: unknown) => {
-          console.log('Checked for expired snoozes:', result);
-        })
-        .catch((error: Error) => {
-          console.error('Error checking for expired snoozes:', error);
-        });
-    }
-  }, []);
-
-  // Add this useEffect to check subscription status with offline support
-  useEffect(() => {
+    // Add this useEffect to check subscription status with offline support
     const checkSubscriptionStatus = async () => {
       try {
         // Check network connectivity first
@@ -693,6 +764,8 @@ export default function AppLayout() {
   }, []);
 
   useEffect(() => {
+    if (!isBridgeReady) return; // Add this line!
+    
     Notifications.setNotificationHandler({
       handleNotification: async (notification) => {
         // Special handling for sleep reminders
@@ -713,7 +786,7 @@ export default function AppLayout() {
         };
       },
     });
-  }, []);
+  }, [isBridgeReady]); // Change dependency!
 
   useEffect(() => {
     const checkSubscriptionExpiry = async () => {
@@ -774,6 +847,31 @@ export default function AppLayout() {
       subscription.remove();
     };
   }, []);
+
+  // TEMPORARILY COMMENT THIS OUT TO TEST:
+  /*
+  useEffect(() => {
+    setupGlobalErrorHandler();
+  }, []);
+
+  useEffect(() => {
+    setupGlobalErrorHandler();
+    
+    // Catch unhandled promise rejections
+    const rejectionHandler = (event: any) => {
+      console.log('🚨 Unhandled Promise Rejection:', event.reason);
+      // Don't crash - just log it
+      event.preventDefault();
+    };
+    
+    // For React Native
+    global.addEventListener?.('unhandledrejection', rejectionHandler);
+    
+    return () => {
+      global.removeEventListener?.('unhandledrejection', rejectionHandler);
+    };
+  }, []);
+  */
 
   if (!loaded || loading || !isReady) {
     return null;

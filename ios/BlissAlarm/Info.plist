@@ -21,7 +21,7 @@
     <key>CFBundlePackageType</key>
     <string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
     <key>CFBundleShortVersionString</key>
-    <string>4.2.0</string>
+    <string>4.2.13</string>
     <key>CFBundleSignature</key>
     <string>????</string>
     <key>CFBundleURLTypes</key>
@@ -39,17 +39,9 @@
           <string>exp+bliss-alarm-clock</string>
         </array>
       </dict>
-      <dict>
-        <key>CFBundleURLName</key>
-        <string>google-signin</string>
-        <key>CFBundleURLSchemes</key>
-        <array>
-          <string>com.googleusercontent.apps.748781286916-o2egm2al46ak0bnnbkkir01ck9qafael</string>
-        </array>
-      </dict>
     </array>
     <key>CFBundleVersion</key>
-    <string>111</string>
+    <string>123</string>
     <key>ITSAppUsesNonExemptEncryption</key>
     <false/>
     <key>LSMinimumSystemVersion</key>
@@ -124,6 +116,6 @@
     <key>IS_PRODUCTION</key>
     <true/>
     <key>RCTDisableExceptionsManager</key>
-    <true/>
+    <false/>
   </dict>
 </plist>

@@ -4,8 +4,8 @@
 #import <React/RCTLinkingManager.h>
 #import <React/RCTBridgeModule.h>
 #import <UserNotifications/UserNotifications.h>
-#import <Firebase.h>
-#import <GoogleSignIn/GoogleSignIn.h>
+// #import <Firebase.h>  ← REMOVED
+// #import <GoogleSignIn/GoogleSignIn.h>  ← REMOVE THIS TOO
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate>
 @end
@@ -15,9 +15,6 @@
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
   self.moduleName = @"main";
-
-  // You can add your custom initial props in the dictionary below.
-  // They will be passed down to the ViewController used by React Native.
   self.initialProps = @{};
 
   RCTBridge *bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
@@ -26,7 +23,7 @@
   UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
   center.delegate = self;
 
-  [FIRApp configure];
+  // [FIRApp configure];  ← REMOVED
 
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }
@@ -47,7 +44,7 @@
 
 // Linking API
 - (BOOL)application:(UIApplication *)application openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options {
-  return [super application:application openURL:url options:options] || [RCTLinkingManager application:application openURL:url options:options] || [GIDSignIn.sharedInstance handleURL:url];
+  return [super application:application openURL:url options:options] || [RCTLinkingManager application:application openURL:url options:options]; // ← REMOVED GoogleSignIn part
 }
 
 // Universal Links

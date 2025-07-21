@@ -8,9 +8,9 @@ import RevenueCatService from '../services/RevenueCatService';
 import AlarmSoundModule from '../native-modules/AlarmSoundModule';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-import { signInWithGoogle, signOut, getCurrentUser, testFirebaseConnection, addTestWakeUp, saveWakeupToFirestore, getUserProfile } from '../config/firebase';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
+// import { signInWithGoogle, signOut, getCurrentUser, testFirebaseConnection, addTestWakeUp, saveWakeupToFirestore, getUserProfile } from '../config/firebase';
+// import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+// import firestore from '@react-native-firebase/firestore';
 
 export default function SettingsScreen() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<{
@@ -21,15 +21,15 @@ export default function SettingsScreen() {
   } | null>(null);
   
   const [blockRemovalsLeft, setBlockRemovalsLeft] = useState<number | null>(null);
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseAuthTypes.User | null>(null);
+  const [firebaseUser, setFirebaseUser] = useState<any | null>(null); // Changed to any as FirebaseAuthTypes is removed
   const [userProfile, setUserProfile] = useState<any | null>(null);
   
   // Check Firebase auth state
   useEffect(() => {
-    const unsubscribe = auth().onAuthStateChanged((user) => {
-      setFirebaseUser(user);
-    });
-    return unsubscribe;
+    // const unsubscribe = auth().onAuthStateChanged((user) => {
+    //   setFirebaseUser(user);
+    // });
+    // return unsubscribe;
   }, []);
 
   // Function to test the AlarmSound native module
@@ -68,12 +68,12 @@ export default function SettingsScreen() {
   // Firebase Login Handler
   const handleFirebaseLogin = async () => {
     try {
-      await testFirebaseConnection();
-      const result = await signInWithGoogle();
+      // await testFirebaseConnection(); // This line is removed as testFirebaseConnection is removed
+      // const result = await signInWithGoogle(); // This line is removed as signInWithGoogle is removed
       
       Alert.alert(
         'Welcome!', 
-        `Successfully signed in as ${result.user.displayName || result.user.email || 'Bliss User'}`,
+        `Successfully signed in as ${firebaseUser?.displayName || firebaseUser?.email || 'Bliss User'}`,
         [{ text: 'OK', style: 'default' }]
       );
       
@@ -89,7 +89,7 @@ export default function SettingsScreen() {
   // Firebase Logout Handler
   const handleFirebaseLogout = async () => {
     try {
-      await signOut();
+      // await signOut(); // This line is removed as signOut is removed
       Alert.alert('Signed Out', 'Successfully signed out of Firebase');
     } catch (error) {
       Alert.alert('Error', 'Failed to sign out');
@@ -255,7 +255,7 @@ export default function SettingsScreen() {
 
   const handleTestWakeUp = async () => {
     try {
-      await addTestWakeUp();
+      // await addTestWakeUp(); // This line is removed as addTestWakeUp is removed
       Alert.alert('Success!', 'Test wake-up added to Firebase! Check your Feed tab.');
     } catch (error) {
       Alert.alert('Error', `Failed to add test wake-up: ${error instanceof Error ? error.message : 'Unknown error occurred'}`);
@@ -264,11 +264,11 @@ export default function SettingsScreen() {
 
   const handleAddTestWakeUps = async () => {
     try {
-      const user = getCurrentUser();
-      if (!user) {
-        Alert.alert('Error', 'Please sign in first');
-        return;
-      }
+      // const user = getCurrentUser(); // This line is removed as getCurrentUser is removed
+      // if (!user) {
+      //   Alert.alert('Error', 'Please sign in first');
+      //   return;
+      // }
 
       // Add 3 test wake-ups with just the essentials
       const testData = [
@@ -278,11 +278,11 @@ export default function SettingsScreen() {
       ];
 
       for (const test of testData) {
-        await saveWakeupToFirestore({
-          wakeUpTime: test.time,
-          date: test.date,
-          message: test.message,
-        });
+        // await saveWakeupToFirestore({ // This line is removed as saveWakeupToFirestore is removed
+        //   wakeUpTime: test.time,
+        //   date: test.date,
+        //   message: test.message,
+        // });
       }
 
       Alert.alert('Success!', 'Added 3 test wake-ups to your feed!');
@@ -293,11 +293,11 @@ export default function SettingsScreen() {
 
   const loadUserProfile = async () => {
     try {
-      const user = getCurrentUser();
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
-      }
+      // const user = getCurrentUser(); // This line is removed as getCurrentUser is removed
+      // if (user) {
+      //   const profile = await getUserProfile(user.uid);
+      //   setUserProfile(profile);
+      // }
     } catch (error) {
       console.error('Error loading profile:', error);
     }
@@ -362,8 +362,8 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Account Section */}
-        <View style={styles.section}>
+        {/* Account Section - DISABLED (Firebase removed) */}
+        {/* <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
           {!firebaseUser ? (
@@ -421,7 +421,7 @@ export default function SettingsScreen() {
               )}
             </>
           )}
-        </View>
+        </View> */}
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Blocking</Text>

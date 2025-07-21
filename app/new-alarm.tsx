@@ -14,7 +14,7 @@ import { Audio } from 'expo-av';
 declare global {
   var alarmTimers: {
     [key: string]: NodeJS.Timeout;
-  };
+  }; 
 }
 
 interface Mission {

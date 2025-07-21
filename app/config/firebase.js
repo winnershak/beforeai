@@ -1,27 +1,30 @@
-import auth from '@react-native-firebase/auth';
-import firestore from '@react-native-firebase/firestore';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+// Comment these out:
+// import auth from '@react-native-firebase/auth';
+// import firestore from '@react-native-firebase/firestore';
+// import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 // Configure Google Sign-In with EXACT settings
-GoogleSignin.configure({
-  webClientId: '748781286916-o2egm2al46ak0bnnbkkir01ck9qafael.apps.googleusercontent.com',
-  offlineAccess: false,
-  hostedDomain: '',
-  forceCodeForRefreshToken: false,
-});
+// GoogleSignin.configure({
+//   webClientId: '748781286916-o2egm2al46ak0bnnbkkir01ck9qafael.apps.googleusercontent.com',
+//   offlineAccess: false,
+//   hostedDomain: '',
+//   forceCodeForRefreshToken: false,
+// });
 
 // Test Firebase connection
 export const testFirebaseConnection = async () => {
-  try {
-    console.log('🔥 Testing Firebase...');
-    const result = await auth().signInAnonymously();
-    console.log('🔥 Firebase works! User:', result.user.uid);
-    await auth().signOut(); // Clean up anonymous session
-    return result;
-  } catch (error) {
-    console.error('🔥 Firebase test failed:', error);
-    throw error;
-  }
+  // try {
+  //   console.log('🔥 Testing Firebase...');
+  //   const result = await auth().signInAnonymously();
+  //   console.log('🔥 Firebase works! User:', result.user.uid);
+  //   await auth().signOut(); // Clean up anonymous session
+  //   return result;
+  // } catch (error) {
+  //   console.error('🔥 Firebase test failed:', error);
+  //   throw error;
+  // }
+  console.log('Firebase disabled');
+  return null;
 };
 
 export const signInWithGoogle = async () => {
@@ -30,44 +33,44 @@ export const signInWithGoogle = async () => {
     
     // Step 1: Sign out completely first
     try {
-      await GoogleSignin.signOut();
-      await auth().signOut();
+      // await GoogleSignin.signOut(); // GoogleSignin is commented out
+      // await auth().signOut(); // auth() is commented out
     } catch (e) {
       console.log('No existing session to clear');
     }
     
     // Step 2: Check Play Services
     console.log('🔥 Checking Play Services...');
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    // await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true }); // GoogleSignin is commented out
     
     // Step 3: Get Google user info
     console.log('🔥 Getting Google user...');
-    const userInfo = await GoogleSignin.signIn();
-    console.log('🔥 Google user info:', userInfo);
+    // const userInfo = await GoogleSignin.signIn(); // GoogleSignin is commented out
+    // console.log('🔥 Google user info:', userInfo);
     
     // Step 4: FIX - Check for idToken in the right location!
-    const idToken = userInfo.data?.idToken || userInfo.idToken;
-    console.log('🔥 Looking for idToken...', { 
-      hasDataIdToken: !!userInfo.data?.idToken,
-      hasDirectIdToken: !!userInfo.idToken,
-      foundIdToken: !!idToken 
-    });
+    // const idToken = userInfo.data?.idToken || userInfo.idToken; // GoogleSignin is commented out
+    // console.log('🔥 Looking for idToken...', { 
+    //   hasDataIdToken: !!userInfo.data?.idToken,
+    //   hasDirectIdToken: !!userInfo.idToken,
+    //   foundIdToken: !!idToken 
+    // });
     
-    if (!idToken) {
-      throw new Error('Google Sign-In failed to return idToken');
-    }
+    // if (!idToken) { // GoogleSignin is commented out
+    //   throw new Error('Google Sign-In failed to return idToken');
+    // }
     
-    console.log('🔥 Got idToken! Creating Firebase credential...');
+    // console.log('🔥 Got idToken! Creating Firebase credential...'); // GoogleSignin is commented out
     
     // Step 5: Create Firebase credential
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    // const googleCredential = auth.GoogleAuthProvider.credential(idToken); // auth() is commented out
     
     // Step 6: Sign in to Firebase
-    console.log('🔥 Signing into Firebase...');
-    const result = await auth().signInWithCredential(googleCredential);
+    // console.log('🔥 Signing into Firebase...'); // auth() is commented out
+    // const result = await auth().signInWithCredential(googleCredential); // auth() is commented out
     
-    console.log('🔥 SUCCESS! Firebase user:', result.user.email || result.user.uid);
-    return result;
+    // console.log('🔥 SUCCESS! Firebase user:', result.user.email || result.user.uid); // auth() is commented out
+    // return result; // auth() is commented out
     
   } catch (error) {
     
@@ -88,8 +91,8 @@ export const signInWithGoogle = async () => {
 
 export const signOut = async () => {
   try {
-    await auth().signOut();
-    await GoogleSignin.signOut();
+    // await auth().signOut(); // auth() is commented out
+    // await GoogleSignin.signOut(); // GoogleSignin is commented out
     console.log('🔥 Successfully signed out');
   } catch (error) {
     console.error('Sign-Out Error:', error);
@@ -97,7 +100,7 @@ export const signOut = async () => {
   }
 };
 
-export const getCurrentUser = () => auth().currentUser;
+export const getCurrentUser = () => null; // Instead of auth().currentUser
 
 export const saveWakeupToFirestore = async (wakeupData) => {
   try {
@@ -110,12 +113,12 @@ export const saveWakeupToFirestore = async (wakeupData) => {
       date: wakeupData.date,
       message: wakeupData.message || '', // Default to empty string
       userId: user.uid,
-      createdAt: firestore.FieldValue.serverTimestamp(),
+      createdAt: null, // firestore.FieldValue.serverTimestamp(), // firestore is commented out
     };
 
-    await firestore()
-      .collection('wakeups')
-      .add(cleanData);
+    // await firestore() // firestore is commented out
+    //   .collection('wakeups')
+    //   .add(cleanData);
     
     console.log('✅ Wakeup data saved to Firestore');
   } catch (error) {
@@ -128,14 +131,16 @@ export const saveWakeupToFirestore = async (wakeupData) => {
 export const signUpWithEmail = async (email, password, displayName) => {
   try {
     console.log('🔥 Creating account...');
-    const result = await auth().createUserWithEmailAndPassword(email, password);
+    // const result = await auth().createUserWithEmailAndPassword(email, password); // auth() is commented out
     
-    if (displayName) {
-      await result.user.updateProfile({ displayName });
-    }
+    // if (displayName) { // auth() is commented out
+    //   await result.user.updateProfile({ displayName });
+    // }
     
-    console.log('🔥 SUCCESS! Account created:', result.user.email);
-    return result;
+    // console.log('🔥 SUCCESS! Account created:', result.user.email); // auth() is commented out
+    // return result; // auth() is commented out
+    console.log('🔥 Account creation disabled');
+    return null;
   } catch (error) {
     if (error.code === 'auth/email-already-in-use') {
       throw new Error('Email already registered. Try signing in.');
@@ -150,9 +155,10 @@ export const signUpWithEmail = async (email, password, displayName) => {
 export const signInWithEmail = async (email, password) => {
   try {
     console.log('🔥 Signing in...');
-    const result = await auth().signInWithEmailAndPassword(email, password);
-    console.log('🔥 SUCCESS! Signed in:', result.user.email);
-    return result;
+    // const result = await auth().signInWithEmailAndPassword(email, password); // auth() is commented out
+    // console.log('🔥 SUCCESS! Signed in:', result.user.email); // auth() is commented out
+    console.log('🔥 Sign-in disabled');
+    return null;
   } catch (error) {
     if (error.code === 'auth/user-not-found') {
       throw new Error('No account found. Try signing up first.');
@@ -188,12 +194,14 @@ export const addTestWakeUp = async () => {
 
 export const checkUsernameAvailable = async (username) => {
   try {
-    const snapshot = await firestore()
-      .collection('profiles')
-      .where('username', '==', username.toLowerCase())
-      .get();
+    // const snapshot = await firestore() // firestore is commented out
+    //   .collection('profiles')
+    //   .where('username', '==', username.toLowerCase())
+    //   .get();
     
-    return snapshot.empty; // true if available
+    // return snapshot.empty; // true if available // firestore is commented out
+    console.log('Username check disabled');
+    return true; // Assume available if Firebase is off
   } catch (error) {
     console.error('Error checking username:', error);
     return false;
@@ -228,14 +236,14 @@ export const updateUserProfile = async (profileData) => {
     }
 
     // Update the profile document
-    await firestore()
-      .collection('profiles')
-      .doc(user.uid)
-      .set({
-        ...cleanData,
-        userId: user.uid,
-        updatedAt: firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
+    // await firestore() // firestore is commented out
+    //   .collection('profiles')
+    //   .doc(user.uid)
+    //   .set({
+    //     ...cleanData,
+    //     userId: user.uid,
+    //     updatedAt: firestore.FieldValue.serverTimestamp(),
+    //   }, { merge: true });
 
     console.log('✅ Profile updated'); // Keep this one success log
   } catch (error) {
@@ -246,14 +254,15 @@ export const updateUserProfile = async (profileData) => {
 
 export const getUserProfile = async (userId) => {
   try {
-    const doc = await firestore()
-      .collection('profiles')
-      .doc(userId)
-      .get();
+    // const doc = await firestore() // firestore is commented out
+    //   .collection('profiles')
+    //   .doc(userId)
+    //   .get();
     
-    if (doc.exists) {
-      return doc.data();
-    }
+    // if (doc.exists) { // firestore is commented out
+    //   return doc.data();
+    // }
+    console.log('User profile disabled');
     return null;
   } catch (error) {
     console.error('Error getting profile:', error);
@@ -261,4 +270,4 @@ export const getUserProfile = async (userId) => {
   }
 };
 
-export { auth, firestore }; 
+// export { auth, firestore }; // auth() and firestore() are commented out 

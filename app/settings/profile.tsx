@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, Stack } from 'expo-router';
-import { getCurrentUser, getUserProfile, updateUserProfile, checkUsernameAvailable } from '../config/firebase';
+// import { getCurrentUser, getUserProfile, updateUserProfile, checkUsernameAvailable } from '../config/firebase';
 
 export default function ProfileScreen() {
   const [displayName, setDisplayName] = useState('');
@@ -11,108 +11,48 @@ export default function ProfileScreen() {
   const [isChecking, setIsChecking] = useState(false);
 
   useEffect(() => {
-    loadProfile();
+    // loadProfile();
   }, []);
 
   const loadProfile = async () => {
-    try {
-      const user = getCurrentUser();
-      if (user) {
-        const profile = await getUserProfile(user.uid);
-        setDisplayName(profile?.displayName || user.displayName || '');
-        setUsername(profile?.username || '');
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    }
+    // try {
+    //   const user = getCurrentUser();
+    //   if (user) {
+    //     const profile = await getUserProfile(user.uid);
+    //     setDisplayName(profile?.displayName || user.displayName || '');
+    //     setUsername(profile?.username || '');
+    //   }
+    // } catch (error) {
+    //   console.error('Error loading profile:', error);
+    // }
   };
 
   const checkUsername = async (usernameToCheck: string) => {
-    if (usernameToCheck.length < 3) {
-      setIsUsernameValid(false);
-      return;
-    }
+    // if (usernameToCheck.length < 3) {
+    //   setIsUsernameValid(false);
+    //   return;
+    // }
     
-    setIsChecking(true);
-    try {
-      const isAvailable = await checkUsernameAvailable(usernameToCheck);
-      setIsUsernameValid(isAvailable);
-    } catch (error) {
-      console.error('Error checking username:', error);
-      setIsUsernameValid(false);
-    } finally {
-      setIsChecking(false);
-    }
+    // setIsChecking(true);
+    // try {
+    //   const isAvailable = await checkUsernameAvailable(usernameToCheck);
+    //   setIsUsernameValid(isAvailable);
+    // } catch (error) {
+    //   console.error('Error checking username:', error);
+    //   setIsUsernameValid(false);
+    // } finally {
+    //   setIsChecking(false);
+    // }
   };
 
   const handleSave = async () => {
-    try {
-      const user = getCurrentUser();
-      if (!user) {
-        return; // Silently return instead of showing alert
-      }
-
-      // Clean and validate data properly
-      const cleanDisplayName = displayName?.trim();
-      const cleanUsername = username?.trim();
-
-      // Build profile data only with defined values
-      const profileData: { [key: string]: any } = {};
-      
-      if (cleanDisplayName && cleanDisplayName.length > 0) {
-        profileData.displayName = cleanDisplayName;
-      }
-      
-      if (cleanUsername && cleanUsername.length >= 3) {
-        profileData.username = cleanUsername;
-      }
-
-      // Only proceed if we have valid data to save
-      if (Object.keys(profileData).length === 0) {
-        router.back(); // Nothing to save, just go back
-        return;
-      }
-
-      try {
-        // Check username availability first if username is provided
-        if (profileData.username) {
-          const isAvailable = await checkUsernameAvailable(profileData.username);
-          if (!isAvailable) {
-            // Remove username from data and continue with just display name
-            delete profileData.username;
-            if (Object.keys(profileData).length === 0) {
-              router.back(); // No valid data to save
-              return;
-            }
-          }
-        }
-
-        // Save to Firebase with clean data
-        if (Object.keys(profileData).length > 0) {
-          await updateUserProfile(profileData);
-        }
-
-        // Update Firebase Auth display name separately if provided
-        if (cleanDisplayName) {
-          await user.updateProfile({
-            displayName: cleanDisplayName
-          });
-        }
-
-        router.back(); // Success - go back silently
-      } catch (error) {
-        // Silently handle any remaining errors
-        router.back();
-      }
-    } catch (error) {
-      // Silently handle all errors
-      router.back();
-    }
+    // Firebase disabled - just go back
+    router.back();
   };
 
   const handleUsernameChange = (text: string) => {
     setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
-    checkUsername(text);
+    // checkUsername(text);
   };
 
   return (

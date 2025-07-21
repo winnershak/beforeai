@@ -8,7 +8,7 @@ import * as Notifications from 'expo-notifications';
 import soundAssets from './sounds';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
 import SystemVolumeModule from './native-modules/SystemVolumeModule';
-import { saveWakeupToFirestore, getCurrentUser } from './config/firebase';
+// import { saveWakeupToFirestore, getCurrentUser } from './config/firebase';
 
 
 // Add this type definition at the top of your file
@@ -95,23 +95,23 @@ const recordWakeupTime = async (alarmId: string, currentAlarm?: Alarm | null) =>
 const saveWakeUpRecord = async (alarmId: string, currentAlarm: Alarm | null, timeString: string, dateString: string) => {
   try {
     // ✅ ALWAYS save to Firebase
-    const user = getCurrentUser();
-    if (user) {
-      try {
-        await saveWakeupToFirestore({
-          wakeUpTime: timeString,
-          actualTime: timeString,
-          targetTime: currentAlarm?.time || timeString,
-          date: dateString,
-          message: `Woke up at ${timeString}! 🌅`,
-          soundUsed: currentAlarm?.sound || 'Unknown',
-          alarmId: alarmId
-        });
-        console.log('✅ Wake-up saved to Firebase!');
-      } catch (firebaseError) {
-        console.error('❌ Failed to save to Firebase:', firebaseError);
-      }
-    }
+    // const user = getCurrentUser();
+    // if (user) {
+    //   try {
+    //     await saveWakeupToFirestore({
+    //       wakeUpTime: timeString,
+    //       actualTime: timeString,
+    //       targetTime: currentAlarm?.time || timeString,
+    //       date: dateString,
+    //       message: `Woke up at ${timeString}! 🌅`,
+    //       soundUsed: currentAlarm?.sound || 'Unknown',
+    //       alarmId: alarmId
+    //     });
+    //     console.log('✅ Wake-up saved to Firebase!');
+    //   } catch (firebaseError) {
+    //     console.error('❌ Failed to save to Firebase:', firebaseError);
+    //   }
+    // }
 
     // ✅ Save to local storage for calendar (earliest only)
     const historyJson = await AsyncStorage.getItem('wakeupHistory');

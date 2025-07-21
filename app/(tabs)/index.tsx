@@ -11,8 +11,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import RevenueCatService from '../services/RevenueCatService';
 import * as ImagePicker from 'expo-image-picker';
-import firestore from '@react-native-firebase/firestore';
-import { getCurrentUser, getUserProfile } from '../config/firebase';
+// import firestore from '@react-native-firebase/firestore';
+// import { getCurrentUser, getUserProfile } from '../config/firebase';
 // Add these new imports for Instagram sharing
 import { captureRef } from 'react-native-view-shot';
 import * as MediaLibrary from 'expo-media-library';
@@ -580,7 +580,8 @@ export default function TabOneScreen() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [myWakeUps, setMyWakeUps] = useState<WakeUpItem[]>([]);
   const [loadingFeed, setLoadingFeed] = useState(false);
-  const [firebaseUser, setFirebaseUser] = useState(getCurrentUser());
+  // const [firebaseUser, setFirebaseUser] = useState(getCurrentUser());
+  const [firebaseUser, setFirebaseUser] = useState(null);
   const [userProfile, setUserProfile] = useState<any | null>(null);
 
   // Add refs for capturing the views
@@ -1119,39 +1120,39 @@ export default function TabOneScreen() {
   const loadMyWakeUps = async () => {
     setLoadingFeed(true);
     try {
-      const user = getCurrentUser();
-      if (!user) {
-        console.log('User not signed in');
-        setMyWakeUps([]);
-        return;
-      }
+      // const user = getCurrentUser();
+      // if (!user) {
+      //   console.log('User not signed in');
+      //   setMyWakeUps([]);
+      //   return;
+      // }
 
       // Try to refresh user profile data, but don't let it block wake-ups loading
       try {
-        const profile = await getUserProfile(user.uid);
-        setUserProfile(profile);
+        // const profile = await getUserProfile(user.uid);
+        // setUserProfile(profile);
       } catch (profileError) {
         console.log('Error loading profile (continuing anyway):', profileError);
         // Continue loading wake-ups even if profile fails
       }
 
       // Load wake-ups from Firebase
-      const snapshot = await firestore()
-        .collection('wakeups')
-        .where('userId', '==', user.uid)
-        .limit(30)
-        .get();
+      // const snapshot = await firestore()
+      //   .collection('wakeups')
+      //   .where('userId', '==', user.uid)
+      //   .limit(30)
+      //   .get();
       
-      const wakeUps = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate(),
-      }));
+      // const wakeUps = snapshot.docs.map(doc => ({
+      //   id: doc.id,
+      //   ...doc.data(),
+      //   createdAt: doc.data().createdAt?.toDate(),
+      // }));
       
-      wakeUps.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      // wakeUps.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
       
-      setMyWakeUps(wakeUps);
-      console.log(`📱 Loaded ${wakeUps.length} wake-ups from Firebase`);
+      // setMyWakeUps(wakeUps);
+      console.log(`📱 Loaded ${myWakeUps.length} wake-ups from Firebase`);
     } catch (error) {
       console.log('Error loading Firebase wake-ups:', error);
       setMyWakeUps([]);
@@ -1222,16 +1223,16 @@ export default function TabOneScreen() {
   // Add delete function:
   const deleteWakeUp = async (wakeUpId: string) => {
     try {
-      const user = getCurrentUser();
-      if (!user) return;
+      // const user = getCurrentUser();
+      // if (!user) return;
 
-      await firestore()
-        .collection('wakeups')
-        .doc(wakeUpId)
-        .delete();
+      // await firestore()
+      //   .collection('wakeups')
+      //   .doc(wakeUpId)
+      //   .delete();
 
-      // Refresh feed
-      loadMyWakeUps();
+      // // Refresh feed
+      // loadMyWakeUps();
     } catch (error) {
       console.error('Failed to delete wake-up:', error);
     }
@@ -1239,16 +1240,18 @@ export default function TabOneScreen() {
 
   // Load profile when user changes:
   useEffect(() => {
-    if (firebaseUser) {
-      loadUserProfile();
-    }
+    // Firebase disabled
+    // if (firebaseUser) {
+    //   loadUserProfile();
+    // }
   }, [firebaseUser]);
 
   const loadUserProfile = async () => {
     try {
-      if (!firebaseUser) return;
-      const profile = await getUserProfile(firebaseUser.uid);
-      setUserProfile(profile);
+      // Firebase disabled
+      // if (!firebaseUser) return;
+      // const profile = await getUserProfile(firebaseUser.uid);
+      // setUserProfile(profile);
     } catch (error) {
       console.error('Error loading profile:', error);
     }
@@ -1546,15 +1549,18 @@ export default function TabOneScreen() {
                   {/* User Info Header */}
                   <View style={styles.tweetHeader}>
                     <Image 
-                      source={{ uri: firebaseUser?.photoURL || 'https://via.placeholder.com/40' }}
                       style={styles.profilePic}
+                      // source={{ uri: firebaseUser?.photoURL || 'https://via.placeholder.com/40' }}
+                      source={{ uri: 'https://via.placeholder.com/40' }}
                     />
                     <View style={styles.userInfo}>
                       <Text style={styles.displayName}>
-                        {userProfile?.displayName || firebaseUser?.displayName || firebaseUser?.email || 'Bliss User'}
+                        {/* {userProfile?.displayName || firebaseUser?.displayName || firebaseUser?.email || 'Bliss User'} */}
+                        Bliss User
                       </Text>
                       <Text style={styles.username}>
-                        @{userProfile?.username || firebaseUser?.email?.split('@')[0] || 'blissuser'}
+                        {/* @{userProfile?.username || firebaseUser?.email?.split('@')[0] || 'blissuser'} */}
+                        @blissuser
                       </Text>
                     </View>
                     <TouchableOpacity 
@@ -1590,7 +1596,8 @@ export default function TabOneScreen() {
                 Start using your alarms and your wake-up times will appear here
               </Text>
               <Text style={styles.emptyFeedSubtext}>
-                Sign in to Firebase to save your wake-up journey
+                {/* Sign in to Firebase to save your wake-up journey */}
+                Start your wake-up journey
               </Text>
             </View>
           )}

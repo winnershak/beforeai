@@ -35,8 +35,9 @@ target 'BlissAlarm' do
 
   config = use_native_modules!(config_command)
 
+  # Comment out Firebase-specific configurations:
   # Force dynamic frameworks for Firebase compatibility
-  use_frameworks! :linkage => :dynamic
+  # use_frameworks! :linkage => :dynamic
 
   use_react_native!(
     :path => config[:reactNativePath],
