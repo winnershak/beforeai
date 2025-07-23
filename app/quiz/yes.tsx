@@ -397,6 +397,17 @@ export default function YesScreen() {
                   </View>
                 </View>
                 
+                {/* Apple Required Subscription Information */}
+                <View style={styles.subscriptionInfoContainer}>
+                  <Text style={styles.subscriptionInfoText}>
+                    <Text style={styles.subscriptionTitle}>Auto-Renewable Subscription Details:</Text>{'\n'}
+                    {selectedPlan === 'yearly' ? '• $49.99 per year, auto-renews annually' : '• $12.99 per month, auto-renews monthly'}{'\n'}
+                    • Includes all premium features and future updates{'\n'}
+                    • Cancel anytime in iOS Settings → Subscriptions{'\n'}
+                    • Auto-renewal can be turned off 24 hours before period ends
+                  </Text>
+                </View>
+                
                 {/* Add user reviews section below pricing options */}
                 <View style={styles.userReviewsContainer}>
                   <Text style={styles.userReviewsTitle}>What our users say</Text>
@@ -800,5 +811,25 @@ const styles = StyleSheet.create({
     color: '#999',
     fontSize: 13,
     marginTop: 4,
+  },
+  subscriptionInfoContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 20,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  subscriptionInfoText: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: 18,
+    textAlign: 'left',
+  },
+  subscriptionTitle: {
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 13,
   },
 }); 
