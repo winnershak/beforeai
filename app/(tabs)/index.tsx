@@ -1454,7 +1454,7 @@ export default function TabOneScreen() {
               </View>
               <Text style={styles.historyAverage}>
                 Average: 6:00 AM
-              </Text>
+              </Text> 
             </View>
             
             {/* Centered Profile Photo */}
