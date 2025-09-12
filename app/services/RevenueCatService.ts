@@ -43,16 +43,22 @@ class RevenueCatService {
       
       // Different setup for different platforms
       if (Platform.OS === 'ios') {
-        await Purchases.configure({ 
-          apiKey,
-          appUserID: null // Let RevenueCat generate a user ID
-        });
+        await Promise.race([
+          Purchases.configure({ 
+            apiKey,
+            appUserID: null
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+        ]);
       } else if (Platform.OS === 'android') {
         // For Android we would need a Google Play key
-        await Purchases.configure({ 
-          apiKey,
-          appUserID: null
-        });
+        await Promise.race([
+          Purchases.configure({ 
+            apiKey,
+            appUserID: null
+          }),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout')), 10000))
+        ]);
       }
       
       // Set debug logs for development
@@ -492,6 +498,16 @@ class RevenueCatService {
     }
     
     console.log(`Subscription status updated: Premium = ${isPremium}`);
+  }
+
+  async purchaseProductSafe(productId: string): Promise<boolean> {
+    try {
+      const success = await this.purchaseProduct(productId);
+      return success;
+    } catch (error) {
+      console.error('Purchase error:', error);
+      return false; // Handle gracefully
+    }
   }
 }
 

@@ -1,879 +1,80 @@
+// console.log('🔧 Emergency error handler setup...');
+// try {
+//   (global as any).ErrorUtils?.setGlobalHandler?.((error: any, isFatal: boolean) => {
+//     console.error('💥 CAUGHT CRASH:', error.message);
+//     const Alert = require('react-native').Alert;
+//     Alert.alert('APP CRASHED', error.message + '\n\nSTACK:\n' + (error.stack || 'No stack'));
+//     console.error('Full error:', JSON.stringify(error, null, 2));
+//   });
+// } catch (e) {
+//   console.error('Error handler setup failed:', e);
+// }
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
-import 'react-native-reanimated';
+import { useEffect, useState } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { router, useSegments } from 'expo-router';
+import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { registerBackgroundTask } from './background-task';
-import { 
-  requestNotificationPermissions, 
-  setupNotificationHandlers, 
-  stopAlarmSound,
-  scheduleAlarmNotification,
-  cancelAllNotifications
-} from './notifications';
-import { AppState, AppStateStatus } from 'react-native';
-import * as Notifications from 'expo-notifications';
-import ErrorBoundary from './components/ErrorBoundary';
-import * as Linking from 'expo-linking';
-import * as BackgroundFetch from 'expo-background-fetch';
-import * as TaskManager from 'expo-task-manager';
-import { Platform, NativeModules } from 'react-native';
-import AlarmSoundModule from './native-modules/AlarmSoundModule';
-
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { useAlarmManager } from './hooks/useAlarmManager';
-import { setupAlarms, scheduleAlarmNotification as setupAlarmsScheduleAlarmNotification } from './notifications';
-import './utils/expo-sensors-patch';
-import RevenueCatService from './services/RevenueCatService';
-import { handleNotification } from './notifications';
-import { TouchableOpacity } from 'react-native';
+import { Alert, TouchableOpacity } from 'react-native';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import * as Network from 'expo-network';
-import { Alert } from 'react-native';
-import { SplashScreen as RouterSplashScreen } from 'expo-router';
-// import firebase from '@react-native-firebase/app';
-// import '@react-native-firebase/auth';
-
+import ErrorBoundary from './components/ErrorBoundary';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import RevenueCatService from './services/RevenueCatService';
+import { Platform, NativeModules } from 'react-native';
+import { registerBackgroundTask } from './background-task';
+import * as TaskManager from 'expo-task-manager';
+import AlarmSoundModule from './native-modules/AlarmSoundModule';
 const { ScreenTimeBridge } = NativeModules;
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
-
-// Global flag to track if alarm is active
-let isAlarmActive = false;
-
-// // Make Firebase globally available
-// // @ts-ignore - Adding firebase to global
-// global.firebaseApp = firebase;
+// SplashScreen.preventAutoHideAsync();
 
 const handleError = (error: Error) => {
   console.log('Caught error:', error);
-  // Log to analytics or handle gracefully
-};
-
-// Define the task handler
-TaskManager.defineTask('ALARM_TASK', async ({ data, error }) => {
-  if (error) {
-    console.error('Background task error:', error);
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
-  
-  try {
-    // Get the alarm data
-    const { alarmId, sound, soundVolume, hasMission } = data as any;
-    
-    // Set active alarm data
-    const activeAlarmData = {
-      alarmId,
-      timestamp: new Date().getTime(),
-      sound: sound || 'Beacon',
-      soundVolume: soundVolume || 1,
-      hasMission: hasMission || false
-    };
-    
-    // Save active alarm data
-    await AsyncStorage.setItem('activeAlarm', JSON.stringify(activeAlarmData));
-    
-    // Launch the app and navigate to alarm-ring screen
-    await Linking.openURL(`exp://alarm-ring?alarmId=${alarmId}&sound=${sound}&soundVolume=${soundVolume}&hasMission=${hasMission}`);
-    
-    return BackgroundFetch.BackgroundFetchResult.NewData;
-  } catch (error) {
-    console.error('Error in background task:', error);
-    return BackgroundFetch.BackgroundFetchResult.Failed;
-  }
-});
-
-// Add this helper function at the top:
-const safeJsonParse = (jsonString: string | null) => {
-  try {
-    return jsonString ? JSON.parse(jsonString) : null;
-  } catch {
-    return null;
-  }
-};
-
-const setupGlobalErrorHandler = () => {
-  // Prevent ANY JavaScript error from crashing the app
-  const originalHandler = ErrorUtils.getGlobalHandler();
-  
-  ErrorUtils.setGlobalHandler((error, isFatal) => {
-    console.log('🚨 Caught Error (NON-FATAL):', error.message);
-    
-    // NEVER let errors become fatal - always continue
-    if (originalHandler && !isFatal) {
-      originalHandler(error, false); // Force non-fatal
-    }
-    
-    // Just log and continue - don't crash
-    return;
-  });
 };
 
 export default function AppLayout() {
-  console.log('🚀 App starting...');
-
-  const colorScheme = useColorScheme();
+  console.log('🚀 AppLayout starting...');
+  
   const [loaded, error] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-
-  const timerRef = useRef<NodeJS.Timeout>();
-  const [initialRoute, setInitialRoute] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(true);
-  const [isReady, setIsReady] = useState(false);
-  const [isAppReady, setIsAppReady] = useState(false);
-  const notificationHandlersSetup = useRef(false);
-  const [hasNavigatedToAlarm, setHasNavigatedToAlarm] = useState(false);
-  const alarmTimers = useRef<{[key: string]: NodeJS.Timeout}>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [isPremium, setIsPremium] = useState(false);
-  const [isBridgeReady, setIsBridgeReady] = useState(false);
-
-  // Add this to track if navigation is safe
-  const [isMounted, setIsMounted] = useState(false);
-  
-  const segments = useSegments();
-  
-  // Add this near your other refs
-  const hasNavigatedToQuizRef = useRef(false);
-  
-  // Use this to handle navigation after mount
-  useEffect(() => {
-    if (loaded && isReady && !loading) {
-      // Mark as mounted - safe to navigate now
-      setIsMounted(true);
-      // Hide splash screen once everything is ready
-      RouterSplashScreen.hideAsync();
-    }
-  }, [loaded, isReady, loading]);
-
-  useAlarmManager(); // This will check for active alarms on app launch
-
-  useEffect(() => {
-    // Initialize Firebase if not already initialized
-    // if (!firebase.apps.length) {
-    //   console.log('Initializing Firebase in _layout.tsx...');
-    //   firebase.initializeApp({
-    //     appId: '1:748781286916:ios:d94493e3abc4808c102751',
-    //     projectId: 'bliss-alarm-b8280',
-    //   });
-    //   console.log('Firebase initialized successfully in _layout.tsx');
-    // } else {
-    //   console.log('Firebase already initialized in _layout.tsx');
-    // }
-    
-    // Set a small delay to ensure the app is fully mounted
-    const timer = setTimeout(() => {
-      setIsAppReady(true);
-      console.log('App is ready for navigation');
-    }, 500);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    async function checkAlarmTime() {
-      if (!isAppReady) {
-        console.log('App not ready for navigation, skipping alarm check');
-        return;
-      }
-      
-      try {
-        const alarmsJson = await AsyncStorage.getItem('alarms');
-        if (!alarmsJson) return;
-        
-        const alarms = safeJsonParse(alarmsJson);
-        
-        // IMPORTANT: Don't check for current time and navigate to alarm screen
-        // This is causing alarms to trigger immediately
-        // Instead, just make sure alarms are scheduled properly
-        
-        for (const alarm of alarms || []) {
-          if (alarm.enabled) {
-            // Just ensure the alarm is scheduled, don't navigate
-            await setupAlarmsScheduleAlarmNotification(alarm);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking alarm time:', error);
-      }
-    }
-
-    // Check when app opens
-    checkAlarmTime();
-
-    // Check when app comes to foreground
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active') {
-        checkAlarmTime();
-      }
-    });
-
-    // Initial setup
-    registerBackgroundTask();
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isAppReady]);
-
-  useEffect(() => {
-    // Set app as ready after first render
-    AsyncStorage.setItem('isAppReady', 'true');
-    
-    // Check for pending alarm navigation
-    const checkPendingAlarm = async () => {
-      const shouldNavigate = await AsyncStorage.getItem('shouldNavigateToAlarm');
-      
-      if (shouldNavigate === 'true') {
-        const pendingAlarmJson = await AsyncStorage.getItem('pendingAlarm');
-        
-        if (pendingAlarmJson) {
-          const pendingAlarm = safeJsonParse(pendingAlarmJson);
-          
-          // Clear the pending navigation
-          await AsyncStorage.removeItem('shouldNavigateToAlarm');
-          await AsyncStorage.removeItem('pendingAlarm');
-          
-          // Navigate to alarm screen
-          router.push({
-            pathname: '/alarm-ring',
-            params: pendingAlarm
-          });
-        }
-      }
-    };
-    
-    checkPendingAlarm();
-  }, []);
 
   useEffect(() => {
     const initializeApp = async () => {
-      try {
-        // Single initialization point
-        await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+      if (loaded) {
+        console.log('✅ Fonts loaded, checking quiz...');
         
-        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-        
-        if (quizCompleted === 'true') {
-          setInitialRoute('(tabs)');
-        } else {
-          setInitialRoute('/quiz');
-        }
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.error('App initialization failed:', error);
-        // Safe fallback
-        setInitialRoute('/quiz');
-        setIsLoading(false);
-      }
-    };
-
-    initializeApp();
-  }, []);
-
-  useEffect(() => {
-    async function checkAlarmTime() {
-      if (!isAppReady) {
-        console.log('App not ready for navigation, skipping alarm check');
-        return;
-      }
-      
-      try {
-        const alarmsJson = await AsyncStorage.getItem('alarms');
-        if (!alarmsJson) return;
-        
-        const alarms = safeJsonParse(alarmsJson);
-        
-        // IMPORTANT: Don't check for current time and navigate to alarm screen
-        // This is causing alarms to trigger immediately
-        // Instead, just make sure alarms are scheduled properly
-        
-        for (const alarm of alarms || []) {
-          if (alarm.enabled) {
-            // Just ensure the alarm is scheduled, don't navigate
-            await setupAlarmsScheduleAlarmNotification(alarm);
-          }
-        }
-      } catch (error) {
-        console.error('Error checking alarm time:', error);
-      }
-    }
-
-    // Check when app opens
-    checkAlarmTime();
-
-    // Check when app comes to foreground
-    const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active') {
-        checkAlarmTime();
-      }
-    });
-
-    // Initial setup
-    registerBackgroundTask();
-
-    return () => {
-      subscription.remove();
-    };
-  }, [isAppReady]);
-
-  useEffect(() => {
-    // Set app as ready after first render
-    AsyncStorage.setItem('isAppReady', 'true');
-    
-    // Check for pending alarm navigation
-    const checkPendingAlarm = async () => {
-      const shouldNavigate = await AsyncStorage.getItem('shouldNavigateToAlarm');
-      
-      if (shouldNavigate === 'true') {
-        const pendingAlarmJson = await AsyncStorage.getItem('pendingAlarm');
-        
-        if (pendingAlarmJson) {
-          const pendingAlarm = safeJsonParse(pendingAlarmJson);
+        try {
+          const quizCompleted = await AsyncStorage.getItem('quizCompleted');
+          console.log('📱 Quiz completed:', quizCompleted);
           
-          // Clear the pending navigation
-          await AsyncStorage.removeItem('shouldNavigateToAlarm');
-          await AsyncStorage.removeItem('pendingAlarm');
-          
-          // Navigate to alarm screen
-          router.push({
-            pathname: '/alarm-ring',
-            params: pendingAlarm
-          });
-        }
-      }
-    };
-    
-    checkPendingAlarm();
-  }, []);
-
-  useEffect(() => {
-    const checkAccess = async () => {
-      if (!isBridgeReady) return;
-      
-      try {
-        // Wrap RevenueCat in multiple layers of protection
-        setTimeout(() => {
-          Promise.resolve()
-            .then(() => RevenueCatService.isSubscribed())
-            .then(result => setIsPremium(result))
-            .catch(error => {
-              console.log('RevenueCat failed (ignored):', error.message);
-              setIsPremium(false); // Safe fallback
-            });
-        }, 3000); // Wait even longer
-
-        // Set fallback route immediately
-        setInitialRoute('(tabs)');
-        setLoading(false);
-        
-      } catch (e) {
-        console.log('Access check failed (ignored):', e);
-        setInitialRoute('(tabs)');
-        setLoading(false);
-      }
-    };
-
-    checkAccess();
-  }, [isBridgeReady]);
-
-  useEffect(() => {
-    // Setup notifications after the component is mounted
-    const setup = async () => {
-      try {
-        // Only set up notification handlers once
-        if (!notificationHandlersSetup.current) {
-          setupNotificationHandlers();
-          notificationHandlersSetup.current = true;
-          console.log('Notification handlers set up');
-        }
-        
-        console.log('Notifications setup complete');
-      } catch (error) {
-        console.error('Error setting up notifications:', error);
-      } finally {
-        // Mark as ready regardless of success/failure
-        setIsReady(true);
-      }
-    };
-
-    setup();
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', async (nextAppState) => {
-      if (nextAppState === 'active') {
-        // Check if there's an active snooze that has expired
-        const snoozeEndTimeStr = await AsyncStorage.getItem('snoozeEndTime');
-        const manuallyEnded = await AsyncStorage.getItem('manuallyEndedSnooze');
-        
-        if (snoozeEndTimeStr && !manuallyEnded) {
-          const snoozeEndTime = new Date(snoozeEndTimeStr);
-          const now = new Date();
-          
-          if (now >= snoozeEndTime) {
-            // Snooze has expired, clean up and reapply blocks
-            await AsyncStorage.removeItem('snoozeEndTime');
-            await AsyncStorage.removeItem('appBlockDisabledUntil');
-            
-            // Get the schedule ID if available
-            const scheduleId = await AsyncStorage.getItem('snoozedScheduleId');
-            if (scheduleId && Platform.OS === 'ios' && ScreenTimeBridge) {
-              console.log(`Snooze expired for schedule: ${scheduleId}, reapplying blocks`);
-              
-              // First try to directly reapply the specific schedule
-              try {
-                // This will force the schedule to be reapplied immediately
-                await ScreenTimeBridge.stopMonitoringForSchedule(scheduleId, 0);
-                console.log(`Successfully reapplied schedule: ${scheduleId}`);
-              } catch (error) {
-                console.error('Error reapplying specific schedule:', error);
-                
-                // Fall back to checking all expired snoozes
-                ScreenTimeBridge.checkForExpiredSnoozes()
-                  .then((result: any) => {
-                    console.log('Checked for expired snoozes:', typeof result, result || 'null');
-                  })
-                  .catch((err: Error) => console.error('Error checking snoozes:', err));
-              }
-              
-              // Clean up the schedule ID
-              await AsyncStorage.removeItem('snoozedScheduleId');
-            }
-          }
-        } else if (manuallyEnded) {
-          // Clean up if we manually ended
-          await AsyncStorage.removeItem('manuallyEndedSnooze');
-        }
-        
-        // Check if there's a completed alarm flag for the active alarm
-        const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
-        if (activeAlarmJson) {
-          const activeAlarm = safeJsonParse(activeAlarmJson);
-          const completedAlarmsJson = await AsyncStorage.getItem('completedAlarms');
-          const completedAlarms = safeJsonParse(completedAlarmsJson) || {};
-          
-          // If this alarm has been completed, clear the active alarm
-          if (completedAlarms[activeAlarm.alarmId]) {
-            console.log(`Alarm ${activeAlarm.alarmId} has been completed, clearing active alarm`);
-            await AsyncStorage.removeItem('activeAlarm');
-            await AsyncStorage.removeItem('alarmRingActive');
-          }
-        }
-        
-        // Just stop any sounds and continue normal app flow
-        stopAlarmSound();
-
-        // Check for expired snoozes when app becomes active
-        setTimeout(() => {
-          ScreenTimeBridge.checkForExpiredSnoozes()
-            .then((result: any) => {
-              if (result.expiredSnoozes > 0) {
-                console.log(`Reapplied ${result.expiredSnoozes} expired snoozes`);
-              }
-            })
-            .catch((err: Error) => console.error('Error checking snoozes:', err));
-        }, 2000);
-      }
-    });
-    
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!isBridgeReady) return; // Add this line!
-    
-    const registerBackgroundTasks = async () => {
-      try {
-        await BackgroundFetch.registerTaskAsync('ALARM_TASK', {
-          minimumInterval: 60, // 1 minute minimum
-          stopOnTerminate: false,
-          startOnBoot: true,
-        });
-        
-        console.log('Background tasks registered successfully');
-      } catch (error) {
-        console.error('Error registering background tasks:', error);
-      }
-    };
-    
-    registerBackgroundTasks();
-  }, [isBridgeReady]); // Change dependency!
-
-  useEffect(() => {
-    const handleDeepLink = async (event: { url: string }) => {
-      const url = event.url;
-      console.log('Deep link received:', url);
-      
-      // Parse the URL
-      const { path, queryParams } = Linking.parse(url);
-      
-      // If this is an alarm-ring deep link, handle it
-      if (path === 'alarm-ring') {
-        console.log('Handling alarm-ring deep link with params:', queryParams);
-        
-        // Navigate to alarm-ring screen with type safety
-        router.replace({
-          pathname: '/alarm-ring',
-          params: queryParams || {} // Add fallback to empty object if queryParams is null
-        });
-      }
-    };
-    
-    // Add the event listener
-    const subscription = Linking.addEventListener('url', handleDeepLink);
-    
-    // Check for initial URL
-    Linking.getInitialURL().then((url) => {
-      if (url) {
-        handleDeepLink({ url });
-      }
-    });
-    
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  useEffect(() => {
-    const checkPremiumAccess = async () => {
-      try {
-        if (!isMounted) return;
-        
-        // Check local storage first
-        const localPremium = await AsyncStorage.getItem('isPremium');
-        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-        
-        // If we have local premium status, verify with RevenueCat
-        if (localPremium === 'true') {
-          try {
-            const isSubscribed = await RevenueCatService.isSubscribed();
-            if (!isSubscribed) {
-              // Subscription expired, clear local state
-              await AsyncStorage.removeItem('isPremium');
-              setIsPremium(false);
-            } else {
-              setIsPremium(true);
-            }
-          } catch (error) {
-            // If RevenueCat check fails, trust local state for now
-            console.log('RevenueCat check failed, using local state');
-            setIsPremium(true);
-          }
-        }
-        
-        // Set initial route based on quiz completion
-        if (quizCompleted !== 'true') {
-          setInitialRoute('/quiz');
-        } else {
-          setInitialRoute('(tabs)/');  // This will go to index tab specifically
-        }
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error in premium access check:', error);
-        setIsLoading(false);
-      }
-    };
-
-    if (isMounted) {
-      checkPremiumAccess();
-    }
-  }, [isMounted]);
-
-  // Then modify your navigation effect to be much simpler
-  useEffect(() => {
-    // This will only run after the component is fully mounted and navigation is ready
-    const handleInitialNavigation = async () => {
-      try {
-        // Skip if we've already navigated or conditions aren't met
-        if (!segments || !isMounted || !isAppReady || hasNavigatedToQuizRef.current) return;
-        
-        // Get premium status
-        const isPremium = await AsyncStorage.getItem('isPremium');
-        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-        
-        // Updated navigation logic to match:
-        if (quizCompleted !== 'true') {
-          hasNavigatedToQuizRef.current = true;
-          setTimeout(() => {
-            console.log('Quiz not completed, redirecting to quiz');
-            router.replace('/quiz');  // This should go to quiz/index.tsx
-          }, 1000);
-        } else {
-          // Quiz is completed, go to main app
-          hasNavigatedToQuizRef.current = true;
-          setTimeout(() => {
-            console.log('Quiz completed, redirecting to main alarms tab');
-            router.replace('(tabs)/');  // Changed from '(tabs)/appblock' to '(tabs)'
-          }, 1000);
-        }
-        
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Error in navigation handler:', error);
-        setIsLoading(false);
-      }
-    };
-    
-    handleInitialNavigation();
-  }, [segments, isMounted, isAppReady]);
-
-  useEffect(() => {
-    if (!isBridgeReady) return; // Add this line!
-    
-    async function setupNotifications() {
-      // Add notification handler for when app is in background/closed
-      const subscription = Notifications.addNotificationReceivedListener((notification) => {
-        handleNotification(notification);
-      });
-
-      return () => {
-        subscription.remove();
-      };
-    }
-    
-    setupNotifications();
-  }, [isBridgeReady]); // Change dependency!
-
-  // Wait for bridge to be ready
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsBridgeReady(true);
-    }, 2000);
-    
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Configure native modules after bridge is ready
-  useEffect(() => {
-    if (!isBridgeReady || Platform.OS !== 'ios') return;
-    
-    // Configure audio session
-    AlarmSoundModule.configureAudio();
-    console.log('Configured audio session for silent mode on app startup');
-    
-    // Check for expired snoozes
-    if (ScreenTimeBridge && ScreenTimeBridge.checkForExpiredSnoozes) {
-      ScreenTimeBridge.checkForExpiredSnoozes()
-        .then((result: unknown) => {
-          console.log('Checked for expired snoozes:', typeof result, result || 'null');
-        })
-        .catch((error: Error) => {
-          console.error('Error checking for expired snoozes:', error);
-        });
-    }
-  }, [isBridgeReady]);
-
-  useEffect(() => {
-    const checkNotificationPermissions = async () => {
-      try {
-        // Check if user is premium or has completed quiz
-        const isPremium = await AsyncStorage.getItem('isPremium');
-        const quizCompleted = await AsyncStorage.getItem('quizCompleted');
-        
-        // Only request permissions if we're in the alarms tab specifically
-        if ((isPremium === 'true' && quizCompleted === 'true') && 
-            initialRoute === '(tabs)') {
-          // Check if we're already in the alarms tab
-          const currentTab = await AsyncStorage.getItem('currentTab');
-          if (currentTab === 'alarms') {
-            requestNotificationPermissions();
-          }
-        }
-      } catch (error) {
-        console.error('Error checking notification permissions:', error);
-      }
-    };
-    
-    // Only run this check if the app is fully ready
-    if (isReady && initialRoute !== null) {
-      checkNotificationPermissions();
-    }
-  }, [isReady, initialRoute]);
-
-  useEffect(() => {
-    // Add this useEffect to check subscription status with offline support
-    const checkSubscriptionStatus = async () => {
-      try {
-        // Check network connectivity first
-        const networkState = await Network.getNetworkStateAsync();
-        
-        if (networkState.isInternetReachable) {
-          // Online - verify with RevenueCat
-          const isSubscribed = await RevenueCatService.isSubscribed();
-          
-          // Update local storage with server result
-          if (isSubscribed) {
-            await AsyncStorage.setItem('isPremium', 'true');
-            await AsyncStorage.setItem('lastVerifiedSubscription', new Date().toISOString());
+          if (quizCompleted === 'true') {
+            console.log('➡️ Navigating to tabs');
+            router.replace('/(tabs)/');
           } else {
-            await AsyncStorage.removeItem('isPremium');
-            // No need to redirect here - we'll handle access control at app startup
+            console.log('➡️ Navigating to quiz');
+            router.replace('/quiz');
           }
-        } else {
-          // Offline - use local data with time limit
-          const lastVerified = await AsyncStorage.getItem('lastVerifiedSubscription');
-          const isPremium = await AsyncStorage.getItem('isPremium');
           
-          if (isPremium === 'true' && lastVerified) {
-            // Allow offline grace period (7 days)
-            const lastVerifiedDate = new Date(lastVerified);
-            const now = new Date();
-            const diffDays = Math.floor((now.getTime() - lastVerifiedDate.getTime()) / (1000 * 60 * 60 * 24));
-            
-            if (diffDays > 7) {
-              // Offline for too long, require verification
-              console.log('Offline grace period expired, verification needed');
-              // Don't remove premium status, just show a reminder
-              Alert.alert(
-                "Verification Needed",
-                "Please connect to the internet to verify your subscription."
-              );
-            }
-          }
+          setLoading(false);
+          console.log('✅ Navigation complete');
+        } catch (error) {
+          console.error('❌ Navigation error:', error);
+          setLoading(false);
         }
-      } catch (error) {
-        console.error('Error checking subscription status:', error);
       }
     };
     
-    // Check when app becomes active
-    const subscription = AppState.addEventListener('change', (state) => {
-      if (state === 'active') {
-        checkSubscriptionStatus();
-      }
-    });
-    
-    // Initial check
-    checkSubscriptionStatus();
-    
-    return () => {
-      subscription.remove();
-    };
-  }, []);
+    initializeApp();
+  }, [loaded]);
 
-  useEffect(() => {
-    if (!isBridgeReady) return; // Add this line!
-    
-    Notifications.setNotificationHandler({
-      handleNotification: async (notification) => {
-        // Special handling for sleep reminders
-        if (notification.request.content.data?.isSleepReminder) {
-          // Preserve the original notification content
-          return {
-            shouldShowAlert: true,
-            shouldPlaySound: true,
-            shouldSetBadge: false,
-          };
-        }
-        
-        // Your existing notification handling for other notifications
-        return {
-          shouldShowAlert: true,
-          shouldPlaySound: true,
-          shouldSetBadge: false,
-        };
-      },
-    });
-  }, [isBridgeReady]); // Change dependency!
-
-  useEffect(() => {
-    const checkSubscriptionExpiry = async () => {
-      try {
-        // Check if user has a redemption code subscription
-        const redemptionCode = await AsyncStorage.getItem('redemptionCode');
-        if (!redemptionCode) return; // No redemption code found
-        
-        // Check expiry date
-        const expiryDateStr = await AsyncStorage.getItem('subscriptionExpiryDate');
-        if (!expiryDateStr) return;
-        
-        const expiryDate = new Date(expiryDateStr);
-        const now = new Date();
-        
-        if (now > expiryDate) {
-          // Subscription expired
-          console.log('Redemption code subscription expired');
-          await AsyncStorage.removeItem('isPremium');
-          await AsyncStorage.removeItem('redemptionCode');
-          await AsyncStorage.removeItem('subscriptionExpiryDate');
-          // Don't remove quizCompleted to avoid forcing the user through the quiz again
-          
-          // Optional: Show expiry notification if app is open
-          if (AppState.currentState === 'active') {
-            Alert.alert(
-              'Subscription Expired',
-              'Your premium subscription has expired. Would you like to renew?',
-              [
-                {
-                  text: 'Not Now', 
-                  style: 'cancel'
-                },
-                {
-                  text: 'Renew', 
-                  onPress: () => router.push('/quiz/yes')
-                }
-              ]
-            );
-          }
-        }
-      } catch (error) {
-        console.error('Error checking subscription expiry:', error);
-      }
-    };
-    
-    // Check on app startup
-    checkSubscriptionExpiry();
-    
-    // Also check when app comes to foreground
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        checkSubscriptionExpiry();
-      }
-    });
-    
-    return () => {
-      subscription.remove();
-    };
-  }, []);
-
-  // TEMPORARILY COMMENT THIS OUT TO TEST:
-  /*
-  useEffect(() => {
-    setupGlobalErrorHandler();
-  }, []);
-
-  useEffect(() => {
-    setupGlobalErrorHandler();
-    
-    // Catch unhandled promise rejections
-    const rejectionHandler = (event: any) => {
-      console.log('🚨 Unhandled Promise Rejection:', event.reason);
-      // Don't crash - just log it
-      event.preventDefault();
-    };
-    
-    // For React Native
-    global.addEventListener?.('unhandledrejection', rejectionHandler);
-    
-    return () => {
-      global.removeEventListener?.('unhandledrejection', rejectionHandler);
-    };
-  }, []);
-  */
-
-  if (!loaded || loading || !isReady) {
+  if (!loaded || loading) {
     return null;
   }
 
@@ -881,17 +82,12 @@ export default function AppLayout() {
     <ErrorBoundary onError={handleError}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <StatusBar style="light" />
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <ThemeProvider value={DefaultTheme}>
           <Stack
             screenOptions={({ navigation }) => ({
-              headerStyle: {
-                backgroundColor: '#1C1C1E',  // Dark background
-              },
-              headerTintColor: '#fff',       // White text and icons
-              headerTitleStyle: {
-                color: '#fff',               // White title text
-              },
-              // Custom back button with no title
+              headerStyle: { backgroundColor: '#1C1C1E' },
+              headerTintColor: '#fff',
+              headerTitleStyle: { color: '#fff' },
               headerLeft: navigation.canGoBack() ? () => (
                 <TouchableOpacity 
                   onPress={() => navigation.goBack()}
@@ -902,30 +98,7 @@ export default function AppLayout() {
               ) : undefined,
             })}
           >
-            <Stack.Screen
-              name="(tabs)"
-              options={{
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen 
-              name="new-alarm" 
-              options={{
-                headerShown: false,
-              }}
-            />
-            <Stack.Screen 
-              name="missionselector" 
-              options={{
-                title: 'Choose Mission',
-                presentation: 'card',
-                headerLargeTitle: false,
-                headerTitleStyle: {
-                  fontSize: 17,
-                  fontWeight: '600',
-                },
-              }}
-            />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/index" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/question1" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/question2" options={{ headerShown: false }} />
@@ -933,34 +106,10 @@ export default function AppLayout() {
             <Stack.Screen name="quiz/question4" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/question5" options={{ headerShown: false }} />
             <Stack.Screen name="quiz/yes" options={{ headerShown: false }} />
+            <Stack.Screen name="new-alarm" options={{ headerShown: false }} />
+            <Stack.Screen name="missionselector" options={{ title: 'Choose Mission' }} />
             <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
-            <Stack.Screen name="final-card" options={{ headerShown: false, gestureEnabled: false }} />
-            <Stack.Screen 
-              name="snooze-confirmation" 
-              options={{
-                headerShown: false,
-                presentation: 'modal',
-                gestureEnabled: false,
-                animation: 'fade',
-              }} 
-            />
-            <Stack.Screen
-              name="sounds"
-              options={{
-                headerTitle: "Select Sound",
-                headerShown: true,
-                headerBackTitle: "",
-              }}
-            />
-            <Stack.Screen 
-              name="redemption" 
-              options={{
-                title: "Redemption Code",
-                headerShown: true,
-                headerTransparent: true,
-                headerTintColor: '#FFFFFF',
-              }} 
-            />
+            <Stack.Screen name="sounds" options={{ headerTitle: "Select Sound" }} />
           </Stack>
         </ThemeProvider>
       </GestureHandlerRootView>

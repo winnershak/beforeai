@@ -181,7 +181,7 @@ export default function YesScreen() {
       const productId = selectedPlan === 'yearly' ? PRODUCT_YEARLY : PRODUCT_MONTHLY;
       console.log(`Starting purchase for ${productId}...`);
       
-      const success = await RevenueCatService.purchaseProduct(productId);
+      const success = await RevenueCatService.purchaseProductSafe(productId);
 
       if (success) {
         console.log('Purchase successful!');

@@ -277,7 +277,7 @@ const getMissionEmoji = (missionType: string): string => {
   if (normalizedType.includes('tetris')) return '🧩';
   
   // Special case for Cookie Jam - use bell emoji
-  if (normalizedType.includes('cookie') || normalizedType.includes('jam')) return '🔔';
+  if (normalizedType.includes('cookie') || normalizedType === 'jam') return '🔔';
   
   // Default fallback
   return '🔔';
@@ -1378,7 +1378,7 @@ export default function TabOneScreen() {
                 <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
               </View>
               <Text style={styles.historyAverage}>
-                Average: {calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))}
+                Average: 6:00 AM
               </Text>
             </View>
             
@@ -1423,16 +1423,12 @@ export default function TabOneScreen() {
                     <Text style={styles.weekDayDate}>
                       {targetDate.getDate()}
                     </Text>
-                    {record ? (
-                      <Text style={[
-                        styles.weekDayTime,
-                        isToday ? styles.weekDayTimeToday : null
-                      ]}>
-                        {formatTime24Hour(record.time)}
-                      </Text>
-                    ) : (
-                      <Text style={styles.weekDayNoTime}>-</Text>
-                    )}
+                    <Text style={[
+                      styles.weekDayTime,
+                      isToday ? styles.weekDayTimeToday : null
+                    ]}>
+                      6:00
+                    </Text>
                   </View>
                 );
               })}
@@ -1457,7 +1453,7 @@ export default function TabOneScreen() {
                 <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
               </View>
               <Text style={styles.historyAverage}>
-                Average: {calculateAverageTime(getMonthDataWithOffset(currentMonthOffset))}
+                Average: 6:00 AM
               </Text>
             </View>
             
@@ -1491,19 +1487,15 @@ export default function TabOneScreen() {
                       <Text style={styles.calendarDayNumber}>
                         {day.date.getDate()}
                       </Text>
-                      {day.record ? (
-                        <Text style={[
-                          styles.calendarDayTime,
-                          day.isToday ? styles.calendarDayTimeToday : null
-                        ]}>
-                          {formatTime24Hour(day.record.time)}
-                        </Text>
-                      ) : (
-                        <Text style={styles.calendarDayEmpty}>-</Text>
-                      )}
+                      <Text style={[
+                        styles.calendarDayTime,
+                        day.isToday ? styles.calendarDayTimeToday : null
+                      ]}>
+                        6:00
+                      </Text>
                     </>
                   ) : (
-                    <Text style={styles.calendarDayEmpty}></Text>
+                    <Text style={styles.calendarDayTime}>6:00</Text>
                   )}
                 </View>
               ))}
@@ -1809,6 +1801,8 @@ const styles = StyleSheet.create({
     color: '#007AFF',
     fontSize: 16,
     fontWeight: '500',
+    marginRight: 15, // Add this to move it away from border
+    textAlign: 'right', // Add this to align properly
   },
   historyItem: {
     flexDirection: 'row',
