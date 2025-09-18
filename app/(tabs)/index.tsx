@@ -1372,17 +1372,7 @@ export default function TabOneScreen() {
       {viewMode === 'week' && (
         <ScrollView style={styles.historyContainer}>
           <View ref={weekViewRef} style={styles.captureContainer}>
-            <View style={styles.historyHeader}>
-              <View style={styles.headerLeft}>
-                <Text style={styles.periodText}>{getWeekPeriodText(currentWeekOffset)}</Text>
-                <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
-              </View>
-              <Text style={styles.historyAverage}>
-                Average: 6:00 AM
-              </Text>
-            </View>
-            
-            {/* Centered Profile Photo */}
+            {/* Centered Profile Photo - moved to top */}
             <View style={styles.profileSection}>
               <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
                 {profilePhoto ? (
@@ -1391,6 +1381,16 @@ export default function TabOneScreen() {
                   <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
                 )}
               </TouchableOpacity>
+            </View>
+            
+            <View style={styles.historyHeader}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.periodText}>{getWeekPeriodText(currentWeekOffset)}</Text>
+                <Text style={styles.blissAlarmBranding}>BLISS ALARM APP Wake-Ups</Text>
+                <Text style={styles.historyAverage}>
+                  Average: 6:00 AM
+                </Text>
+              </View>
             </View>
             
             <View 
@@ -1433,7 +1433,6 @@ export default function TabOneScreen() {
                 );
               })}
             </View>
-            
           </View>
           
           <TouchableOpacity onPress={shareToInstagramStory} style={styles.shareButtonBottom}>
@@ -1447,17 +1446,7 @@ export default function TabOneScreen() {
       {viewMode === 'month' && (
         <ScrollView style={styles.historyContainer}>
           <View ref={monthViewRef} style={styles.captureContainer}>
-            <View style={styles.historyHeader}>
-              <View style={styles.headerLeft}>
-                <Text style={styles.periodText}>{getMonthName(currentMonthOffset)}</Text>
-                <Text style={styles.blissAlarmBranding}>BLISS ALARM Wake-Ups</Text>
-              </View>
-              <Text style={styles.historyAverage}>
-                Average: 6:00 AM
-              </Text> 
-            </View>
-            
-            {/* Centered Profile Photo */}
+            {/* Centered Profile Photo - moved to top */}
             <View style={styles.profileSection}>
               <TouchableOpacity onPress={pickProfilePhoto} style={styles.profilePhotoContainerLarge}>
                 {profilePhoto ? (
@@ -1466,6 +1455,16 @@ export default function TabOneScreen() {
                   <Text style={styles.defaultProfileEmojiLarge}>😊</Text>
                 )}
               </TouchableOpacity>
+            </View>
+            
+            <View style={styles.historyHeader}>
+              <View style={styles.headerLeft}>
+                <Text style={styles.periodText}>{getMonthName(currentMonthOffset)}</Text>
+                <Text style={styles.blissAlarmBranding}>BLISS ALARM APP Wake-Ups</Text>
+                <Text style={styles.historyAverage}>
+                  Average: 6:00 AM
+                </Text>
+              </View>
             </View>
             
             <View style={styles.calendarHeader}>
@@ -1487,20 +1486,21 @@ export default function TabOneScreen() {
                       <Text style={styles.calendarDayNumber}>
                         {day.date.getDate()}
                       </Text>
-                      <Text style={[
-                        styles.calendarDayTime,
-                        day.isToday ? styles.calendarDayTimeToday : null
-                      ]}>
-                        6:00
-                      </Text>
+                      {day.record?.time ? (
+                        <Text style={[
+                          styles.calendarDayTime,
+                          day.isToday ? styles.calendarDayTimeToday : null
+                        ]}>
+                          {day.record.time}
+                        </Text>
+                      ) : (
+                        <Text style={styles.calendarDayTime}>6:00</Text>
+                      )}
                     </>
-                  ) : (
-                    <Text style={styles.calendarDayTime}>6:00</Text>
-                  )}
+                  ) : null}
                 </View>
               ))}
             </View>
-            
           </View>
           
           <TouchableOpacity onPress={shareToInstagramStory} style={styles.shareButtonBottom}>
@@ -1843,9 +1843,9 @@ const styles = StyleSheet.create({
   weekContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 20,
+    paddingVertical: 10,
     paddingHorizontal: 10,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   weekDay: {
     alignItems: 'center',
@@ -1888,14 +1888,14 @@ const styles = StyleSheet.create({
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   calendarDay: {
     width: '14.28%',
-    height: 60,
+    height: 50,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 5,
     borderWidth: 1,
     borderColor: '#333',
     borderRadius: 4,
@@ -1964,8 +1964,8 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: 'center',
-    marginBottom: 20,
-    paddingVertical: 8, // Reduced padding since text is separate
+    marginBottom: 5,
+    paddingVertical: 4,
   },
   profilePhotoContainerLarge: {
     width: 120,
@@ -1974,9 +1974,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#2C2C2E',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: '#007AFF',
-    marginBottom: 20,
+    marginBottom: 10,
   },
   profilePhotoLarge: {
     width: 114,

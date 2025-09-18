@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Switch, ScrollView, SafeAreaView, Dimensions, AppState } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Switch, ScrollView, SafeAreaView, Dimensions, AppState, ImageBackground } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio } from 'expo-av';
@@ -570,107 +570,116 @@ export default function SoundsScreen() {
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.soundGrid}>
-          {sounds.map(item => (
-            <TouchableOpacity
-              key={item.id}
-              style={[
-                styles.soundItem,
-                playingSounds.has(item.name) && styles.activeSoundItem
-              ]}
-              disabled={loading}
-              onPress={() => playSound(item.name)}
-            >
-              <View style={[
-                styles.soundIconContainer,
-                playingSounds.has(item.name) && styles.activeSoundIconContainer
-              ]}>
-                <Ionicons name={item.icon as any} size={24} color={playingSounds.has(item.name) ? '#fff' : '#999'} />
-                {playingSounds.has(item.name) && (
-                  <View style={styles.playingIndicator}>
-                    <Ionicons name="play" size={10} color="#fff" />
-                  </View>
-                )}
-              </View>
-              <Text style={[
-                styles.soundName,
-                playingSounds.has(item.name) && styles.activeSoundName
-              ]}>
-                {item.name}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        
-        {currentSound && (
-          <View style={styles.playerContainer}>
-            {isPlaying && timeRemaining !== null && (
-              <Text style={styles.timerText}>
-                {formatTime(timeRemaining)}
-              </Text>
-            )}
-            
-            <TouchableOpacity 
-              style={styles.playButton}
-              onPress={togglePlayPause}
-              disabled={!currentSound}
-            >
-              <Ionicons
-                name={isPlaying ? "pause-circle" : "play-circle"}
-                size={60}
-                color="#0A84FF"
-              />
-            </TouchableOpacity>
-            
-            <View style={styles.timerContainer}>
-              <View style={styles.timerLabelContainer}>
-                <Text style={styles.controlLabel}>Sleep Timer</Text>
-                <Switch
-                  value={timerEnabled}
-                  onValueChange={toggleTimer}
-                  trackColor={{ false: '#444', true: '#0A84FF' }}
-                  thumbColor={timerEnabled ? '#fff' : '#f4f3f4'}
-                  disabled={loading}
-                />
-              </View>
+    <ImageBackground 
+      source={require('../../assets/images/sleepy.jpg')} 
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.container}>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.soundGrid}>
+            {sounds.map(item => (
+              <TouchableOpacity
+                key={item.id}
+                style={[
+                  styles.soundItem,
+                  playingSounds.has(item.name) && styles.activeSoundItem
+                ]}
+                disabled={loading}
+                onPress={() => playSound(item.name)}
+              >
+                <View style={[
+                  styles.soundIconContainer,
+                  playingSounds.has(item.name) && styles.activeSoundIconContainer
+                ]}>
+                  <Ionicons name={item.icon as any} size={24} color={playingSounds.has(item.name) ? '#fff' : '#999'} />
+                  {playingSounds.has(item.name) && (
+                    <View style={styles.playingIndicator}>
+                      <Ionicons name="play" size={10} color="#fff" />
+                    </View>
+                  )}
+                </View>
+                <Text style={[
+                  styles.soundName,
+                  playingSounds.has(item.name) && styles.activeSoundName
+                ]}>
+                  {item.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
+          {currentSound && (
+            <View style={styles.playerContainer}>
+              {isPlaying && timeRemaining !== null && (
+                <Text style={styles.timerText}>
+                  {formatTime(timeRemaining)}
+                </Text>
+              )}
               
-              {timerEnabled && (
-                <View style={styles.timerSliderContainer}>
-                  <Text style={styles.timerValue}>{timer} min</Text>
-                  <Slider
-                    style={styles.slider}
-                    minimumValue={5}
-                    maximumValue={120}
-                    step={5}
-                    value={timer}
-                    onValueChange={changeTimer}
-                    minimumTrackTintColor="#0A84FF"
-                    maximumTrackTintColor="#444"
-                    thumbTintColor="#0A84FF"
+              <TouchableOpacity 
+                style={styles.playButton}
+                onPress={togglePlayPause}
+                disabled={!currentSound}
+              >
+                <Ionicons
+                  name={isPlaying ? "pause-circle" : "play-circle"}
+                  size={60}
+                  color="#0A84FF"
+                />
+              </TouchableOpacity>
+              
+              <View style={styles.timerContainer}>
+                <View style={styles.timerLabelContainer}>
+                  <Text style={styles.controlLabel}>Sleep Timer</Text>
+                  <Switch
+                    value={timerEnabled}
+                    onValueChange={toggleTimer}
+                    trackColor={{ false: '#444', true: '#0A84FF' }}
+                    thumbColor={timerEnabled ? '#fff' : '#f4f3f4'}
                     disabled={loading}
                   />
                 </View>
-              )}
+                
+                {timerEnabled && (
+                  <View style={styles.timerSliderContainer}>
+                    <Text style={styles.timerValue}>{timer} min</Text>
+                    <Slider
+                      style={styles.slider}
+                      minimumValue={5}
+                      maximumValue={120}
+                      step={5}
+                      value={timer}
+                      onValueChange={changeTimer}
+                      minimumTrackTintColor="#0A84FF"
+                      maximumTrackTintColor="#444"
+                      thumbTintColor="#0A84FF"
+                      disabled={loading}
+                    />
+                  </View>
+                )}
+              </View>
             </View>
-          </View>
-        )}
-        
-        {loading && (
-          <View style={styles.loadingText}>
-            <Text style={{color: '#666', fontSize: 14}}>Loading...</Text>
-          </View>
-        )}
-      </ScrollView>
-    </SafeAreaView>
+          )}
+          
+          {loading && (
+            <View style={styles.loadingText}>
+              <Text style={{color: '#666', fontSize: 14}}>Loading...</Text>
+            </View>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
   },
   scrollContent: {
     padding: 10,
@@ -694,7 +703,7 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: 'rgba(44, 44, 46, 0.8)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 8,
@@ -720,6 +729,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#fff',
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   activeSoundName: {
     color: '#fff',
@@ -729,7 +741,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 20,
     padding: 16,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: 'rgba(28, 28, 30, 0.9)',
     borderRadius: 20,
   },
   timerText: {
