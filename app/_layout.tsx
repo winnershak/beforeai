@@ -108,6 +108,7 @@ export default function AppLayout() {
             <Stack.Screen name="quiz/yes" options={{ headerShown: false }} />
             <Stack.Screen name="new-alarm" options={{ headerShown: false }} />
             <Stack.Screen name="missionselector" options={{ title: 'Choose Mission' }} />
+            <Stack.Screen name="wallpaper-selector" options={{ title: 'Choose Wallpaper' }} />
             <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="sounds" options={{ headerTitle: "Select Sound" }} />
           </Stack>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration, Platform, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration, Platform, Alert, ImageBackground } from 'react-native';
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio, AVPlaybackStatus } from 'expo-av';
@@ -30,6 +30,7 @@ interface Alarm {
     interval?: number;
     maxSnoozes?: number;
   };
+  wallpaper?: string; // Add wallpaper property
 }
 
 // Add these functions at the top of your file, after imports
@@ -186,6 +187,36 @@ const restoreSystemVolume = async () => {
   } catch (error) {
     console.error('Error restoring volume:', error);
   }
+};
+
+// Add this function at the top of alarm-ring.tsx, after the imports
+const getWallpaperSource = (wallpaperId: string) => {
+  const wallpaperMap: { [key: string]: any } = {
+    'sleepy': require('../assets/images/sleepy.jpg'),
+    'sleepy2': require('../assets/images/sleepy2.jpg'),
+    'cute': require('../assets/images/cute.webp'),
+    'rabbit': require('../assets/images/rabbit.webp'),
+    'ship': require('../assets/images/ship.png'),
+    'bliss': require('../assets/images/bliss.png'),
+    'Just do it': require('../assets/images/wall1.gif'), // Updated ID
+  };
+  
+  return wallpaperMap[wallpaperId] || wallpaperMap['sleepy'];
+};
+
+// Add wallpaper data mapping
+const getWallpaperData = (wallpaperId: string) => {
+  const wallpapers = [
+    { id: 'sleepy', hasSound: false },
+    { id: 'sleepy2', hasSound: false },
+    { id: 'cute', hasSound: false },
+    { id: 'rabbit', hasSound: false },
+    { id: 'ship', hasSound: false },
+    { id: 'bliss', hasSound: false },
+    { id: 'Just do it', hasSound: true, sound: 'wall1' }, // Updated ID to match
+  ];
+  
+  return wallpapers.find(w => w.id === wallpaperId) || { id: 'sleepy', hasSound: false };
 };
 
 export default function AlarmRingScreen() {
@@ -536,19 +567,33 @@ export default function AlarmRingScreen() {
     
     const playSound = async () => {
       try {
-        if (Platform.OS === 'ios') {
-          console.log('Playing sound with AlarmSoundModule:', soundName, volume);
-          await AlarmSoundModule.playAlarmSound(soundName, volume);
-          
-          // Mark this alarm as currently playing (for ALL alarms, not just ones with missions)
-          if (params.alarmId) {
-            await setCurrentPlayingAlarm(params.alarmId as string);
+        console.log('🎵 Current alarm wallpaper:', currentAlarm?.wallpaper);
+        
+        // Check if wallpaper has its own sound
+        const wallpaperData = getWallpaperData(currentAlarm?.wallpaper || 'sleepy');
+        console.log('🎨 Wallpaper data:', wallpaperData);
+        
+        if (wallpaperData.hasSound && wallpaperData.sound) {
+          // Play wallpaper's built-in sound
+          console.log('🔊 Using wallpaper sound:', wallpaperData.sound);
+          if (Platform.OS === 'ios') {
+            AlarmSoundModule.playAlarmSound(wallpaperData.sound, volume)
+              .catch((error: Error) => {
+                console.error('Error with wallpaper sound:', error);
+              });
           }
-          
-          setIsPlaying(true);
+        } else {
+          // Play user's selected alarm sound (existing logic)
+          console.log('🔊 Using selected alarm sound:', soundName);
+          if (Platform.OS === 'ios') {
+            AlarmSoundModule.playAlarmSound(soundName, volume)
+              .catch((error: Error) => {
+                console.error('Error with AlarmSoundModule playback:', error);
+              });
+          }
         }
       } catch (error) {
-        console.error('Failed to play alarm sound:', error);
+        console.error('Error in playSound:', error);
       }
     };
 
@@ -566,57 +611,30 @@ export default function AlarmRingScreen() {
   // Update the stopSound function to call this:
   const stopSound = async () => {
     try {
-      console.log('Stopping alarm sound for alarm:', currentAlarm?.id || params.alarmId);
+      console.log('🛑 Stopping alarm sound...');
       
-      // Get the alarm ID from either currentAlarm or params
-      const alarmId = currentAlarm?.id || (params.alarmId as string);
-      
-      // Check if this alarm is the one currently playing sound
-      const currentPlayingAlarmId = await getCurrentPlayingAlarm();
-      
-      if (currentPlayingAlarmId === alarmId) {
-        console.log('This alarm is currently playing, stopping global sound');
-        
-        // FIXED: Single call to stop alarm sound - let Swift handle volume restoration
+      // Stop the native sound module
+      if (Platform.OS === 'ios') {
         await AlarmSoundModule.stopAlarmSound();
-        
-        // Clear the currently playing alarm
-        await clearCurrentPlayingAlarm();
-      } else {
-        console.log('This alarm is not currently playing sound, skipping global sound stop');
+        console.log('✅ Native sound stopped');
       }
       
-      // FIXED: Disable the alarm when stopping sound (mission completed)
-      if (alarmId) {
-        await disableAlarm(alarmId);
-      }
-      
-      // Stop vibration (only for this alarm)
+      // Stop vibration
       stopVibration();
+      console.log('✅ Vibration stopped');
       
-      // Record wake-up time
+      // Record wake-up time and navigate
       if (currentAlarm) {
         await recordWakeupTime(currentAlarm.id, currentAlarm);
       }
       
-      // Clear the active alarm if it matches this alarm
-      const activeAlarmJson = await AsyncStorage.getItem('activeAlarm');
-      if (activeAlarmJson) {
-        const activeAlarm = JSON.parse(activeAlarmJson);
-        if (activeAlarm.alarmId === alarmId) {
-          await AsyncStorage.removeItem('activeAlarm');
-        }
-      }
-      
-      // Reset alarm state
-      await resetAlarmState();
-      
-      // Navigate back to the alarms screen
+      // Navigate to success screen
       router.replace('/alarm-success');
-    } catch (error) {
-      console.error('Error stopping alarm sound:', error);
+      console.log('✅ Navigated to success screen');
       
-      // Fallback: try to navigate away even if there was an error
+    } catch (error) {
+      console.error('❌ Error stopping alarm:', error);
+      // Force navigate even if there's an error
       router.replace('/(tabs)');
     }
   };
@@ -916,84 +934,93 @@ export default function AlarmRingScreen() {
         }} 
       />
       
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Wake Up!</Text>
-          <Text style={styles.subtitle}>
-            {currentAlarm?.label || "It's time to rise and shine"}
-          </Text>
-          
-          <View style={styles.buttonContainer}>
-            {missionFailed ? (
-              // Show these buttons when returning from a failed mission
-              <>
-                {currentAlarm?.mission && (
-                  <TouchableOpacity 
-                    style={[styles.button, styles.retryButton]} 
-                    onPress={handleStartMission}
-                  >
-                    <Text style={styles.buttonText}>Retry Mission</Text>
-                  </TouchableOpacity>
-                )}
-                
-                {snoozeEnabled && snoozeRemaining > 0 && (
-                  <TouchableOpacity 
-                    style={[styles.button, styles.snoozeButton]} 
-                    onPress={handleSnooze}
-                  >
-                    <Text style={styles.buttonText}>Snooze</Text>
-                  </TouchableOpacity>
-                )}
-                
-                {!currentAlarm?.mission && (
-                  <TouchableOpacity 
-                    style={[styles.button, styles.stopButton]} 
-                    onPress={stopSound}
-                  >
-                    <Text style={styles.buttonText}>Stop Alarm</Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            ) : (
-              // Show the regular buttons when alarm first rings
-              <>
-                {currentAlarm?.mission ? (
-                  <TouchableOpacity 
-                    style={[styles.button, styles.missionButton]} 
-                    onPress={handleStartMission}
-                  >
-                    <Text style={styles.buttonText}>Start Mission</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity 
-                    style={[styles.button, styles.stopButton]} 
-                    onPress={stopSound}
-                  >
-                    <Text style={styles.buttonText}>Stop Alarm</Text>
-                  </TouchableOpacity>
-                )}
-                
-                {snoozeEnabled && snoozeRemaining > 0 && (
-                  <TouchableOpacity 
-                    style={[styles.button, styles.snoozeButton]} 
-                    onPress={handleSnooze}
-                  >
-                    <Text style={styles.buttonText}>Snooze</Text>
-                  </TouchableOpacity>
-                )}
-              </>
-            )}
+      <ImageBackground 
+        source={getWallpaperSource(currentAlarm?.wallpaper || 'sleepy')} 
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.content}>
+            <Text style={styles.title}>Wake Up!</Text>
+            <Text style={styles.subtitle}>
+              {currentAlarm?.label || "It's time to rise and shine"}
+            </Text>
+            
+            <View style={styles.buttonContainer}>
+              {missionFailed ? (
+                // Show these buttons when returning from a failed mission
+                <>
+                  {currentAlarm?.mission && (
+                    <TouchableOpacity 
+                      style={[styles.button, styles.retryButton]} 
+                      onPress={handleStartMission}
+                    >
+                      <Text style={styles.buttonText}>Retry Mission</Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {snoozeEnabled && snoozeRemaining > 0 && (
+                    <TouchableOpacity 
+                      style={[styles.button, styles.snoozeButton]} 
+                      onPress={handleSnooze}
+                    >
+                      <Text style={styles.buttonText}>Snooze</Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {!currentAlarm?.mission && (
+                    <TouchableOpacity 
+                      style={[styles.button, styles.stopButton]} 
+                      onPress={stopSound}
+                    >
+                      <Text style={styles.buttonText}>Stop Alarm</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              ) : (
+                // Show the regular buttons when alarm first rings
+                <>
+                  {currentAlarm?.mission ? (
+                    <TouchableOpacity 
+                      style={[styles.button, styles.missionButton]} 
+                      onPress={handleStartMission}
+                    >
+                      <Text style={styles.buttonText}>Start Mission</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity 
+                      style={[styles.button, styles.stopButton]} 
+                      onPress={stopSound}
+                    >
+                      <Text style={styles.buttonText}>Stop Alarm</Text>
+                    </TouchableOpacity>
+                  )}
+                  
+                  {snoozeEnabled && snoozeRemaining > 0 && (
+                    <TouchableOpacity 
+                      style={[styles.button, styles.snoozeButton]} 
+                      onPress={handleSnooze}
+                    >
+                      <Text style={styles.buttonText}>Snooze</Text>
+                    </TouchableOpacity>
+                  )}
+                </>
+              )}
+            </View>
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </ImageBackground>
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+  },
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
   },
   content: {
     flex: 1,
@@ -1006,11 +1033,17 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 10,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
   subtitle: {
     fontSize: 18,
     color: '#ccc',
     marginBottom: 40,
+    textShadowColor: 'rgba(0, 0, 0, 0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   buttonContainer: {
     width: '100%',

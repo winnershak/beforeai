@@ -1385,10 +1385,10 @@ export default function TabOneScreen() {
             
             <View style={styles.historyHeader}>
               <View style={styles.headerLeft}>
-                <Text style={styles.periodText}>{getWeekPeriodText(currentWeekOffset)}</Text>
-                <Text style={styles.blissAlarmBranding}>BLISS ALARM APP Wake-Ups</Text>
+                <Text style={styles.blissAlarmBranding}>Bliss Alarm App</Text>
+                <Text style={styles.periodText}>{getWeekPeriodText(currentWeekOffset)} Wake-Ups</Text>
                 <Text style={styles.historyAverage}>
-                  Average: 6:00 AM
+                  Average: {calculateAverageTime(getWeekDataWithOffset(currentWeekOffset))}
                 </Text>
               </View>
             </View>
@@ -1423,12 +1423,16 @@ export default function TabOneScreen() {
                     <Text style={styles.weekDayDate}>
                       {targetDate.getDate()}
                     </Text>
-                    <Text style={[
-                      styles.weekDayTime,
-                      isToday ? styles.weekDayTimeToday : null
-                    ]}>
-                      6:00
-                    </Text>
+                    {record ? (
+                      <Text style={[
+                        styles.weekDayTime,
+                        isToday ? styles.weekDayTimeToday : null
+                      ]}>
+                        {formatTime24Hour(record.time)}
+                      </Text>
+                    ) : (
+                      <Text style={styles.weekDayNoTime}>-</Text>
+                    )}
                   </View>
                 );
               })}
@@ -1459,10 +1463,10 @@ export default function TabOneScreen() {
             
             <View style={styles.historyHeader}>
               <View style={styles.headerLeft}>
-                <Text style={styles.periodText}>{getMonthName(currentMonthOffset)}</Text>
-                <Text style={styles.blissAlarmBranding}>BLISS ALARM APP Wake-Ups</Text>
+                <Text style={styles.blissAlarmBranding}>Bliss Alarm App</Text>
+                <Text style={styles.periodText}>{getMonthName(currentMonthOffset)} Wake-Ups</Text>
                 <Text style={styles.historyAverage}>
-                  Average: 6:00 AM
+                  Average: {calculateAverageTime(getMonthDataWithOffset(currentMonthOffset))}
                 </Text>
               </View>
             </View>
@@ -1486,15 +1490,15 @@ export default function TabOneScreen() {
                       <Text style={styles.calendarDayNumber}>
                         {day.date.getDate()}
                       </Text>
-                      {day.record?.time ? (
+                      {day.record ? (
                         <Text style={[
                           styles.calendarDayTime,
                           day.isToday ? styles.calendarDayTimeToday : null
                         ]}>
-                          {day.record.time}
+                          {formatTime24Hour(day.record.time)}
                         </Text>
                       ) : (
-                        <Text style={styles.calendarDayTime}>6:00</Text>
+                        <Text style={styles.calendarDayEmpty}>-</Text>
                       )}
                     </>
                   ) : null}
@@ -1792,10 +1796,16 @@ const styles = StyleSheet.create({
     borderBottomColor: '#333',
   },
   blissAlarmBranding: {
-    color: '#007AFF',
-    fontSize: 16,
+    color: '#fff',
+    fontSize: 18,
     fontWeight: '600',
     letterSpacing: 0.5,
+    marginBottom: 4,
+  },
+  periodText: {
+    color: '#007AFF',
+    fontSize: 16,
+    fontWeight: '500',
   },
   historyAverage: {
     color: '#007AFF',
@@ -1955,12 +1965,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     flex: 1,
-  },
-  periodText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: 4,
   },
   profileSection: {
     alignItems: 'center',

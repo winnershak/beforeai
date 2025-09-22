@@ -38,6 +38,7 @@ interface Alarm {
     maxSnoozes: number;
     interval: number;
   };
+  wallpaper: string; // Added wallpaper property
 }
 
 // Silent background audio instance to keep audio session active
@@ -85,6 +86,7 @@ const scheduleAlarmRingScreen = (alarm: {
   sound: string;
   soundVolume: number;
   mission?: any;
+  wallpaper: string; // Added wallpaper to the type
 }) => {
   try {
     // Parse the time
@@ -112,7 +114,8 @@ const scheduleAlarmRingScreen = (alarm: {
         timestamp: new Date().getTime(),
         sound: alarm.sound,
         soundVolume: alarm.soundVolume,
-        hasMission: Boolean(alarm.mission)
+        hasMission: Boolean(alarm.mission),
+        wallpaper: alarm.wallpaper // Save wallpaper
       })).then(() => {
         // Navigate to the alarm-ring screen
         router.replace({
@@ -121,7 +124,8 @@ const scheduleAlarmRingScreen = (alarm: {
             alarmId: alarm.id,
             sound: alarm.sound,
             soundVolume: alarm.soundVolume.toString(),
-            hasMission: Boolean(alarm.mission).toString()
+            hasMission: Boolean(alarm.mission).toString(),
+            wallpaper: alarm.wallpaper // Pass wallpaper to alarm-ring
           }
         });
       });
@@ -186,6 +190,7 @@ export default function NewAlarmScreen() {
   const [hasMission, setHasMission] = useState(false);
   const [missionName, setMissionName] = useState('');
   const [missionEmoji, setMissionEmoji] = useState('');
+  const [wallpaper, setWallpaper] = useState('sleepy'); // Added wallpaper state
 
   const calculateRingTime = () => {
     const now = new Date();
@@ -201,7 +206,8 @@ export default function NewAlarmScreen() {
     const state = {
       alarmId: currentAlarmId,
       editMode: isEditing,  // Add edit mode to saved state
-      mission: missionType
+      mission: missionType,
+      wallpaper: wallpaper // Save wallpaper
     };
     await AsyncStorage.setItem('tempAlarmState', JSON.stringify(state));
   };
@@ -216,6 +222,9 @@ export default function NewAlarmScreen() {
           console.log('NewAlarm: Restoring edit mode:', state.editMode);
           setIsEditing(true);
           setCurrentAlarmId(state.alarmId);
+        }
+        if (state.wallpaper) { // Load wallpaper
+          setWallpaper(state.wallpaper);
         }
       }
     };
@@ -240,6 +249,9 @@ export default function NewAlarmScreen() {
     console.log('NewAlarm: Params received:', params);
     if (params.editMode === 'true') {
       console.log('NewAlarm: Edit mode:', true);
+    }
+    if (params.wallpaper) { // Update wallpaper from params
+      setWallpaper(params.wallpaper as string);
     }
   }, [params]);
 
@@ -351,7 +363,7 @@ export default function NewAlarmScreen() {
         time: `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`,
         mission: missionObject,
         sound: sound,
-        soundVolume: soundVolume,
+        soundVolume: soundVolume
       });
 
       console.log('NewAlarm: Notification scheduled with ID:', notificationId);
@@ -369,6 +381,7 @@ export default function NewAlarmScreen() {
         sound: normalizedSound,
         soundVolume: soundVolume,
         vibration: vibrationEnabled,
+        wallpaper: wallpaper, // Add wallpaper to new alarm
         notificationId: notificationId || null,
         snooze: {
           enabled: snoozeEnabled,
@@ -486,6 +499,9 @@ export default function NewAlarmScreen() {
                 setSnoozeInterval(currentAlarm.snooze.interval || 5);
                 setMaxSnoozes(currentAlarm.snooze.maxSnoozes || 3);
               }
+              if (currentAlarm.wallpaper) { // Load wallpaper from existing alarm
+                setWallpaper(currentAlarm.wallpaper);
+              }
             } else {
               console.log('Alarm not found with ID:', alarmId);
             }
@@ -531,6 +547,9 @@ export default function NewAlarmScreen() {
       if (state.date) {
         setDate(new Date(state.date));
       }
+      if (state.wallpaper) { // Load wallpaper from saved state
+        setWallpaper(state.wallpaper);
+      }
     }
   };
 
@@ -539,6 +558,7 @@ export default function NewAlarmScreen() {
       label,
       sound,
       date: date.toISOString(),
+      wallpaper: wallpaper // Save wallpaper with state
     };
     await saveAlarmState(currentState);
     router.push({ pathname } as any);
@@ -564,6 +584,7 @@ export default function NewAlarmScreen() {
         if (savedState) {
           const state = JSON.parse(savedState);
           if (state.date) setDate(new Date(state.date));
+          if (state.wallpaper) setWallpaper(state.wallpaper); // Load wallpaper from saved state
         }
       } catch (error) {
         console.error('Error loading saved state:', error);
@@ -583,6 +604,9 @@ export default function NewAlarmScreen() {
           const currentAlarm = alarms.find((alarm: any) => alarm.id === params.alarmId);
           if (currentAlarm) {
             setLabel(currentAlarm.label || '');
+            if (currentAlarm.wallpaper) { // Load wallpaper from current alarm
+              setWallpaper(currentAlarm.wallpaper);
+            }
           }
         }
       } catch (error) {
@@ -962,6 +986,7 @@ export default function NewAlarmScreen() {
         setSnoozeEnabled(true);
         setSnoozeInterval(5);
         setMaxSnoozes(3);
+        setWallpaper('sleepy'); // Reset wallpaper
         
         console.log('State reset for new alarm');
       } else {
@@ -1020,6 +1045,38 @@ export default function NewAlarmScreen() {
       loadLabel();
     }, [])
   );
+
+  useFocusEffect(
+    React.useCallback(() => {
+      const loadSelectedWallpaper = async () => {
+        try {
+          const selectedWallpaper = await AsyncStorage.getItem('selectedWallpaper');
+          if (selectedWallpaper) {
+            console.log('Loading selected wallpaper:', selectedWallpaper);
+            setWallpaper(selectedWallpaper);
+            // Clear it after using
+            await AsyncStorage.removeItem('selectedWallpaper');
+          }
+        } catch (error) {
+          console.error('Error loading selected wallpaper:', error);
+        }
+      };
+      
+      loadSelectedWallpaper();
+    }, [])
+  );
+
+  useEffect(() => {
+    // When wallpaper changes, check if it has a built-in sound
+    const wallpaperData = [
+      { id: 'Just do it', hasSound: true, sound: 'wall1' }
+    ].find(w => w.id === wallpaper);
+    
+    if (wallpaperData?.hasSound) {
+      setSound(wallpaperData.sound); // Automatically set sound to wall1
+      console.log('Auto-selected sound for wallpaper:', wallpaperData.sound);
+    }
+  }, [wallpaper]);
 
   return (
     <View style={styles.container}>
@@ -1083,7 +1140,19 @@ export default function NewAlarmScreen() {
           >
             <View style={styles.sectionContent}>
               <Text style={styles.sectionTitle}>Sound</Text>
-              <Text style={styles.sectionValue}>{sound}</Text>
+              <Text style={styles.sectionValue}>
+                {(() => {
+                  // Check if current wallpaper has sound
+                  const wallpaperData = [
+                    { id: 'Just do it', hasSound: true, sound: 'wall1' }
+                  ].find(w => w.id === wallpaper);
+                  
+                  if (wallpaperData?.hasSound) {
+                    return `${wallpaperData.sound} (Theme Sound)`;
+                  }
+                  return sound;
+                })()}
+              </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity>
@@ -1102,6 +1171,20 @@ export default function NewAlarmScreen() {
               />
             </View>
           </View>
+        </View>
+
+        {/* Wallpaper section */}
+        <View style={styles.section}>
+          <TouchableOpacity 
+            style={styles.sectionButton} 
+            onPress={() => router.push('/wallpaper-selector')}
+          >
+            <View style={styles.sectionContent}>
+              <Text style={styles.sectionTitle}>Wallpaper</Text>
+              <Text style={styles.sectionValue}>{wallpaper}</Text>
+            </View>
+            <Ionicons name="chevron-forward" size={24} color="#666" />
+          </TouchableOpacity>
         </View>
 
         <View style={styles.section}>
