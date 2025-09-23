@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFocusEffect } from '@react-navigation/native';
-
+ 
 export default function SnoozeScreen() {
   const params = useLocalSearchParams();
   const [snoozeEnabled, setSnoozeEnabled] = useState(true);
