@@ -28,9 +28,8 @@ import { Platform, NativeModules } from 'react-native';
 import { registerBackgroundTask } from './background-task';
 import * as TaskManager from 'expo-task-manager';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
-const { ScreenTimeBridge } = NativeModules;
 
-// SplashScreen.preventAutoHideAsync();
+const { ScreenTimeBridge } = NativeModules;
 
 const handleError = (error: Error) => {
   console.log('Caught error:', error);
@@ -51,6 +50,10 @@ export default function AppLayout() {
         console.log('✅ Fonts loaded, checking quiz...');
         
         try {
+          // Just wait a bit for Firebase to auto-initialize from plist
+          await new Promise(resolve => setTimeout(resolve, 500));
+          console.log('🔥 Firebase should be ready now');
+          
           const quizCompleted = await AsyncStorage.getItem('quizCompleted');
           console.log('📱 Quiz completed:', quizCompleted);
           
@@ -108,9 +111,10 @@ export default function AppLayout() {
             <Stack.Screen name="quiz/yes" options={{ headerShown: false }} />
             <Stack.Screen name="new-alarm" options={{ headerShown: false }} />
             <Stack.Screen name="missionselector" options={{ title: 'Choose Mission' }} />
-            <Stack.Screen name="wallpaper-selector" options={{ title: 'Choose Wallpaper' }} />
+            <Stack.Screen name="wallpaper-selector" options={{ headerShown: false }} />
             <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="sounds" options={{ headerTitle: "Select Sound" }} />
+            <Stack.Screen name="settings/profile" options={{ headerShown: false }} />
           </Stack>
         </ThemeProvider>
       </GestureHandlerRootView>

@@ -197,7 +197,7 @@ const wallpapers = [
   { 
     id: 'elmo', 
     name: 'Elmo', 
-    file: require('../assets/images/funny/elmo.gif'), 
+    file: require('../assets/images/funny/elmo.png'), 
     thumbnail: require('../assets/images/funny/elmo.png'),
     type: 'gif',
     hasSound: true,
@@ -217,7 +217,7 @@ const wallpapers = [
   { 
     id: 'party', 
     name: 'Party', 
-    file: require('../assets/images/funny/party.gif'), 
+    file: require('../assets/images/funny/party.png'), 
     thumbnail: require('../assets/images/funny/party.png'),
     type: 'gif',
     hasSound: true,
@@ -237,7 +237,7 @@ const wallpapers = [
   { 
     id: 'wakey', 
     name: 'Wakey', 
-    file: require('../assets/images/funny/wakey.gif'), 
+    file: require('../assets/images/funny/wakey.png'), 
     thumbnail: require('../assets/images/funny/wakey.png'),
     type: 'gif',
     hasSound: true,
@@ -247,7 +247,7 @@ const wallpapers = [
   { 
     id: 'wind', 
     name: 'Wind', 
-    file: require('../assets/images/funny/wind.gif'), 
+    file: require('../assets/images/funny/wind.png'), 
     thumbnail: require('../assets/images/funny/wind.png'),
     type: 'gif',
     hasSound: true,

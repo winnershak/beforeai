@@ -8,9 +8,10 @@ import RevenueCatService from '../services/RevenueCatService';
 import AlarmSoundModule from '../native-modules/AlarmSoundModule';
 import Constants from 'expo-constants';
 import * as Notifications from 'expo-notifications';
-// import { signInWithGoogle, signOut, getCurrentUser, testFirebaseConnection, addTestWakeUp, saveWakeupToFirestore, getUserProfile } from '../config/firebase';
-// import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-// import firestore from '@react-native-firebase/firestore';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
+import appleAuth from '@invertase/react-native-apple-authentication';
+import firebase from '@react-native-firebase/app';
 
 export default function SettingsScreen() {
   const [subscriptionDetails, setSubscriptionDetails] = useState<{
@@ -26,10 +27,19 @@ export default function SettingsScreen() {
   
   // Check Firebase auth state
   useEffect(() => {
-    // const unsubscribe = auth().onAuthStateChanged((user) => {
-    //   setFirebaseUser(user);
-    // });
-    // return unsubscribe;
+    const timer = setTimeout(() => {
+      try {
+        const unsubscribe = auth().onAuthStateChanged((user) => {
+          console.log('🔥 Auth state changed:', user?.email || 'No user');
+          setFirebaseUser(user);
+        });
+        return () => unsubscribe();
+      } catch (error) {
+        console.log('Firebase auth setup failed:', error);
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // Function to test the AlarmSound native module
@@ -307,6 +317,54 @@ export default function SettingsScreen() {
     router.push('/settings/profile');
   };
 
+  const signInWithApple = async () => {
+    try {
+      console.log('🍎 Starting Apple Sign In...');
+      
+      // Request Apple authentication
+      const appleAuthRequestResponse = await appleAuth.performRequest({
+        requestedOperation: appleAuth.Operation.LOGIN,
+        requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+      });
+
+      // Get credential state
+      const credentialState = await appleAuth.getCredentialStateForUser(appleAuthRequestResponse.user);
+
+      if (credentialState === appleAuth.State.AUTHORIZED) {
+        const { identityToken, nonce, fullName } = appleAuthRequestResponse;
+        const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce);
+        
+        const userCredential = await auth().signInWithCredential(appleCredential);
+        
+        // Update user profile with full name if provided
+        if (fullName?.givenName || fullName?.familyName) {
+          const displayName = `${fullName.givenName || ''} ${fullName.familyName || ''}`.trim();
+          await userCredential.user.updateProfile({ displayName });
+        }
+        
+        setFirebaseUser(userCredential.user);
+        
+        console.log('✅ Apple Sign In successful!');
+        Alert.alert('Welcome!', 'Successfully signed in with Apple!');
+      }
+    } catch (error) {
+      console.error('❌ Apple Sign In error:', error);
+      Alert.alert('Error', 'Sign in failed. Please try again.');
+    }
+  };
+
+  const signOut = async () => {
+    try {
+      await auth().signOut();
+      setFirebaseUser(null);
+      console.log('✅ User signed out');
+      Alert.alert('Signed Out', 'You have been signed out successfully.');
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+      Alert.alert('Error', 'Could not sign out. Please try again.');
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -362,22 +420,11 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Account Section - DISABLED (Firebase removed) */}
-        {/* <View style={styles.section}>
+        {/* Account Section */}
+        <View style={styles.section}>
           <Text style={styles.sectionTitle}>Account</Text>
           
-          {!firebaseUser ? (
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: '#007AFF' }]}
-              onPress={handleFirebaseLogin}
-            >
-              <View style={styles.settingContent}>
-                <Ionicons name="logo-google" size={24} color="#FFFFFF" style={styles.settingIcon} />
-                <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Sign In with Google</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          ) : (
+          {firebaseUser ? (
             <>
               <View style={[styles.settingItem, { backgroundColor: '#34C759' }]}>
                 <View style={styles.settingContent}>
@@ -385,15 +432,31 @@ export default function SettingsScreen() {
                   <View>
                     <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Signed In</Text>
                     <Text style={[styles.settingText, { color: '#FFFFFF', fontSize: 14, opacity: 0.8 }]}>
-                      {firebaseUser.displayName || firebaseUser.email || 'Bliss User'}
+                      {firebaseUser.displayName || 'Apple User'}
                     </Text>
                   </View>
                 </View>
               </View>
               
               <TouchableOpacity
+                style={styles.settingItem}
+                onPress={() => router.push('/settings/profile')}
+              >
+                <View style={styles.settingContent}>
+                  <Ionicons name="person-outline" size={24} color="#007AFF" style={styles.settingIcon} />
+                  <View>
+                    <Text style={styles.settingText}>Edit Profile</Text>
+                    <Text style={[styles.settingText, { fontSize: 14, opacity: 0.7 }]}>
+                      Set display name and username
+                    </Text>
+                  </View>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#666" />
+              </TouchableOpacity>
+              
+              <TouchableOpacity
                 style={[styles.settingItem, { backgroundColor: '#FF3B30' }]}
-                onPress={handleFirebaseLogout}
+                onPress={signOut}  // ← Change from auth().signOut() to signOut
               >
                 <View style={styles.settingContent}>
                   <Ionicons name="log-out" size={24} color="#FFFFFF" style={styles.settingIcon} />
@@ -401,27 +464,32 @@ export default function SettingsScreen() {
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
               </TouchableOpacity>
-
-              {firebaseUser && (
-                <TouchableOpacity
-                  style={[styles.settingItem]}
-                  onPress={handleEditProfile}
-                >
-                  <View style={styles.settingContent}>
-                    <Ionicons name="person-circle" size={24} color="#007AFF" style={styles.settingIcon} />
-                    <View>
-                      <Text style={styles.settingText}>Edit Profile</Text>
-                      <Text style={[styles.settingText, { fontSize: 14, opacity: 0.7 }]}>
-                        @{userProfile?.username || 'Set username'}
-                      </Text>
-                    </View>
-                  </View>
-                  <Ionicons name="chevron-forward" size={20} color="#666" />
-                </TouchableOpacity>
-              )}
             </>
+          ) : (
+            <TouchableOpacity
+              style={[styles.settingItem, { backgroundColor: '#000000' }]}
+              onPress={async () => {
+                try {
+                  const appleAuthRequestResponse = await appleAuth.performRequest({
+                    requestedOperation: appleAuth.Operation.LOGIN,
+                    requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
+                  });
+                  const { identityToken, nonce } = appleAuthRequestResponse;
+                  const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce);
+                  await auth().signInWithCredential(appleCredential);
+                } catch (error) {
+                  console.error('Apple Sign In error:', error);
+                }
+              }}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="logo-apple" size={24} color="#FFFFFF" style={styles.settingIcon} />
+                <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Sign in with Apple</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+            </TouchableOpacity>
           )}
-        </View> */}
+        </View>
 
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App Blocking</Text>
@@ -499,14 +567,14 @@ const styles = StyleSheet.create({
   },
   section: {
     marginBottom: 30,
-    paddingHorizontal: 20,
+    paddingHorizontal: 20, // ← THIS IS MAKING BUTTONS WIDE
   },
   sectionTitle: {
-    color: '#999',
-    fontSize: 14,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: '#999',  // ← Change from '#fff' to '#999'
+    fontSize: 14,   // ← Change from 20 to 14
+    textTransform: 'uppercase',  // ← Add this
+    letterSpacing: 1,  // ← Add this
+    marginBottom: 10,  // ← Change from 16 to 10
   },
   settingItem: {
     flexDirection: 'row',
@@ -629,5 +697,42 @@ const styles = StyleSheet.create({
   menuText: {
     color: '#fff',
     fontSize: 17,
+  },
+  accountInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+    padding: 16,
+    borderRadius: 12,
+  },
+  userDetails: {
+    flex: 1,
+  },
+  userEmail: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  userSubtext: {
+    color: '#8E8E93',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  signOutButton: {
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  signOutText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  appleButton: {
+    width: '100%',
+    height: 50,
+    borderRadius: 8,
   },
 }); 

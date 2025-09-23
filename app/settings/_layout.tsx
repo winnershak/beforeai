@@ -5,6 +5,12 @@ export default function SettingsLayout() {
   return (
     <Stack>
       <Stack.Screen
+        name="profile"
+        options={{
+          headerShown: false,  // ← This will remove the extra headers
+        }}
+      />
+      <Stack.Screen
         name="group-plan"
         options={{
           headerShown: true,

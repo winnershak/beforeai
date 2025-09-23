@@ -4,8 +4,7 @@
 #import <React/RCTLinkingManager.h>
 #import <React/RCTBridgeModule.h>
 #import <UserNotifications/UserNotifications.h>
-// #import <Firebase.h>  ← REMOVED
-// #import <GoogleSignIn/GoogleSignIn.h>  ← REMOVE THIS TOO
+#import <Firebase.h>
 
 @interface AppDelegate () <UNUserNotificationCenterDelegate>
 @end
@@ -17,13 +16,14 @@
   self.moduleName = @"main";
   self.initialProps = @{};
 
+  // Initialize Firebase FIRST
+  [FIRApp configure];
+
   RCTBridge *bridge = [[RCTBridge alloc] initWithDelegate:self launchOptions:launchOptions];
   self.bridge = bridge;
 
   UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
   center.delegate = self;
-
-  // [FIRApp configure];  ← REMOVED
 
   return [super application:application didFinishLaunchingWithOptions:launchOptions];
 }

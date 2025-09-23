@@ -1,70 +1,68 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router, Stack } from 'expo-router';
-// import { getCurrentUser, getUserProfile, updateUserProfile, checkUsernameAvailable } from '../config/firebase';
+import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
+import auth from '@react-native-firebase/auth';
+import firestore from '@react-native-firebase/firestore';
 
 export default function ProfileScreen() {
   const [displayName, setDisplayName] = useState('');
   const [username, setUsername] = useState('');
-  const [isUsernameValid, setIsUsernameValid] = useState(true);
-  const [isChecking, setIsChecking] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // loadProfile();
+    loadProfile();
   }, []);
 
   const loadProfile = async () => {
-    // try {
-    //   const user = getCurrentUser();
-    //   if (user) {
-    //     const profile = await getUserProfile(user.uid);
-    //     setDisplayName(profile?.displayName || user.displayName || '');
-    //     setUsername(profile?.username || '');
-    //   }
-    // } catch (error) {
-    //   console.error('Error loading profile:', error);
-    // }
+    try {
+      const user = auth().currentUser;
+      if (user) {
+        setDisplayName(user.displayName || '');
+        
+        // Load username from Firestore
+        const userDoc = await firestore().collection('users').doc(user.uid).get();
+        if (userDoc.exists()) {
+          setUsername(userDoc.data()?.username || '');
+        }
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
   };
 
-  const checkUsername = async (usernameToCheck: string) => {
-    // if (usernameToCheck.length < 3) {
-    //   setIsUsernameValid(false);
-    //   return;
-    // }
-    
-    // setIsChecking(true);
-    // try {
-    //   const isAvailable = await checkUsernameAvailable(usernameToCheck);
-    //   setIsUsernameValid(isAvailable);
-    // } catch (error) {
-    //   console.error('Error checking username:', error);
-    //   setIsUsernameValid(false);
-    // } finally {
-    //   setIsChecking(false);
-    // }
-  };
+  const saveProfile = async () => {
+    try {
+      setLoading(true);
+      const user = auth().currentUser;
+      if (!user) return;
 
-  const handleSave = async () => {
-    // Firebase disabled - just go back
-    router.back();
-  };
+      // Update display name in Firebase Auth
+      await user.updateProfile({ displayName });
 
-  const handleUsernameChange = (text: string) => {
-    setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''));
-    // checkUsername(text);
+      // Save username to Firestore
+      await firestore().collection('users').doc(user.uid).set({
+        username,
+        displayName,
+        email: user.email,
+        updatedAt: firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+
+      Alert.alert('Success', 'Profile updated successfully!');
+      router.back();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      Alert.alert('Error', 'Failed to update profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <>
-      <Stack.Screen 
-        options={{ 
-          headerShown: false  // This hides the "profile" header
-        }} 
-      />
-      
-      <SafeAreaView style={styles.container}>
-        <ScrollView style={styles.form}>
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <View style={styles.inputGroup}>
           <Text style={styles.label}>Display Name</Text>
           <TextInput
             style={styles.input}
@@ -72,33 +70,39 @@ export default function ProfileScreen() {
             onChangeText={setDisplayName}
             placeholder="Enter your display name"
             placeholderTextColor="#666"
+            maxLength={50}
           />
+        </View>
 
+        <View style={styles.inputGroup}>
           <Text style={styles.label}>Username</Text>
           <TextInput
             style={styles.input}
             value={username}
-            onChangeText={handleUsernameChange}
-            placeholder="Choose a unique username"
+            onChangeText={(text) => setUsername(text.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+            placeholder="Enter username (lowercase, no spaces)"
             placeholderTextColor="#666"
+            maxLength={20}
+            autoCapitalize="none"
           />
-          
-          {!isUsernameValid && (
-            <Text style={styles.errorText}>Username not available</Text>
-          )}
-          {isChecking && (
-            <Text style={styles.checkingText}>Checking availability...</Text>
-          )}
-        </ScrollView>
-
+          <Text style={styles.helpText}>
+            Username will be used for sharing wake-up times
+          </Text>
+        </View>
+      </View>
+      
+      <View style={styles.bottomContainer}>
         <TouchableOpacity 
-          style={styles.stickyButton}
-          onPress={handleSave}
+          style={[styles.saveButton, loading && styles.saveButtonDisabled]} 
+          onPress={saveProfile} 
+          disabled={loading}
         >
-          <Text style={styles.stickyButtonText}>Save Profile</Text>
+          <Text style={styles.saveButtonText}>
+            {loading ? 'Saving...' : 'Save Profile'}
+          </Text>
         </TouchableOpacity>
-      </SafeAreaView>
-    </>
+      </View>
+    </SafeAreaView>
   );
 }
 
@@ -107,46 +111,60 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#1C1C1E',
   },
-  form: {
-    paddingHorizontal: 20,
-    paddingTop: 30,
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+  },
+  title: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#007AFF',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.5,
+  },
+  content: {
+    padding: 20,
+  },
+  inputGroup: {
+    marginBottom: 24,
   },
   label: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '500',
     marginBottom: 8,
-    marginTop: 20,
   },
   input: {
     backgroundColor: '#2C2C2E',
-    color: '#fff',
-    fontSize: 16,
-    padding: 15,
-    borderRadius: 8,
-  },
-  errorText: {
-    color: '#FF3B30',
-    fontSize: 14,
-    marginTop: 5,
-  },
-  checkingText: {
-    color: '#999',
-    fontSize: 14,
-    marginTop: 5,
-  },
-  stickyButton: {
-    position: 'absolute',
-    bottom: 34, // Safe area bottom
-    left: 20,
-    right: 20,
-    backgroundColor: '#007AFF',
     borderRadius: 12,
     padding: 16,
-    alignItems: 'center',
-  },
-  stickyButtonText: {
     color: '#fff',
-    fontSize: 17,
-    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  helpText: {
+    color: '#666',
+    fontSize: 14,
+    marginTop: 8,
+  },
+  bottomContainer: {
+    padding: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#2C2C2E',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: '600',
   },
 }); 
