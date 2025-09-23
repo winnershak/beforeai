@@ -40,7 +40,33 @@
 		DC55B01E2D9637FB004436B8 /* SystemVolumeControl.m in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */; };
 		DC55B01F2D9637FB004436B8 /* SystemVolumeControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */; };
 		DC55B0212D96385A004436B8 /* MediaPlayer.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DC55B0202D96385A004436B8 /* MediaPlayer.framework */; };
-		DC5FB6D92E81D95600896C7D /* wall1.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6D82E81D95600896C7D /* wall1.caf */; };
+		DC5FB6DB2E82C27800896C7D /* cat.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6DA2E82C27800896C7D /* cat.caf */; };
+		DC5FB6DD2E82C28A00896C7D /* nokia.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6DC2E82C28A00896C7D /* nokia.caf */; };
+		DC5FB6DF2E82C29100896C7D /* elmo.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6DE2E82C29100896C7D /* elmo.caf */; };
+		DC5FB6E12E82C29800896C7D /* lewis.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6E02E82C29800896C7D /* lewis.caf */; };
+		DC5FB6E32E82C2A900896C7D /* cat-morning.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6E22E82C2A800896C7D /* cat-morning.caf */; };
+		DC5FB6E52E82C2B900896C7D /* scary.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6E42E82C2B900896C7D /* scary.caf */; };
+		DC5FB6E72E82C2C000896C7D /* wind.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6E62E82C2C000896C7D /* wind.caf */; };
+		DC5FB6E92E82C2C700896C7D /* party.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6E82E82C2C700896C7D /* party.caf */; };
+		DC5FB6ED2E82C2DC00896C7D /* party 2.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6EC2E82C2DC00896C7D /* party 2.caf */; };
+		DC5FB6EF2E82C2E300896C7D /* wakey.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6EE2E82C2E300896C7D /* wakey.caf */; };
+		DC5FB6F12E82C2F100896C7D /* loveisland.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6F02E82C2F100896C7D /* loveisland.caf */; };
+		DC5FB6F32E82C38B00896C7D /* another-life.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6F22E82C38A00896C7D /* another-life.caf */; };
+		DC5FB6F52E82C3A600896C7D /* better.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6F42E82C3A600896C7D /* better.caf */; };
+		DC5FB6F72E82C3A900896C7D /* comfort.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6F62E82C3A900896C7D /* comfort.caf */; };
+		DC5FB6F92E82C3AE00896C7D /* consistency.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6F82E82C3AE00896C7D /* consistency.caf */; };
+		DC5FB6FB2E82C3BC00896C7D /* do-it-now.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6FA2E82C3BC00896C7D /* do-it-now.caf */; };
+		DC5FB6FD2E82C3C300896C7D /* dream.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB6FC2E82C3C300896C7D /* dream.caf */; };
+		DC5FB7032E82C41A00896C7D /* good-morning.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB7022E82C41A00896C7D /* good-morning.caf */; };
+		DC5FB7052E82C43C00896C7D /* justdoit.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB7042E82C43C00896C7D /* justdoit.caf */; };
+		DC5FB7072E82C44100896C7D /* kobe.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB7062E82C44100896C7D /* kobe.caf */; };
+		DC5FB7092E82C44800896C7D /* lazypeople.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB7082E82C44800896C7D /* lazypeople.caf */; };
+		DC5FB70B2E82C44D00896C7D /* lock-in.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB70A2E82C44D00896C7D /* lock-in.caf */; };
+		DC5FB70D2E82C45100896C7D /* mission.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB70C2E82C45100896C7D /* mission.caf */; };
+		DC5FB70F2E82C45500896C7D /* onemore.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB70E2E82C45500896C7D /* onemore.caf */; };
+		DC5FB7112E82C45D00896C7D /* try-again.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB7102E82C45D00896C7D /* try-again.caf */; };
+		DC5FB7132E82C46100896C7D /* wake-up.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB7122E82C46100896C7D /* wake-up.caf */; };
+		DC5FB7152E82C46500896C7D /* woman.caf in Resources */ = {isa = PBXBuildFile; fileRef = DC5FB7142E82C46500896C7D /* woman.caf */; };
 		DC942DF62DB60809005710B6 /* SleepNotificationModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC942DF52DB60809005710B6 /* SleepNotificationModule.swift */; };
 		DC942DF72DB60809005710B6 /* SleepNotificationModule.m in Sources */ = {isa = PBXBuildFile; fileRef = DC942DF42DB60809005710B6 /* SleepNotificationModule.m */; };
 		DCACC2A42D8F7FC0004DD610 /* test.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = DCACC2A32D8F7FC0004DD610 /* test.mp3 */; };
@@ -118,7 +144,33 @@
 		DC55B01C2D9637FB004436B8 /* SystemVolumeControl.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SystemVolumeControl.m; sourceTree = "<group>"; };
 		DC55B01D2D9637FB004436B8 /* SystemVolumeControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVolumeControl.swift; sourceTree = "<group>"; };
 		DC55B0202D96385A004436B8 /* MediaPlayer.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MediaPlayer.framework; path = System/Library/Frameworks/MediaPlayer.framework; sourceTree = SDKROOT; };
-		DC5FB6D82E81D95600896C7D /* wall1.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = wall1.caf; sourceTree = "<group>"; };
+		DC5FB6DA2E82C27800896C7D /* cat.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = cat.caf; sourceTree = "<group>"; };
+		DC5FB6DC2E82C28A00896C7D /* nokia.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = nokia.caf; sourceTree = "<group>"; };
+		DC5FB6DE2E82C29100896C7D /* elmo.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = elmo.caf; sourceTree = "<group>"; };
+		DC5FB6E02E82C29800896C7D /* lewis.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = lewis.caf; sourceTree = "<group>"; };
+		DC5FB6E22E82C2A800896C7D /* cat-morning.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "cat-morning.caf"; sourceTree = "<group>"; };
+		DC5FB6E42E82C2B900896C7D /* scary.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = scary.caf; sourceTree = "<group>"; };
+		DC5FB6E62E82C2C000896C7D /* wind.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = wind.caf; sourceTree = "<group>"; };
+		DC5FB6E82E82C2C700896C7D /* party.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = party.caf; sourceTree = "<group>"; };
+		DC5FB6EC2E82C2DC00896C7D /* party 2.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "party 2.caf"; sourceTree = "<group>"; };
+		DC5FB6EE2E82C2E300896C7D /* wakey.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = wakey.caf; sourceTree = "<group>"; };
+		DC5FB6F02E82C2F100896C7D /* loveisland.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = loveisland.caf; sourceTree = "<group>"; };
+		DC5FB6F22E82C38A00896C7D /* another-life.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "another-life.caf"; sourceTree = "<group>"; };
+		DC5FB6F42E82C3A600896C7D /* better.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = better.caf; sourceTree = "<group>"; };
+		DC5FB6F62E82C3A900896C7D /* comfort.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = comfort.caf; sourceTree = "<group>"; };
+		DC5FB6F82E82C3AE00896C7D /* consistency.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = consistency.caf; sourceTree = "<group>"; };
+		DC5FB6FA2E82C3BC00896C7D /* do-it-now.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "do-it-now.caf"; sourceTree = "<group>"; };
+		DC5FB6FC2E82C3C300896C7D /* dream.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = dream.caf; sourceTree = "<group>"; };
+		DC5FB7022E82C41A00896C7D /* good-morning.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "good-morning.caf"; sourceTree = "<group>"; };
+		DC5FB7042E82C43C00896C7D /* justdoit.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = justdoit.caf; sourceTree = "<group>"; };
+		DC5FB7062E82C44100896C7D /* kobe.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = kobe.caf; sourceTree = "<group>"; };
+		DC5FB7082E82C44800896C7D /* lazypeople.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = lazypeople.caf; sourceTree = "<group>"; };
+		DC5FB70A2E82C44D00896C7D /* lock-in.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "lock-in.caf"; sourceTree = "<group>"; };
+		DC5FB70C2E82C45100896C7D /* mission.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = mission.caf; sourceTree = "<group>"; };
+		DC5FB70E2E82C45500896C7D /* onemore.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = onemore.caf; sourceTree = "<group>"; };
+		DC5FB7102E82C45D00896C7D /* try-again.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "try-again.caf"; sourceTree = "<group>"; };
+		DC5FB7122E82C46100896C7D /* wake-up.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "wake-up.caf"; sourceTree = "<group>"; };
+		DC5FB7142E82C46500896C7D /* woman.caf */ = {isa = PBXFileReference; lastKnownFileType = file; path = woman.caf; sourceTree = "<group>"; };
 		DC942DF42DB60809005710B6 /* SleepNotificationModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SleepNotificationModule.m; sourceTree = "<group>"; };
 		DC942DF52DB60809005710B6 /* SleepNotificationModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepNotificationModule.swift; sourceTree = "<group>"; };
 		DCACC2A32D8F7FC0004DD610 /* test.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = test.mp3; sourceTree = "<group>"; };
@@ -178,7 +230,33 @@
 				DCACC2A32D8F7FC0004DD610 /* test.mp3 */,
 				2AB49E9FDBF545ABB08D0F11 /* slice.caf */,
 				DCACC2C12D8FCCE2004DD610 /* beacon.caf */,
-				DC5FB6D82E81D95600896C7D /* wall1.caf */,
+				DC5FB6DA2E82C27800896C7D /* cat.caf */,
+				DC5FB6DC2E82C28A00896C7D /* nokia.caf */,
+				DC5FB6DE2E82C29100896C7D /* elmo.caf */,
+				DC5FB6E02E82C29800896C7D /* lewis.caf */,
+				DC5FB6E22E82C2A800896C7D /* cat-morning.caf */,
+				DC5FB6E42E82C2B900896C7D /* scary.caf */,
+				DC5FB6E62E82C2C000896C7D /* wind.caf */,
+				DC5FB6E82E82C2C700896C7D /* party.caf */,
+				DC5FB6EC2E82C2DC00896C7D /* party 2.caf */,
+				DC5FB6EE2E82C2E300896C7D /* wakey.caf */,
+				DC5FB6F02E82C2F100896C7D /* loveisland.caf */,
+				DC5FB6F22E82C38A00896C7D /* another-life.caf */,
+				DC5FB6F42E82C3A600896C7D /* better.caf */,
+				DC5FB6F62E82C3A900896C7D /* comfort.caf */,
+				DC5FB6F82E82C3AE00896C7D /* consistency.caf */,
+				DC5FB6FA2E82C3BC00896C7D /* do-it-now.caf */,
+				DC5FB6FC2E82C3C300896C7D /* dream.caf */,
+				DC5FB7022E82C41A00896C7D /* good-morning.caf */,
+				DC5FB7042E82C43C00896C7D /* justdoit.caf */,
+				DC5FB7062E82C44100896C7D /* kobe.caf */,
+				DC5FB7082E82C44800896C7D /* lazypeople.caf */,
+				DC5FB70A2E82C44D00896C7D /* lock-in.caf */,
+				DC5FB70C2E82C45100896C7D /* mission.caf */,
+				DC5FB70E2E82C45500896C7D /* onemore.caf */,
+				DC5FB7102E82C45D00896C7D /* try-again.caf */,
+				DC5FB7122E82C46100896C7D /* wake-up.caf */,
+				DC5FB7142E82C46500896C7D /* woman.caf */,
 				DCEDAD032D8FD92C002223D7 /* beacon.mp3 */,
 				DCEDACF82D8FD909002223D7 /* chimes.mp3 */,
 				DCEDACF92D8FD909002223D7 /* circuit.mp3 */,
@@ -370,37 +448,63 @@
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
 				3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */,
 				F4BAC288DA144819AB4212E6 /* slice.caf in Resources */,
+				DC5FB70D2E82C45100896C7D /* mission.caf in Resources */,
 				2754F5C619EE4F3499BC96CB /* quiet-boom.caf in Resources */,
+				DC5FB6ED2E82C2DC00896C7D /* party 2.caf in Resources */,
+				DC5FB6E92E82C2C700896C7D /* party.caf in Resources */,
 				DCEDACFD2D8FD909002223D7 /* orkney.mp3 in Resources */,
+				DC5FB7112E82C45D00896C7D /* try-again.caf in Resources */,
 				DCEDACFE2D8FD909002223D7 /* circuit.mp3 in Resources */,
 				DCEDACFF2D8FD909002223D7 /* reflection.mp3 in Resources */,
+				DC5FB6E32E82C2A900896C7D /* cat-morning.caf in Resources */,
 				DCEDAD012D8FD909002223D7 /* chimes.mp3 in Resources */,
-				DC5FB6D92E81D95600896C7D /* wall1.caf in Resources */,
+				DC5FB6E12E82C29800896C7D /* lewis.caf in Resources */,
 				DCEDAD022D8FD909002223D7 /* radar.mp3 in Resources */,
 				81746E1AA27742A9994BAD89 /* completeword.caf in Resources */,
+				DC5FB6FD2E82C3C300896C7D /* dream.caf in Resources */,
+				DC5FB7032E82C41A00896C7D /* good-morning.caf in Resources */,
+				DC5FB6E52E82C2B900896C7D /* scary.caf in Resources */,
+				DC5FB6F92E82C3AE00896C7D /* consistency.caf in Resources */,
 				DCEDAD042D8FD92C002223D7 /* beacon.mp3 in Resources */,
+				DC5FB6DF2E82C29100896C7D /* elmo.caf in Resources */,
+				DC5FB7092E82C44800896C7D /* lazypeople.caf in Resources */,
+				DC5FB6FB2E82C3BC00896C7D /* do-it-now.caf in Resources */,
+				DC5FB6F32E82C38B00896C7D /* another-life.caf in Resources */,
 				B05D3F5AF4BF40568F8C5F05 /* tetris.caf in Resources */,
 				DECF121BAEFA49ABB7D489F0 /* frenchcomplete.caf in Resources */,
+				DC5FB6F72E82C3A900896C7D /* comfort.caf in Resources */,
 				FFD19956989E4461BC207D1B /* mount.caf in Resources */,
 				DCACC2C72D8FCCE2004DD610 /* chimes.caf in Resources */,
+				DC5FB6F12E82C2F100896C7D /* loveisland.caf in Resources */,
 				DCACC2C82D8FCCE2004DD610 /* circuit.caf in Resources */,
+				DC5FB6E72E82C2C000896C7D /* wind.caf in Resources */,
 				DCACC2C92D8FCCE2004DD610 /* orkney.caf in Resources */,
 				DCACC2CA2D8FCCE2004DD610 /* beacon.caf in Resources */,
 				DCACC2CB2D8FCCE2004DD610 /* radar.caf in Resources */,
 				DCACC2CC2D8FCCE2004DD610 /* reflection.caf in Resources */,
 				D2475B4CC6584F719B293947 /* achieve.caf in Resources */,
+				DC5FB7132E82C46100896C7D /* wake-up.caf in Resources */,
 				5D46BDFDF43F49BDAACF6539 /* beach.caf in Resources */,
 				4ACD71D2BBEC48638069E955 /* calm-rain.caf in Resources */,
+				DC5FB70F2E82C45500896C7D /* onemore.caf in Resources */,
 				E20474CA3D4B421799B33BA1 /* fire.caf in Resources */,
+				DC5FB7052E82C43C00896C7D /* justdoit.caf in Resources */,
 				D05E2E919481468CA1F98AB4 /* forest.caf in Resources */,
+				DC5FB7072E82C44100896C7D /* kobe.caf in Resources */,
 				88ED184076A142A0910A1E6D /* piano.caf in Resources */,
 				A97BC69DC97D4B91BEE39A1B /* white-noise.caf in Resources */,
+				DC5FB7152E82C46500896C7D /* woman.caf in Resources */,
+				DC5FB6F52E82C3A600896C7D /* better.caf in Resources */,
 				7915E0095D084731B42483CF /* pink-noise.caf in Resources */,
+				DC5FB6DD2E82C28A00896C7D /* nokia.caf in Resources */,
+				DC5FB70B2E82C44D00896C7D /* lock-in.caf in Resources */,
 				DCB2B70B2DCC780A001015BB /* GoogleService-Info.plist in Resources */,
 				5B0773957CCD442FB18139DD /* rain.caf in Resources */,
 				5C4E5A13A13D4A1B932D68C4 /* space.caf in Resources */,
 				DCACC2A42D8F7FC0004DD610 /* test.mp3 in Resources */,
+				DC5FB6EF2E82C2E300896C7D /* wakey.caf in Resources */,
 				AD51C2B934184F64BF54A61C /* thunder.caf in Resources */,
+				DC5FB6DB2E82C27800896C7D /* cat.caf in Resources */,
 				5A58D40690764BC7B780F3AA /* waterfall.caf in Resources */,
 				12FD97B2A442A279CC9B43FE /* PrivacyInfo.xcprivacy in Resources */,
 			);

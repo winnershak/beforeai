@@ -190,7 +190,7 @@ export default function NewAlarmScreen() {
   const [hasMission, setHasMission] = useState(false);
   const [missionName, setMissionName] = useState('');
   const [missionEmoji, setMissionEmoji] = useState('');
-  const [wallpaper, setWallpaper] = useState('sleepy'); // Added wallpaper state
+  const [wallpaper, setWallpaper] = useState('none'); // Changed from 'sleepy' to 'none'
 
   const calculateRingTime = () => {
     const now = new Date();
@@ -986,7 +986,7 @@ export default function NewAlarmScreen() {
         setSnoozeEnabled(true);
         setSnoozeInterval(5);
         setMaxSnoozes(3);
-        setWallpaper('sleepy'); // Reset wallpaper
+        setWallpaper('none'); // Reset wallpaper to none
         
         console.log('State reset for new alarm');
       } else {

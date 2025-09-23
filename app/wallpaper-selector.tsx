@@ -11,19 +11,270 @@ const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 48) / 2; // 2 items per row with padding
 
 const wallpapers = [
-  { id: 'sleepy', name: 'Sleepy', file: require('../assets/images/sleepy.jpg'), type: 'image', hasSound: false },
-  { id: 'sleepy2', name: 'Sleepy 2', file: require('../assets/images/sleepy2.jpg'), type: 'image', hasSound: false },
-  { id: 'cute', name: 'Cute', file: require('../assets/images/cute.webp'), type: 'image', hasSound: false },
-  { id: 'rabbit', name: 'Rabbit', file: require('../assets/images/rabbit.webp'), type: 'image', hasSound: false },
-  { id: 'ship', name: 'Ship', file: require('../assets/images/ship.png'), type: 'image', hasSound: false },
-  { id: 'bliss', name: 'Bliss', file: require('../assets/images/bliss.png'), type: 'image', hasSound: false },
+  // Motivation category
   { 
-    id: 'Just do it', 
-    name: 'Just do it', 
-    file: require('../assets/images/wall1.gif'), 
+    id: 'another-life', 
+    name: 'Another Life', 
+    file: require('../assets/images/wallpaper/another-life.gif'), 
+    thumbnail: require('../assets/images/wallpaper/another-life.png'),
     type: 'gif',
     hasSound: true,
-    sound: require('../assets/sounds/wall1.caf')
+    sound: require('../assets/sounds/wallpaper/another-life.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'better', 
+    name: 'Better', 
+    file: require('../assets/images/wallpaper/better.gif'), 
+    thumbnail: require('../assets/images/wallpaper/better.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/better.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'comfort', 
+    name: 'Comfort', 
+    file: require('../assets/images/wallpaper/comfort.gif'), 
+    thumbnail: require('../assets/images/wallpaper/comfort.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/comfort.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'consistency', 
+    name: 'Consistency', 
+    file: require('../assets/images/wallpaper/consistency.gif'), 
+    thumbnail: require('../assets/images/wallpaper/consistency.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/consistency.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'do-it-now', 
+    name: 'Do It Now', 
+    file: require('../assets/images/wallpaper/do-it-now.gif'), 
+    thumbnail: require('../assets/images/wallpaper/doitnow.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/do-it-now.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'dream', 
+    name: 'Dream', 
+    file: require('../assets/images/wallpaper/dream.gif'), 
+    thumbnail: require('../assets/images/wallpaper/dream.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/dream.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'good-morning', 
+    name: 'Good Morning', 
+    file: require('../assets/images/wallpaper/good-morning.gif'), 
+    thumbnail: require('../assets/images/wallpaper/goodmorning.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/good-morning.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'justdoit', 
+    name: 'Just Do It', 
+    file: require('../assets/images/wallpaper/justdoit.gif'), 
+    thumbnail: require('../assets/images/wallpaper/justdoit.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/justdoit.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'kobe', 
+    name: 'Kobe', 
+    file: require('../assets/images/wallpaper/kobe.gif'), 
+    thumbnail: require('../assets/images/wallpaper/kobe.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/kobe.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'lazy-people', 
+    name: 'Lazy People', 
+    file: require('../assets/images/wallpaper/lazy-people.gif'), 
+    thumbnail: require('../assets/images/wallpaper/lazypeople.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/lazypeople.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'lock-in', 
+    name: 'Lock In', 
+    file: require('../assets/images/wallpaper/lock-in.gif'), 
+    thumbnail: require('../assets/images/wallpaper/lockin.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/lock-in.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'mission', 
+    name: 'Mission', 
+    file: require('../assets/images/wallpaper/mission.gif'), 
+    thumbnail: require('../assets/images/wallpaper/mission.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/mission.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'onemore', 
+    name: 'One More', 
+    file: require('../assets/images/wallpaper/onemore.gif'), 
+    thumbnail: require('../assets/images/wallpaper/onemore.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/onemore.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'try-again', 
+    name: 'Try Again', 
+    file: require('../assets/images/wallpaper/try-again.gif'), 
+    thumbnail: require('../assets/images/wallpaper/tryagain.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/try-again.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'wake-up', 
+    name: 'Wake Up', 
+    file: require('../assets/images/wallpaper/wake-up.gif'), 
+    thumbnail: require('../assets/images/wallpaper/wakeup.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/wake-up.caf'),
+    category: 'motivation'
+  },
+  { 
+    id: 'woman', 
+    name: 'Woman', 
+    file: require('../assets/images/wallpaper/woman.gif'), 
+    thumbnail: require('../assets/images/wallpaper/woman.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/woman.caf'),
+    category: 'motivation'
+  },
+
+  // Funny category
+  { 
+    id: 'cat-morning', 
+    name: 'Cat Morning', 
+    file: require('../assets/images/funny/cat morning.gif'), 
+    thumbnail: require('../assets/images/funny/cat-morning.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/cat-morning.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'cat', 
+    name: 'Cat', 
+    file: require('../assets/images/funny/cat.gif'), 
+    thumbnail: require('../assets/images/funny/cat.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/cat.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'elmo', 
+    name: 'Elmo', 
+    file: require('../assets/images/funny/elmo.gif'), 
+    thumbnail: require('../assets/images/funny/elmo.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/elmo.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'lewis', 
+    name: 'Lewis', 
+    file: require('../assets/images/funny/lewis.gif'), 
+    thumbnail: require('../assets/images/funny/lewis.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/lewis.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'party', 
+    name: 'Party', 
+    file: require('../assets/images/funny/party.gif'), 
+    thumbnail: require('../assets/images/funny/party.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/party.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'scary', 
+    name: 'Scary', 
+    file: require('../assets/images/funny/scary.gif'), 
+    thumbnail: require('../assets/images/funny/scary.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/scary.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'wakey', 
+    name: 'Wakey', 
+    file: require('../assets/images/funny/wakey.gif'), 
+    thumbnail: require('../assets/images/funny/wakey.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/wakey.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'wind', 
+    name: 'Wind', 
+    file: require('../assets/images/funny/wind.gif'), 
+    thumbnail: require('../assets/images/funny/wind.png'),
+    type: 'gif',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/wind.caf'),
+    category: 'funny'
+  },
+
+  // For the PNG-only ones (no GIF), make them static images:
+  { 
+    id: 'loveisland', 
+    name: 'Love Island', 
+    file: require('../assets/images/funny/loveisland.png'), 
+    thumbnail: require('../assets/images/funny/loveisland.png'),
+    type: 'image',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/loveisland.caf'),
+    category: 'funny'
+  },
+  { 
+    id: 'nokia', 
+    name: 'Nokia', 
+    file: require('../assets/images/funny/nokia.png'), 
+    thumbnail: require('../assets/images/funny/nokia.png'),
+    type: 'image',
+    hasSound: true,
+    sound: require('../assets/sounds/wallpaper/funny/nokia.caf'),
+    category: 'funny'
   },
 ];
 
@@ -31,8 +282,12 @@ export default function WallpaperSelector() {
   const [selectedWallpaper, setSelectedWallpaper] = useState('sleepy');
   const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
-  const [showPreview, setShowPreview] = useState(false); // Add this
-  const [previewWallpaper, setPreviewWallpaper] = useState<any>(null); // Add this
+  const [showPreview, setShowPreview] = useState(false);
+  const [previewWallpaper, setPreviewWallpaper] = useState<any>(null);
+  const [selectedCategory, setSelectedCategory] = useState('motivation'); // Changed from 'all' to 'motivation'
+
+  // Filter wallpapers based on selected category
+  const filteredWallpapers = wallpapers.filter(w => w.category === selectedCategory);
 
   // Clean up sound when component unmounts
   useEffect(() => {
@@ -102,37 +357,50 @@ export default function WallpaperSelector() {
 
   return (
     <SafeAreaView style={styles.container} edges={['bottom']}>
+      {/* Category Filter Buttons */}
+      <View style={styles.categoryButtons}>
+        <TouchableOpacity 
+          style={[styles.categoryButton, selectedCategory === 'motivation' && styles.categoryButtonActive]}
+          onPress={() => setSelectedCategory('motivation')}
+        >
+          <Text style={[styles.categoryButtonText, selectedCategory === 'motivation' && styles.categoryButtonTextActive]}>Motivation</Text>
+        </TouchableOpacity>
+        
+        <TouchableOpacity 
+          style={[styles.categoryButton, selectedCategory === 'funny' && styles.categoryButtonActive]}
+          onPress={() => setSelectedCategory('funny')}
+        >
+          <Text style={[styles.categoryButtonText, selectedCategory === 'funny' && styles.categoryButtonTextActive]}>Funny</Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView style={styles.content}>
         <View style={styles.wallpaperGrid}>
-          {wallpapers.map((wallpaper) => (
+          {filteredWallpapers.map((wallpaper) => (
             <TouchableOpacity
               key={wallpaper.id}
-              style={[
-                styles.wallpaperItem,
-                selectedWallpaper === wallpaper.id && styles.selectedWallpaper
-              ]}
+              style={styles.wallpaperItem}
               onPress={() => handleWallpaperPress(wallpaper)}
             >
-              <Image source={wallpaper.file} style={styles.wallpaperImage} />
+              <Image 
+                source={wallpaper.thumbnail || wallpaper.file} 
+                style={styles.wallpaperImage}
+                resizeMode="cover"
+                fadeDuration={0}
+                progressiveRenderingEnabled={true}
+              />
               <Text style={styles.wallpaperName}>{wallpaper.name}</Text>
-              
               {wallpaper.hasSound && (
                 <View style={styles.soundIndicator}>
-                  <Ionicons name="musical-notes" size={16} color="#007AFF" />
-                </View>
-              )}
-              
-              {selectedWallpaper === wallpaper.id && (
-                <View style={styles.checkmark}>
-                  <Ionicons name="checkmark-circle" size={24} color="#007AFF" />
+                  <Text style={styles.soundIcon}>🔊</Text>
                 </View>
               )}
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
-
-      {/* Fullscreen Preview Modal */}
+      
+      {/* Keep existing preview modal */}
       {showPreview && previewWallpaper && (
         <View style={styles.previewOverlay}>
           <Image 
@@ -229,6 +497,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 4,
   },
+  soundIcon: {
+    fontSize: 16,
+    color: '#007AFF',
+  },
   bottomContainer: {
     padding: 16,
     paddingBottom: 32,
@@ -299,5 +571,39 @@ const styles = StyleSheet.create({
     bottom: 40,
     left: 20,
     right: 20,
+  },
+  categoryTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 16,
+    marginTop: 24,
+  },
+  categoryButtons: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    gap: 12,
+    backgroundColor: '#1C1C1E',
+  },
+  categoryButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 25,
+    backgroundColor: '#2C2C2E',
+    borderWidth: 1,
+    borderColor: '#3C3C3E',
+  },
+  categoryButtonActive: {
+    backgroundColor: '#007AFF',
+    borderColor: '#007AFF',
+  },
+  categoryButtonText: {
+    color: '#8E8E93',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  categoryButtonTextActive: {
+    color: '#FFFFFF',
   },
 });
