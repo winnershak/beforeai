@@ -562,9 +562,9 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
     
     console.log(`Scheduled notification with ID: ${scheduledNotificationId} for ${scheduledDate.toLocaleString()}`);
     
-    // Schedule 15 backup notifications (one every 6 seconds for 90 seconds)
+    // Schedule 30 backup notifications (one every 6 seconds for 180 seconds = 3 minutes)
     // This ensures the alarm will keep trying if the user doesn't respond
-    for (let i = 1; i <= 15; i++) {
+    for (let i = 1; i <= 30; i++) {
       const backupTrigger = {
         date: new Date(scheduledDate.getTime() + (i * 6000)), // 6 seconds apart
         type: 'date'

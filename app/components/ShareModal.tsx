@@ -208,8 +208,11 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
 
         {/* Hidden view for capturing */}
         <View ref={storyViewRef} style={styles.hiddenStoryView}>
-          <Text style={styles.timeText}>⏰ {wakeUpTime}</Text>
-          <Text style={styles.brandingText}>by Bliss Alarm</Text>
+          <View style={styles.storyContent}>
+            <Text style={styles.wakeUpLabel}>Wake-up time</Text>
+            <Text style={styles.wakeUpTimeDisplay}>{wakeUpTime}</Text>
+            <Text style={styles.brandingTextBottom}>Bliss Alarm</Text>
+          </View>
         </View>
       </View>
     </Modal>
@@ -300,24 +303,38 @@ const styles = StyleSheet.create({
   hiddenStoryView: {
     position: 'absolute',
     top: -9999,
-    left: 0,  // Change from -9999 to 0
-    backgroundColor: '#6B46C1',
+    left: 0,
+    backgroundColor: '#6B46C1', // Beautiful purple
     width: 400,
     height: 600,
     justifyContent: 'center',
     alignItems: 'center',
-    zIndex: -1,  // Add this to hide it behind everything
+    zIndex: -1,
   },
-  timeText: {
-    color: '#ffffff',
-    fontSize: 48,
-    fontWeight: '600',
-    marginBottom: 16,
+  storyContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  brandingText: {
+  wakeUpLabel: {
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 16,
+    fontWeight: '400',
+    textTransform: 'uppercase',
+    letterSpacing: 2,
+    marginBottom: 8,
+  },
+  wakeUpTimeDisplay: {
     color: '#ffffff',
+    fontSize: 64,
+    fontWeight: '700',
+    letterSpacing: -2,
+    marginBottom: 40,
+  },
+  brandingTextBottom: {
+    color: 'rgba(255, 255, 255, 0.7)',
     fontSize: 18,
     fontWeight: '300',
-    opacity: 0.8,
+    letterSpacing: 1,
+    textTransform: 'uppercase',
   },
 });
