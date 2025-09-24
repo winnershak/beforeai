@@ -115,6 +115,7 @@ export default function AppLayout() {
             <Stack.Screen name="alarm-ring" options={{ headerShown: false, presentation: 'modal' }} />
             <Stack.Screen name="sounds" options={{ headerTitle: "Select Sound" }} />
             <Stack.Screen name="settings/profile" options={{ headerShown: false }} />
+            <Stack.Screen name="journal/add" options={{ headerShown: false }} />
           </Stack>
         </ThemeProvider>
       </GestureHandlerRootView>

@@ -558,6 +558,84 @@ const formatTweetDateTime = (date: Date | string | undefined | null) => {
   });
 };
 
+// Add this component before export default function TabOneScreen()
+function JournalEntries() {
+  const [entries, setEntries] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const loadEntries = async () => {
+    try {
+      const savedEntries = await AsyncStorage.getItem('journalEntries');
+      if (savedEntries) {
+        const parsedEntries = JSON.parse(savedEntries);
+        setEntries(parsedEntries);
+      }
+    } catch (error) {
+      console.error('Error loading journal entries:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    React.useCallback(() => {
+      loadEntries();
+    }, [])
+  );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading journal...</Text>
+      </View>
+    );
+  }
+
+  if (entries.length === 0) {
+    return (
+      <View style={styles.emptyJournal}>
+        <Text style={styles.emptyJournalTitle}>No journal entries yet 📔</Text>
+        <Text style={styles.emptyJournalText}>
+          Your morning reflections will appear here after you wake up
+        </Text>
+        <TouchableOpacity 
+          style={styles.addButton}
+          onPress={() => router.push('/journal/add?time=' + new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' }))}
+        >
+          <Ionicons name="add" size={20} color="#fff" />
+          <Text style={styles.addButtonText}>Add Entry</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.journalFeed}>
+      {entries.map((entry, index) => (
+        <View key={entry.id || index} style={styles.premiumJournalEntry}>
+          {/* Date */}
+          <Text style={styles.premiumDate}>
+            {new Date(entry.date).toLocaleDateString('en-US', { 
+              weekday: 'long',
+              month: 'long', 
+              day: 'numeric',
+              year: 'numeric'
+            })}
+          </Text>
+          
+          {/* Time */}
+          <Text style={styles.premiumTime}>{entry.wakeUpTime}</Text>
+          
+          {/* Message */}
+          {entry.message && entry.message.trim() && (
+            <Text style={styles.premiumMessage}>{entry.message}</Text>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export default function TabOneScreen() {
   const [alarms, setAlarms] = useState<Alarm[]>([]);
   const router = useRouter();
@@ -565,7 +643,7 @@ export default function TabOneScreen() {
   const [isCreatingAlarm, setIsCreatingAlarm] = useState(false);
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   // Add state for view mode
-  const [viewMode, setViewMode] = useState<'alarms' | 'week' | 'month' | 'feed'>('alarms');
+  const [viewMode, setViewMode] = useState<'alarms' | 'week' | 'month' | 'journal' | 'feed'>('alarms');
   // Add state for wake-up history
   const [wakeupHistory, setWakeupHistory] = useState<WakeupRecord[]>([]);
   // Add isPremium state
@@ -1296,6 +1374,13 @@ export default function TabOneScreen() {
         >
           <Text style={[styles.viewModeText, viewMode === 'month' && styles.viewModeTextActive]}>Month</Text>
         </TouchableOpacity>
+        
+        <TouchableOpacity
+          style={[styles.viewModeButton, viewMode === 'journal' && styles.viewModeButtonActive]}
+          onPress={() => setViewMode('journal')}
+        >
+          <Text style={[styles.viewModeText, viewMode === 'journal' && styles.viewModeTextActive]}>Journal</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Alarms View */}
@@ -1514,6 +1599,17 @@ export default function TabOneScreen() {
         </ScrollView>
       )}
 
+      {/* Journal View */}
+      {viewMode === 'journal' && (
+        <ScrollView style={styles.historyContainer}>
+          <View style={styles.journalHeaderSection}>
+            <Text style={styles.journalTitle}>Wake-up Journal</Text>
+          </View>
+          
+          <JournalEntries />
+        </ScrollView>
+      )}
+
       {/* Feed View - Personal wake-up history */}
       {viewMode === 'feed' && (
         <View style={styles.feedContainer}>
@@ -1726,8 +1822,8 @@ const styles = StyleSheet.create({
   },
   addButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
     fontSize: 16,
+    fontWeight: '600',
     marginLeft: 8,
   },
   permissionBanner: {
@@ -2066,6 +2162,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   userInfo: {
+    flex: 1,
     flexDirection: 'column',
   },
   displayName: {
@@ -2089,12 +2186,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   tweetContent: {
-    marginBottom: 8,
+    marginLeft: 52, // Align with username
   },
   tweetText: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '500',
+    fontSize: 15,
+    lineHeight: 20,
   },
   tweetFooter: {
     alignItems: 'flex-end',
@@ -2158,5 +2255,134 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginLeft: 10,
     letterSpacing: 0.5,
+  },
+  journalContainer: {
+    padding: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: '100%',
+  },
+  journalTitle: {
+    color: '#fff',
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  journalSubtitle: {
+    color: '#999',
+    fontSize: 16,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  journalFeed: {
+    paddingHorizontal: 0,
+  },
+  journalTweet: {
+    backgroundColor: '#1C1C1E',
+    borderBottomWidth: 1,
+    borderBottomColor: '#2C2C2E',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  tweetAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#2C2C2E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  tweetAvatarEmoji: {
+    fontSize: 18,
+  },
+  tweetUserInfo: {
+    flex: 1,
+  },
+  tweetUserName: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+  tweetTime: {
+    color: '#71767B',
+    fontSize: 15,
+    marginTop: 1,
+  },
+  emptyJournal: {
+    alignItems: 'center',
+    padding: 40,
+    marginTop: 40,
+  },
+  emptyJournalTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyJournalText: {
+    color: '#999',
+    fontSize: 16,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+  journalList: {
+    marginTop: 0,
+  },
+  journalEntryLeft: {
+    // Remove this style
+  },
+  journalHeader: {
+    marginBottom: 8,
+  },
+  journalDateTime: {
+    color: '#71767B',
+    fontSize: 15,
+    fontWeight: '500',
+  },
+  journalMessageText: {
+    color: '#fff',
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  journalHeaderSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  premiumJournalEntry: {
+    backgroundColor: '#1C1C1E',
+    marginHorizontal: 20,
+    marginBottom: 24,
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+  },
+  premiumDate: {
+    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
+    marginBottom: 8,
+  },
+  premiumTime: {
+    color: '#007AFF',
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -1,
+    marginBottom: 16,
+  },
+  premiumMessage: {
+    color: '#fff',
+    fontSize: 16,
+    lineHeight: 24,
+    fontWeight: '400',
   },
 });

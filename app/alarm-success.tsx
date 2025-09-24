@@ -5,6 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { captureRef } from 'react-native-view-shot';
 import Share from 'react-native-share';
+import { ShareModal } from './components/ShareModal';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -12,6 +13,7 @@ export default function AlarmSuccess() {
   const successOpacity = useRef(new Animated.Value(0)).current;
   const storyViewRef = useRef<View>(null);
   const [showStoryView, setShowStoryView] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   
   // Get current time for wake-up display
   const currentTime = new Date().toLocaleTimeString('en-US', {
@@ -116,8 +118,8 @@ export default function AlarmSuccess() {
           <Text style={styles.time}>Woke up at {currentTime}</Text>
           <Text style={styles.subtitle}>You're awake! 🎉</Text>
           
-          <TouchableOpacity style={styles.shareButton} onPress={shareToInstagram}>
-            <Ionicons name="logo-instagram" size={24} color="#fff" />
+          <TouchableOpacity style={styles.shareButton} onPress={() => setShowShareModal(true)}>
+            <Ionicons name="share" size={24} color="#fff" />
             <Text style={styles.shareText}>Share Achievement</Text>
           </TouchableOpacity>
           
@@ -126,6 +128,17 @@ export default function AlarmSuccess() {
           </TouchableOpacity>
         </View>
       </Animated.View>
+
+      <ShareModal
+        visible={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        wakeUpTime={currentTime}
+        onShareToJournal={() => {
+          setShowShareModal(false);
+          // Automatically go to journal instead of showing button
+          router.push(`/journal/add?time=${currentTime}`);
+        }}
+      />
 
       {/* Only show story view when sharing */}
       {showStoryView && (
