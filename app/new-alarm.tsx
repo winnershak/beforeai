@@ -267,8 +267,8 @@ export default function NewAlarmScreen() {
       // Cancel existing notification if editing
       if (isEditing && currentAlarmId) {
         const existingAlarm = alarms.find((alarm: Alarm) => alarm.id === currentAlarmId);
-        if (existingAlarm?.notificationId) {
-          await cancelAlarmNotification(existingAlarm.notificationId);
+        if (existingAlarm) {
+          await cancelAlarmNotification(existingAlarm.id);  // Use alarm ID, not notification ID
         }
       }
 

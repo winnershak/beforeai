@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Vibration, Plat
 import { useLocalSearchParams, router, Stack } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Audio, AVPlaybackStatus } from 'expo-av';
-import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, resetAlarmState, playAlarmSound } from './notifications';
+import { scheduleAlarmNotification, stopAlarmSound, cancelAllNotifications, resetAlarmState, playAlarmSound, cancelAlarmNotification } from './notifications';
 import * as Notifications from 'expo-notifications';
 import soundAssets from './sounds';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
@@ -626,7 +626,14 @@ export default function AlarmRingScreen() {
       // Record wake-up time and navigate
       if (currentAlarm) {
         await recordWakeupTime(currentAlarm.id, currentAlarm);
+        // Cancel all future notifications for this alarm
+        await cancelAlarmNotification(currentAlarm.id);
+        console.log('🚫 Cancelled future notifications for dismissed alarm');
       }
+      
+      // Restore the user's original volume
+      await restoreSystemVolume();
+      console.log('🔊 Restored user volume');
       
       // Navigate to success screen
       router.replace('/alarm-success');
