@@ -83,4 +83,29 @@
   completionHandler();
 }
 
+- (void)applicationWillTerminate:(UIApplication *)application {
+  // App is about to be terminated - send instant warning
+  NSLog(@"📱 App being terminated - scheduling warning notification");
+  
+  // Create notification content
+  UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+  content.title = @"⚠️ Bliss Alarm Closed";
+  content.body = @"Your alarms may not work. Please reopen the app to ensure alarms function properly.";
+  content.sound = [UNNotificationSound defaultSound];
+  
+  // Trigger immediately (1 second delay)
+  UNTimeIntervalNotificationTrigger *trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:1 repeats:NO];
+  
+  // Create and schedule request
+  UNNotificationRequest *request = [UNNotificationRequest requestWithIdentifier:@"app_terminated_warning" content:content trigger:trigger];
+  
+  [[UNUserNotificationCenter currentNotificationCenter] addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+    if (error) {
+      NSLog(@"Error scheduling termination warning: %@", error);
+    } else {
+      NSLog(@"✅ Termination warning scheduled successfully");
+    }
+  }];
+}
+
 @end
