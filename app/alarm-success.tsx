@@ -14,7 +14,7 @@ export default function AlarmSuccess() {
   const successOpacity = useRef(new Animated.Value(0)).current;
   const storyViewRef = useRef<View>(null);
   const [showStoryView, setShowStoryView] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false); 
   
   // Get current time for wake-up display
   const currentTime = new Date().toLocaleTimeString('en-US', {
