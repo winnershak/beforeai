@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Alert, Linking } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Alert, Linking, Platform } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { captureRef } from 'react-native-view-shot';
 import Share from 'react-native-share';
 import { ShareModal } from './components/ShareModal';
+import SystemVolumeModule from './native-modules/SystemVolumeModule';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
@@ -23,6 +24,20 @@ export default function AlarmSuccess() {
   });
   
   useEffect(() => {
+    // Restore volume when success screen loads
+    const restoreVolume = async () => {
+      if (Platform.OS === 'ios') {
+        try {
+          await SystemVolumeModule.restoreOriginalVolume();
+          console.log('🔊 Volume restored in alarm-success');
+        } catch (error) {
+          console.log('Volume restore failed:', error);
+        }
+      }
+    };
+    
+    restoreVolume();
+    
     // Fade in animation
     Animated.timing(successOpacity, {
       toValue: 1,

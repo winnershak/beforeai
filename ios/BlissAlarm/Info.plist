@@ -65,6 +65,8 @@
     <string>This app uses NFC to scan cards for ending app blocking.</string>
     <key>NSPhotoLibraryUsageDescription</key>
     <string>This app uses the photo library for...</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>This app needs access to save your wake-up achievements to your photo library.</string>
     <key>NSUserNotificationUsageDescription</key>
     <string>We need to send you alarm notifications</string>
     <key>UIApplicationSupportsIndirectInputEvents</key>

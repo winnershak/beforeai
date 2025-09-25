@@ -372,6 +372,14 @@ export default function AlarmRingScreen() {
         
         // Use the native module directly
         if (Platform.OS === 'ios') {
+          // Save original volume before increasing it for alarm
+          try {
+            await SystemVolumeModule.setSystemVolume(volume);
+            console.log('📱 Saved original volume and set alarm volume');
+          } catch (volumeError) {
+            console.log('Volume control not available:', volumeError);
+          }
+          
           console.log('Using AlarmSoundModule to play:', soundName, 'at volume', volume);
           AlarmSoundModule.playAlarmSound(soundName, volume)
             .catch((error: Error) => {
@@ -630,10 +638,6 @@ export default function AlarmRingScreen() {
         await cancelAlarmNotification(currentAlarm.id);
         console.log('🚫 Cancelled future notifications for dismissed alarm');
       }
-      
-      // Restore the user's original volume
-      await restoreSystemVolume();
-      console.log('🔊 Restored user volume');
       
       // Navigate to success screen
       router.replace('/alarm-success');

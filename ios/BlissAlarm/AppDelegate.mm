@@ -89,8 +89,8 @@
   
   // Create notification content
   UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
-  content.title = @"⚠️ Bliss Alarm Closed";
-  content.body = @"Your alarms may not work. Please reopen the app to ensure alarms function properly.";
+  content.title = @"😢 Open Bliss Alarm again";
+  content.body = @"If app is closed, alarm cannot ring Tap to open >";
   content.sound = [UNNotificationSound defaultSound];
   
   // Trigger immediately (1 second delay)

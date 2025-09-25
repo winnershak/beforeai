@@ -80,12 +80,14 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
   const saveToPhotos = async () => {
     try {
       setIsCapturing(true);
+      
+      // Request permission first
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission needed', 'Allow photo library access to save image');
+        Alert.alert('Permission Required', 'Please grant photo library access to save images');
         return;
       }
-
+      
       if (!storyViewRef.current) {
         Alert.alert('Error', 'Unable to create image');
         return;
@@ -103,7 +105,8 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
       router.replace('/(tabs)');
     } catch (error) {
       console.error('Save photo error:', error);
-      Alert.alert('Error', 'Unable to save photo');
+      // Simple fallback - just show generic error if save fails
+      Alert.alert('Error', 'Unable to save photo. Please check permissions in Settings.');
     } finally {
       setIsCapturing(false);
     }
@@ -127,14 +130,16 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
       await Share.open({
         url: uri,
         title: 'My Wake-up Achievement',
-        message: `I woke up at ${wakeUpTime} today! 🌅`,
+        message: `I woke up at ${wakeUpTime} today!`,  // Removed emoji
       });
       
       onClose();
       router.replace('/(tabs)');
     } catch (error) {
-      console.error('Share error:', error);
-      Alert.alert('Error', 'Unable to share');
+      // Only log error, don't show alert for user cancellation
+      console.log('Share cancelled or failed:', error);
+      onClose();
+      router.replace('/(tabs)');
     } finally {
       setIsCapturing(false);
     }
