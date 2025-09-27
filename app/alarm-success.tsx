@@ -1,31 +1,36 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Alert, Linking, Platform } from 'react-native';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from 'react-native-confetti-cannon';
 import { captureRef } from 'react-native-view-shot';
 import Share from 'react-native-share';
 import { ShareModal } from './components/ShareModal';
 import SystemVolumeModule from './native-modules/SystemVolumeModule';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function AlarmSuccess() {
+  const params = useLocalSearchParams();
+  const passedTime = params.time as string;
+  
   const successOpacity = useRef(new Animated.Value(0)).current;
   const storyViewRef = useRef<View>(null);
   const [showStoryView, setShowStoryView] = useState(false);
-  const [showShareModal, setShowShareModal] = useState(false); 
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [streakData, setStreakData] = useState({ currentStreak: 0, longestStreak: 0 });
   
-  // Get current time for wake-up display
-  const currentTime = new Date().toLocaleTimeString('en-US', {
+  // Use passed time or current time as fallback
+  const currentTime = passedTime || new Date().toLocaleTimeString('en-US', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
   });
   
   useEffect(() => {
-    // Restore volume when success screen loads
-    const restoreVolume = async () => {
+    const initializeSuccess = async () => {
+      // Restore volume when success screen loads
       if (Platform.OS === 'ios') {
         try {
           await SystemVolumeModule.restoreOriginalVolume();
@@ -34,9 +39,58 @@ export default function AlarmSuccess() {
           console.log('Volume restore failed:', error);
         }
       }
+      
+      // Update streak if waking up before 8 AM
+      const hours = new Date().getHours();
+      if (hours < 8) {
+        const today = new Date().toISOString().split('T')[0];
+        
+        try {
+          // Get existing streak data
+          const streakJson = await AsyncStorage.getItem('earlyWakeUpStreak');
+          let streak = streakJson ? JSON.parse(streakJson) : { currentStreak: 0, longestStreak: 0, lastWakeUpDate: '' };
+          
+          // Only update if not already recorded today
+          if (streak.lastWakeUpDate !== today) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayString = yesterday.toISOString().split('T')[0];
+            
+            if (streak.lastWakeUpDate === yesterdayString) {
+              // Consecutive day - increment
+              streak.currentStreak += 1;
+            } else {
+              // Streak broken or new - reset to 1
+              streak.currentStreak = 1;
+            }
+            
+            // Update longest streak
+            streak.longestStreak = Math.max(streak.longestStreak, streak.currentStreak);
+            streak.lastWakeUpDate = today;
+            
+            // Save updated streak
+            await AsyncStorage.setItem('earlyWakeUpStreak', JSON.stringify(streak));
+            console.log(`🔥 Early wake-up streak: ${streak.currentStreak} days`);
+          }
+          
+          setStreakData(streak);
+        } catch (error) {
+          console.error('Error updating streak:', error);
+        }
+      } else {
+        // Load existing streak data (no update)
+        try {
+          const streakJson = await AsyncStorage.getItem('earlyWakeUpStreak');
+          if (streakJson) {
+            setStreakData(JSON.parse(streakJson));
+          }
+        } catch (error) {
+          console.error('Error loading streak:', error);
+        }
+      }
     };
     
-    restoreVolume();
+    initializeSuccess();
     
     // Fade in animation
     Animated.timing(successOpacity, {
@@ -44,13 +98,6 @@ export default function AlarmSuccess() {
       duration: 500,
       useNativeDriver: true
     }).start();
-    
-    // DON'T auto-navigate - let user choose to share or skip
-    // const timer = setTimeout(() => {
-    //   router.replace('/(tabs)');
-    // }, 4000);
-    
-    // return () => clearTimeout(timer);
   }, []);
 
   const shareToInstagram = async () => {
@@ -131,7 +178,18 @@ export default function AlarmSuccess() {
           <Ionicons name="sunny" size={80} color="#FFD700" />
           <Text style={styles.title}>Good Morning!</Text>
           <Text style={styles.time}>Woke up at {currentTime}</Text>
-          <Text style={styles.subtitle}>You're awake! 🎉</Text>
+          
+          {/* Show streak if before 8 AM and streak > 0 */}
+          {new Date().getHours() < 8 && streakData.currentStreak > 0 && (
+            <View style={styles.streakContainer}>
+              <Text style={styles.streakEmoji}>🔥</Text>
+              <Text style={styles.streakText}>
+                {streakData.currentStreak} day early bird streak!
+              </Text>
+            </View>
+          )}
+          
+          <Text style={styles.subtitle}>You're awake! ��</Text>
           
           <TouchableOpacity style={styles.shareButton} onPress={() => setShowShareModal(true)}>
             <Ionicons name="share" size={24} color="#fff" />
@@ -264,5 +322,26 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.7,
     letterSpacing: 1,
+  },
+  // Add streak styles
+  streakContainer: {
+    alignItems: 'center',
+    marginVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+  },
+  streakEmoji: {
+    fontSize: 20,
+    marginBottom: 2,
+  },
+  streakText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFD700',
+    textAlign: 'center',
   },
 }); 

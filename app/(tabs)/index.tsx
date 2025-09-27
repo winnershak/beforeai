@@ -596,15 +596,8 @@ function JournalEntries() {
       <View style={styles.emptyJournal}>
         <Text style={styles.emptyJournalTitle}>No journal entries yet 📔</Text>
         <Text style={styles.emptyJournalText}>
-          Your morning reflections will appear here after you wake up
+          Your morning reflections will appear here automatically after you wake up
         </Text>
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={() => router.push('/journal/add?time=' + new Date().toLocaleTimeString('en-US', { hour12: true, hour: '2-digit', minute: '2-digit' }))}
-        >
-          <Ionicons name="add" size={20} color="#fff" />
-          <Text style={styles.addButtonText}>Add Entry</Text>
-        </TouchableOpacity>
       </View>
     );
   }

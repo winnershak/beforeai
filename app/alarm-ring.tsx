@@ -639,9 +639,16 @@ export default function AlarmRingScreen() {
         console.log('🚫 Cancelled future notifications for dismissed alarm');
       }
       
-      // Navigate to success screen
-      router.replace('/alarm-success');
-      console.log('✅ Navigated to success screen');
+      // Get current time and pass to success screen
+      const wakeUpTime = new Date().toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      
+      // Navigate to success screen with wake-up time
+      router.replace(`/alarm-success?time=${encodeURIComponent(wakeUpTime)}`);
+      console.log('✅ Navigated to success screen with time:', wakeUpTime);
       
     } catch (error) {
       console.error('❌ Error stopping alarm:', error);
