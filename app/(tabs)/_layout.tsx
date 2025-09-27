@@ -81,13 +81,6 @@ export default function TabLayout() {
         }}
       >
         <Tabs.Screen
-          name="appblock"
-          options={{
-            title: 'App Block',
-            tabBarIcon: ({ color }) => Ionicons ? <Ionicons name="timer-outline" size={28} color={color} /> : null,
-          }}
-        />
-        <Tabs.Screen
           name="index"
           options={{
             title: 'Alarms',

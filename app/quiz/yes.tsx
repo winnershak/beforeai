@@ -199,7 +199,7 @@ export default function YesScreen() {
         await requestNotificationPermissions();
         
         // Navigate to main app
-        router.replace('/(tabs)/appblock');
+        router.replace('/(tabs)/');
       } else {
         console.log('Purchase failed or was cancelled');
         Alert.alert("Purchase Failed", "We couldn't complete your subscription. Please try again.");
@@ -236,7 +236,7 @@ export default function YesScreen() {
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Navigate to main app
-        router.replace('/(tabs)/appblock');
+        router.replace('/(tabs)/');
       } else {
         console.log('No purchases to restore');
         Alert.alert("No Subscription Found", "We couldn't find any active subscriptions to restore.");
