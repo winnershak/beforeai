@@ -11,13 +11,13 @@ const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 48) / 2; // 2 items per row with padding
 
 const wallpapers = [
-  // Motivation category
+  // Motivation category - all using PNG instead of GIF
   { 
     id: 'another-life', 
     name: 'Another Life', 
-    file: require('../assets/images/wallpaper/another-life.gif'), 
+    file: require('../assets/images/wallpaper/another-life.png'), 
     thumbnail: require('../assets/images/wallpaper/another-life.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/another-life.caf'),
     category: 'motivation'
@@ -25,9 +25,9 @@ const wallpapers = [
   { 
     id: 'better', 
     name: 'Better', 
-    file: require('../assets/images/wallpaper/better.gif'), 
+    file: require('../assets/images/wallpaper/better.png'), 
     thumbnail: require('../assets/images/wallpaper/better.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/better.caf'),
     category: 'motivation'
@@ -35,9 +35,9 @@ const wallpapers = [
   { 
     id: 'comfort', 
     name: 'Comfort', 
-    file: require('../assets/images/wallpaper/comfort.gif'), 
+    file: require('../assets/images/wallpaper/comfort.png'), 
     thumbnail: require('../assets/images/wallpaper/comfort.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/comfort.caf'),
     category: 'motivation'
@@ -45,9 +45,9 @@ const wallpapers = [
   { 
     id: 'consistency', 
     name: 'Consistency', 
-    file: require('../assets/images/wallpaper/consistency.gif'), 
+    file: require('../assets/images/wallpaper/consistency.png'), 
     thumbnail: require('../assets/images/wallpaper/consistency.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/consistency.caf'),
     category: 'motivation'
@@ -55,9 +55,9 @@ const wallpapers = [
   { 
     id: 'do-it-now', 
     name: 'Do It Now', 
-    file: require('../assets/images/wallpaper/do-it-now.gif'), 
+    file: require('../assets/images/wallpaper/doitnow.png'), 
     thumbnail: require('../assets/images/wallpaper/doitnow.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/do-it-now.caf'),
     category: 'motivation'
@@ -65,9 +65,9 @@ const wallpapers = [
   { 
     id: 'dream', 
     name: 'Dream', 
-    file: require('../assets/images/wallpaper/dream.gif'), 
+    file: require('../assets/images/wallpaper/dream.png'), 
     thumbnail: require('../assets/images/wallpaper/dream.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/dream.caf'),
     category: 'motivation'
@@ -75,9 +75,9 @@ const wallpapers = [
   { 
     id: 'good-morning', 
     name: 'Good Morning', 
-    file: require('../assets/images/wallpaper/good-morning.gif'), 
+    file: require('../assets/images/wallpaper/goodmorning.png'), 
     thumbnail: require('../assets/images/wallpaper/goodmorning.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/good-morning.caf'),
     category: 'motivation'
@@ -85,9 +85,9 @@ const wallpapers = [
   { 
     id: 'justdoit', 
     name: 'Just Do It', 
-    file: require('../assets/images/wallpaper/justdoit.gif'), 
+    file: require('../assets/images/wallpaper/justdoit.png'), 
     thumbnail: require('../assets/images/wallpaper/justdoit.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/justdoit.caf'),
     category: 'motivation'
@@ -95,9 +95,9 @@ const wallpapers = [
   { 
     id: 'kobe', 
     name: 'Kobe', 
-    file: require('../assets/images/wallpaper/kobe.gif'), 
+    file: require('../assets/images/wallpaper/kobe.png'), 
     thumbnail: require('../assets/images/wallpaper/kobe.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/kobe.caf'),
     category: 'motivation'
@@ -105,9 +105,9 @@ const wallpapers = [
   { 
     id: 'lazy-people', 
     name: 'Lazy People', 
-    file: require('../assets/images/wallpaper/lazy-people.gif'), 
+    file: require('../assets/images/wallpaper/lazypeople.png'), 
     thumbnail: require('../assets/images/wallpaper/lazypeople.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/lazypeople.caf'),
     category: 'motivation'
@@ -115,9 +115,9 @@ const wallpapers = [
   { 
     id: 'lock-in', 
     name: 'Lock In', 
-    file: require('../assets/images/wallpaper/lock-in.gif'), 
+    file: require('../assets/images/wallpaper/lockin.png'), 
     thumbnail: require('../assets/images/wallpaper/lockin.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/lock-in.caf'),
     category: 'motivation'
@@ -125,9 +125,9 @@ const wallpapers = [
   { 
     id: 'mission', 
     name: 'Mission', 
-    file: require('../assets/images/wallpaper/mission.gif'), 
+    file: require('../assets/images/wallpaper/mission.png'), 
     thumbnail: require('../assets/images/wallpaper/mission.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/mission.caf'),
     category: 'motivation'
@@ -135,9 +135,9 @@ const wallpapers = [
   { 
     id: 'onemore', 
     name: 'One More', 
-    file: require('../assets/images/wallpaper/onemore.gif'), 
+    file: require('../assets/images/wallpaper/onemore.png'), 
     thumbnail: require('../assets/images/wallpaper/onemore.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/onemore.caf'),
     category: 'motivation'
@@ -145,9 +145,9 @@ const wallpapers = [
   { 
     id: 'try-again', 
     name: 'Try Again', 
-    file: require('../assets/images/wallpaper/try-again.gif'), 
+    file: require('../assets/images/wallpaper/tryagain.png'), 
     thumbnail: require('../assets/images/wallpaper/tryagain.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/try-again.caf'),
     category: 'motivation'
@@ -155,9 +155,9 @@ const wallpapers = [
   { 
     id: 'wake-up', 
     name: 'Wake Up', 
-    file: require('../assets/images/wallpaper/wake-up.gif'), 
+    file: require('../assets/images/wallpaper/wakeup.png'), 
     thumbnail: require('../assets/images/wallpaper/wakeup.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/wake-up.caf'),
     category: 'motivation'
@@ -165,9 +165,9 @@ const wallpapers = [
   { 
     id: 'woman', 
     name: 'Woman', 
-    file: require('../assets/images/wallpaper/woman.gif'), 
+    file: require('../assets/images/wallpaper/woman.png'), 
     thumbnail: require('../assets/images/wallpaper/woman.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/woman.caf'),
     category: 'motivation'
@@ -177,9 +177,9 @@ const wallpapers = [
   { 
     id: 'cat-morning', 
     name: 'Cat Morning', 
-    file: require('../assets/images/funny/cat morning.gif'), 
+    file: require('../assets/images/funny/cat-morning.png'), 
     thumbnail: require('../assets/images/funny/cat-morning.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/cat-morning.caf'),
     category: 'funny'
@@ -187,9 +187,9 @@ const wallpapers = [
   { 
     id: 'cat', 
     name: 'Cat', 
-    file: require('../assets/images/funny/cat.gif'), 
+    file: require('../assets/images/funny/cat.png'), 
     thumbnail: require('../assets/images/funny/cat.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/cat.caf'),
     category: 'funny'
@@ -199,7 +199,7 @@ const wallpapers = [
     name: 'Elmo', 
     file: require('../assets/images/funny/elmo.png'), 
     thumbnail: require('../assets/images/funny/elmo.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/elmo.caf'),
     category: 'funny'
@@ -207,9 +207,9 @@ const wallpapers = [
   { 
     id: 'lewis', 
     name: 'Lewis', 
-    file: require('../assets/images/funny/lewis.gif'), 
+    file: require('../assets/images/funny/lewis.png'), 
     thumbnail: require('../assets/images/funny/lewis.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/lewis.caf'),
     category: 'funny'
@@ -219,7 +219,7 @@ const wallpapers = [
     name: 'Party', 
     file: require('../assets/images/funny/party.png'), 
     thumbnail: require('../assets/images/funny/party.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/party.caf'),
     category: 'funny'
@@ -227,9 +227,9 @@ const wallpapers = [
   { 
     id: 'scary', 
     name: 'Scary', 
-    file: require('../assets/images/funny/scary.gif'), 
+    file: require('../assets/images/funny/scary.png'), 
     thumbnail: require('../assets/images/funny/scary.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/scary.caf'),
     category: 'funny'
@@ -239,7 +239,7 @@ const wallpapers = [
     name: 'Wakey', 
     file: require('../assets/images/funny/wakey.png'), 
     thumbnail: require('../assets/images/funny/wakey.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/wakey.caf'),
     category: 'funny'
@@ -249,7 +249,7 @@ const wallpapers = [
     name: 'Wind', 
     file: require('../assets/images/funny/wind.png'), 
     thumbnail: require('../assets/images/funny/wind.png'),
-    type: 'gif',
+    type: 'image',
     hasSound: true,
     sound: require('../assets/sounds/wallpaper/funny/wind.caf'),
     category: 'funny'
@@ -356,7 +356,16 @@ export default function WallpaperSelector() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['bottom']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#007AFF" />
+        </TouchableOpacity>
+        <Text style={styles.title}>Choose Wallpaper</Text>
+        <View style={styles.placeholder} />
+      </View>
+
       {/* Category Filter Buttons */}
       <View style={styles.categoryButtons}>
         <TouchableOpacity 
@@ -425,7 +434,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#000',
-    paddingTop: 0, // Add this to remove any top padding
   },
   header: {
     flexDirection: 'row',

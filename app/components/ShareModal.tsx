@@ -68,7 +68,7 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
       
       await Share.shareSingle(shareOptions);
       onClose();
-      router.replace('/(tabs)');
+      // DON'T navigate away - keep alarm-success alive
     } catch (error) {
       console.error('Instagram share error:', error);
       Alert.alert('Error', 'Unable to share to Instagram');
@@ -102,7 +102,7 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
       await MediaLibrary.saveToLibraryAsync(uri);
       Alert.alert('Success', 'Achievement saved to photos!');
       onClose();
-      router.replace('/(tabs)');
+      // DON'T navigate away - keep alarm-success alive
     } catch (error) {
       console.error('Save photo error:', error);
       // Simple fallback - just show generic error if save fails
@@ -134,12 +134,12 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
       });
       
       onClose();
-      router.replace('/(tabs)');
+      // DON'T navigate away - keep alarm-success alive
     } catch (error) {
       // Only log error, don't show alert for user cancellation
       console.log('Share cancelled or failed:', error);
       onClose();
-      router.replace('/(tabs)');
+      // DON'T navigate away - keep alarm-success alive
     } finally {
       setIsCapturing(false);
     }
@@ -195,7 +195,10 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.option} onPress={onShareToJournal} disabled={isCapturing}>
+            <TouchableOpacity style={styles.option} onPress={() => {
+              onClose();
+              router.push(`/journal/add?time=${wakeUpTime}`);
+            }} disabled={isCapturing}>
               <View style={styles.optionIcon}>
                 <Ionicons name="journal" size={24} color="#FF9500" />
               </View>
@@ -206,7 +209,7 @@ export function ShareModal({ visible, onClose, wakeUpTime, onShareToJournal }: S
             </TouchableOpacity>
           </View>
 
-          <TouchableOpacity style={styles.skipButton} onPress={() => { onClose(); router.replace('/(tabs)'); }}>
+          <TouchableOpacity style={styles.skipButton} onPress={onClose}>
             <Text style={styles.skipText}>Skip</Text>
           </TouchableOpacity>
         </View>

@@ -28,7 +28,7 @@ const reviews = [
     id: '2',
     name: 'Michael T.',
     rating: 5,
-    text: 'I have lost 8 pounds and gained a lot of muscles since fixing my sleep with Rise. My metabolism is working better, and I have the energy to exercise regularly now.',
+    text: 'I have lost 8 pounds and gained a lot of muscles since fixing my sleep with Bliss alarm. My metabolism is working better, and I have the energy to exercise regularly now.',
     category: 'Physical - Body',
   },
   // Mental 1
@@ -36,7 +36,7 @@ const reviews = [
     id: '3',
     name: 'Emma L.',
     rating: 5,
-    text: 'My skin has completely transformed since using Rise. The dark circles under my eyes are gone, and friends keep asking what skincare products I am using! I just improved my sleep!',
+    text: 'My skin has completely transformed since using Bliss alarm. The dark circles under my eyes are gone, and friends keep asking what skincare products I am using! I just improved my sleep!',
     category: 'Mental',
   },
   // Mental 2
@@ -52,7 +52,7 @@ const reviews = [
     id: '5',
     name: 'Jessica M.',
     rating: 5,
-    text: 'I am more present in conversations and actually enjoy social events now. Before Rise, I was always too tired to connect with friends. Now I am in a happy relationship. :)',
+    text: 'I am more present in conversations and actually enjoy social events now. Before Bliss alarm, I was always too tired to connect with friends. Now I am in a happy relationship. :)',
     category: 'Social',
   },
   // Social 2
@@ -60,7 +60,7 @@ const reviews = [
     id: '6',
     name: 'Alex P.',
     rating: 5,
-    text: 'I have not been late to work once since using Rise! The alarm system actually works, and I wake up refreshed instead of hitting snooze repeatedly.',
+    text: 'I have not been late to work once since using Bliss alarm! The alarm system actually works, and I wake up refreshed instead of hitting snooze repeatedly.',
     category: 'Social',
   },
   // Work punctuality

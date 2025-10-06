@@ -21,9 +21,9 @@ export default function SettingsScreen() {
     isYearly: boolean;
   } | null>(null);
   
-  const [blockRemovalsLeft, setBlockRemovalsLeft] = useState<number | null>(null);
   const [firebaseUser, setFirebaseUser] = useState<any | null>(null); // Changed to any as FirebaseAuthTypes is removed
   const [userProfile, setUserProfile] = useState<any | null>(null);
+  const [earlyBirdTarget, setEarlyBirdTarget] = useState(8); // Default to 8 AM
   
   // Check Firebase auth state
   useEffect(() => {
@@ -159,110 +159,6 @@ export default function SettingsScreen() {
     });
   };
 
-  // Add this new function to check and update block removal count
-  const getBlockRemovalsLeft = async () => {
-    try {
-      const now = new Date();
-      const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-      
-      const storedData = await AsyncStorage.getItem('blockRemovalData');
-      const data = storedData ? JSON.parse(storedData) : { month: currentMonth, count: 0 };
-      
-      // Reset count if it's a new month
-      if (data.month !== currentMonth) {
-        data.month = currentMonth;
-        data.count = 0;
-        await AsyncStorage.setItem('blockRemovalData', JSON.stringify(data));
-      }
-      
-      const removalsLeft = 3 - data.count;
-      setBlockRemovalsLeft(removalsLeft);
-      return removalsLeft;
-    } catch (error) {
-      console.error('Error checking block removals:', error);
-      return 0;
-    }
-  };
-
-  // Add this to useEffect to load initial count
-  useEffect(() => {
-    getBlockRemovalsLeft();
-  }, []);
-
-  // Modify the handleRemoveBlocks function
-  const handleRemoveBlocks = async () => {
-    try {
-      const removalsLeft = await getBlockRemovalsLeft();
-      
-      if (removalsLeft <= 0) {
-        Alert.alert(
-          'Monthly Limit Reached',
-          'You can only remove all blocks 3 times per month. Your limit will reset at the beginning of next month.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
-
-      Alert.alert(
-        'Remove All Blocks',
-        `Are you sure you want to remove all app and website blocks? You have ${removalsLeft} out of 3 monthly removals left for this month.`,
-        [
-          {
-            text: 'Cancel',
-            style: 'cancel'
-          },
-          {
-            text: 'Remove',
-            style: 'destructive',
-            onPress: async () => {
-              console.log('🔓 Removing all blocks...');
-              
-              // Update the removal count
-              const now = new Date();
-              const currentMonth = `${now.getFullYear()}-${now.getMonth() + 1}`;
-              const storedData = await AsyncStorage.getItem('blockRemovalData');
-              const data = storedData ? JSON.parse(storedData) : { month: currentMonth, count: 0 };
-              data.count += 1;
-              await AsyncStorage.setItem('blockRemovalData', JSON.stringify(data));
-              
-              // Update schedules to inactive
-              const savedSchedules = await AsyncStorage.getItem('appBlockSchedules');
-              if (savedSchedules) {
-                const schedules = JSON.parse(savedSchedules);
-                const inactiveSchedules = schedules.map((s: any) => ({
-                  ...s,
-                  isActive: false
-                }));
-                await AsyncStorage.setItem('appBlockSchedules', JSON.stringify(inactiveSchedules));
-              }
-              
-              // Remove shields from native module
-              if (Platform.OS === 'ios') {
-                const { ScreenTimeBridge } = NativeModules;
-                if (ScreenTimeBridge) {
-                  await ScreenTimeBridge.removeAllShields();
-                  console.log('🛡️ All shields removed');
-                }
-              }
-              
-              // Update the UI with remaining removals
-              await getBlockRemovalsLeft();
-              
-              Alert.alert(
-                'Blocks Removed',
-                `All app and website blocks have been removed. You have ${removalsLeft - 1} out of 3 monthly removals left for this month.`,
-                [{ text: 'OK' }]
-              );
-            }
-          }
-        ]
-      );
-    } catch (error) {
-      console.error('Error removing blocks:', error);
-      Alert.alert('Error', 'Failed to remove blocks. Please try again.');
-    }
-  };
-
   const handleTestWakeUp = async () => {
     try {
       // await addTestWakeUp(); // This line is removed as addTestWakeUp is removed
@@ -365,6 +261,125 @@ export default function SettingsScreen() {
     }
   };
 
+  const updateEarlyBirdTarget = async (hour: number) => {
+    try {
+      await AsyncStorage.setItem('earlyBirdTarget', hour.toString());
+      setEarlyBirdTarget(hour);
+      console.log(`Early bird target set to: ${hour}:00`);
+    } catch (error) {
+      console.error('Error saving early bird target:', error);
+    }
+  };
+
+  // Load early bird target
+  useEffect(() => {
+    const loadEarlyBirdTarget = async () => {
+      try {
+        const saved = await AsyncStorage.getItem('earlyBirdTarget');
+        if (saved) {
+          setEarlyBirdTarget(parseInt(saved));
+        }
+      } catch (error) {
+        console.error('Error loading early bird target:', error);
+      }
+    };
+    loadEarlyBirdTarget();
+  }, []);
+
+  const handleResetStreak = () => {
+    Alert.alert(
+      'Reset Streak?',
+      'This will permanently reset your early bird streak to 0. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Reset', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('earlyWakeUpStreak');
+              Alert.alert('Success', 'Your streak has been reset.');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to reset streak.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const deleteAccount = async () => {
+    Alert.alert(
+      'Delete Account',
+      'Are you sure you want to permanently delete your account? This action cannot be undone and will remove all your data including wake-up history, streaks, and journal entries.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              console.log('🗑️ Starting account deletion...');
+              const user = auth().currentUser;
+              
+              if (!user) {
+                Alert.alert('Error', 'No user signed in.');
+                return;
+              }
+
+              // Delete user data from Firestore
+              try {
+                await firestore().collection('users').doc(user.uid).delete();
+                console.log('✅ User data deleted from Firestore');
+              } catch (firestoreError) {
+                console.log('⚠️ Firestore deletion failed (user may not have data):', firestoreError);
+              }
+
+              // Clear local data
+              try {
+                await AsyncStorage.multiRemove([
+                  'alarms',
+                  'wakeupHistory', 
+                  'journalEntries',
+                  'earlyWakeUpStreak',
+                  'earlyBirdTarget'
+                ]);
+                console.log('✅ Local data cleared');
+              } catch (localError) {
+                console.log('⚠️ Local data clearing failed:', localError);
+              }
+
+              // Delete the Firebase Auth account
+              await user.delete();
+              
+              setFirebaseUser(null);
+              console.log('✅ Account deleted successfully');
+              
+              Alert.alert(
+                'Account Deleted', 
+                'Your account has been permanently deleted. Thank you for using Bliss Alarm.',
+                [{ text: 'OK', onPress: () => router.replace('/quiz') }]
+              );
+              
+            } catch (error: any) {
+              console.error('❌ Account deletion error:', error);
+              
+              if ((error as any).code === 'auth/requires-recent-login') {
+                Alert.alert(
+                  'Re-authentication Required',
+                  'For security, please sign out and sign back in, then try deleting your account again.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert('Error', 'Failed to delete account. Please try again or contact support.');
+              }
+            }
+          }
+        }
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
@@ -372,6 +387,36 @@ export default function SettingsScreen() {
       </View>
 
       <ScrollView style={styles.content}>
+        {/* Early Bird Streak Section - AT THE TOP */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Early Bird Streak</Text>
+          
+          <TouchableOpacity style={styles.settingItem}>
+            <View style={styles.settingContent}>
+              <Ionicons name="sunny-outline" size={24} color="#FFD700" style={styles.settingIcon} />
+              <View>
+                <Text style={styles.settingText}>Wake-up Target</Text>
+                <Text style={styles.settingSubtext}>Before {earlyBirdTarget}:00 AM</Text>
+              </View>
+            </View>
+            <View style={styles.targetControls}>
+              <TouchableOpacity 
+                style={styles.targetButton}
+                onPress={() => earlyBirdTarget > 5 && updateEarlyBirdTarget(earlyBirdTarget - 1)}
+              >
+                <Text style={styles.targetButtonText}>-</Text>
+              </TouchableOpacity>
+              <Text style={styles.targetTime}>{earlyBirdTarget}:00</Text>
+              <TouchableOpacity 
+                style={styles.targetButton}
+                onPress={() => earlyBirdTarget < 12 && updateEarlyBirdTarget(earlyBirdTarget + 1)}
+              >
+                <Text style={styles.targetButtonText}>+</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        </View>
+
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
           
@@ -420,93 +465,61 @@ export default function SettingsScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* Account Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Account</Text>
-          
-          {firebaseUser ? (
-            <>
-              <View style={[styles.settingItem, { backgroundColor: '#34C759' }]}>
-                <View style={styles.settingContent}>
-                  <Ionicons name="person-circle" size={24} color="#FFFFFF" style={styles.settingIcon} />
-                  <View>
-                    <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Signed In</Text>
-                    <Text style={[styles.settingText, { color: '#FFFFFF', fontSize: 14, opacity: 0.8 }]}>
-                      {firebaseUser.displayName || 'Apple User'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-              
-              <TouchableOpacity
-                style={styles.settingItem}
-                onPress={() => router.push('/settings/profile')}
-              >
-                <View style={styles.settingContent}>
-                  <Ionicons name="person-outline" size={24} color="#007AFF" style={styles.settingIcon} />
-                  <View>
-                    <Text style={styles.settingText}>Edit Profile</Text>
-                    <Text style={[styles.settingText, { fontSize: 14, opacity: 0.7 }]}>
-                      Set display name and username
-                    </Text>
-                  </View>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#666" />
-              </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={[styles.settingItem, { backgroundColor: '#FF3B30' }]}
-                onPress={signOut}  // ← Change from auth().signOut() to signOut
-              >
-                <View style={styles.settingContent}>
-                  <Ionicons name="log-out" size={24} color="#FFFFFF" style={styles.settingIcon} />
-                  <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Sign Out</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            </>
-          ) : (
-            <TouchableOpacity
-              style={[styles.settingItem, { backgroundColor: '#000000' }]}
-              onPress={async () => {
-                try {
-                  const appleAuthRequestResponse = await appleAuth.performRequest({
-                    requestedOperation: appleAuth.Operation.LOGIN,
-                    requestedScopes: [appleAuth.Scope.EMAIL, appleAuth.Scope.FULL_NAME],
-                  });
-                  const { identityToken, nonce } = appleAuthRequestResponse;
-                  const appleCredential = auth.AppleAuthProvider.credential(identityToken, nonce);
-                  await auth().signInWithCredential(appleCredential);
-                } catch (error) {
-                  console.error('Apple Sign In error:', error);
-                }
-              }}
+        {/* Sign In Section - for users who aren't signed in */}
+        {!firebaseUser && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={signInWithApple}
             >
               <View style={styles.settingContent}>
-                <Ionicons name="logo-apple" size={24} color="#FFFFFF" style={styles.settingIcon} />
-                <Text style={[styles.settingText, { color: '#FFFFFF' }]}>Sign in with Apple</Text>
+                <Ionicons name="logo-apple" size={24} color="#000" style={[styles.settingIcon, { backgroundColor: '#fff', borderRadius: 12, padding: 2 }]} />
+                <Text style={styles.settingText}>Sign in with Apple</Text>
               </View>
-              <Ionicons name="chevron-forward" size={20} color="#FFFFFF" />
+              <Ionicons name="chevron-forward" size={20} color="#666" />
             </TouchableOpacity>
-          )}
-        </View>
+          </View>
+        )}
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App Blocking</Text>
-          
-          <TouchableOpacity 
-            style={[styles.settingItem, styles.dangerItem]}
-            onPress={handleRemoveBlocks}
-          >
-            <View style={styles.settingContent}>
-              <Ionicons name="shield-outline" size={24} color="#FF3B30" style={styles.settingIcon} />
-              <Text style={[styles.settingText, styles.dangerText]}>
-                Remove All Blocks {blockRemovalsLeft !== null && `(${blockRemovalsLeft}/3 monthly)`}
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color="#FF3B30" />
-          </TouchableOpacity>
-        </View>
+        {/* Account Management Section - for users who ARE signed in */}
+        {firebaseUser && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account Management</Text>
+            
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={() => router.push('/settings/profile')}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="person-outline" size={24} color="#007AFF" style={styles.settingIcon} />
+                <Text style={styles.settingText}>Edit Profile</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#666" />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.settingItem}
+              onPress={signOut}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="log-out-outline" size={24} color="#FF9500" style={styles.settingIcon} />
+                <Text style={[styles.settingText, { color: '#FF9500' }]}>Sign Out</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={[styles.settingItem, styles.dangerItem]}
+              onPress={deleteAccount}
+            >
+              <View style={styles.settingContent}>
+                <Ionicons name="trash-outline" size={24} color="#FF3B30" style={styles.settingIcon} />
+                <Text style={[styles.settingText, styles.dangerText]}>Delete Account</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {subscriptionDetails && subscriptionDetails.expirationDate && (
           <View style={styles.section}>
@@ -666,8 +679,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   dangerItem: {
-    borderColor: '#FF3B30',
-    borderWidth: 1,
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
   },
   dangerText: {
     color: '#FF3B30',
@@ -734,5 +746,63 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 50,
     borderRadius: 8,
+  },
+  settingSubtext: {
+    color: '#999',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  targetControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  targetButton: {
+    backgroundColor: '#333',
+    borderRadius: 6,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  targetButtonText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  targetTime: {
+    color: '#FFD700',
+    fontSize: 16,
+    fontWeight: '600',
+    marginHorizontal: 12,
+    minWidth: 50,
+    textAlign: 'center',
+  },
+  streakStoryText: {
+    color: '#FFD700',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  fullScreenStory: {
+    flex: 1,
+    backgroundColor: '#1a1a2e',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  centerContent: {
+    alignItems: 'center',
+  },
+  timeText: {
+    color: '#fff',
+    fontSize: 48,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  brandingText: {
+    color: '#fff',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginTop: 10,
   },
 }); 

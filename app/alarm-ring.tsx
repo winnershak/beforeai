@@ -192,13 +192,43 @@ const restoreSystemVolume = async () => {
 // Add this function at the top of alarm-ring.tsx, after the imports
 const getWallpaperSource = (wallpaperId: string) => {
   const wallpaperMap: { [key: string]: any } = {
-    'sleepy': require('../assets/images/sleepy.jpg'),
-    'sleepy2': require('../assets/images/sleepy2.jpg'),
-    'cute': require('../assets/images/cute.webp'),
-    'rabbit': require('../assets/images/rabbit.webp'),
-    'ship': require('../assets/images/ship.png'),
-    'bliss': require('../assets/images/bliss.png'),
-    'Just do it': require('../assets/images/wall1.gif'), // Updated ID
+    // Old static wallpapers
+    // 'sleepy': require('../assets/images/sleepy.jpg'),
+    // 'sleepy2': require('../assets/images/sleepy2.jpg'),
+    // 'cute': require('../assets/images/cute.webp'),
+    // 'rabbit': require('../assets/images/rabbit.webp'),
+    // 'ship': require('../assets/images/ship.png'),
+    // 'bliss': require('../assets/images/bliss.png'),
+    
+    // New motivation wallpapers (using PNG instead of GIF)
+    'another-life': require('../assets/images/wallpaper/another-life.png'),
+    'better': require('../assets/images/wallpaper/better.png'),
+    'comfort': require('../assets/images/wallpaper/comfort.png'),
+    'consistency': require('../assets/images/wallpaper/consistency.png'),
+    'do-it-now': require('../assets/images/wallpaper/doitnow.png'),
+    'dream': require('../assets/images/wallpaper/dream.png'),
+    'good-morning': require('../assets/images/wallpaper/goodmorning.png'),
+    'justdoit': require('../assets/images/wallpaper/justdoit.png'),
+    'kobe': require('../assets/images/wallpaper/kobe.png'),
+    'lazy-people': require('../assets/images/wallpaper/lazypeople.png'),
+    'lock-in': require('../assets/images/wallpaper/lockin.png'),
+    'mission': require('../assets/images/wallpaper/mission.png'),
+    'onemore': require('../assets/images/wallpaper/onemore.png'),
+    'try-again': require('../assets/images/wallpaper/tryagain.png'),
+    'wake-up': require('../assets/images/wallpaper/wakeup.png'),
+    'woman': require('../assets/images/wallpaper/woman.png'),
+    
+    // New funny wallpapers
+    'cat-morning': require('../assets/images/funny/cat-morning.png'),
+    'cat': require('../assets/images/funny/cat.png'),
+    'elmo': require('../assets/images/funny/elmo.png'),
+    'lewis': require('../assets/images/funny/lewis.png'),
+    'party': require('../assets/images/funny/party.png'),
+    'scary': require('../assets/images/funny/scary.png'),
+    'wakey': require('../assets/images/funny/wakey.png'),
+    'wind': require('../assets/images/funny/wind.png'),
+    'loveisland': require('../assets/images/funny/loveisland.png'),
+    'nokia': require('../assets/images/funny/nokia.png'),
   };
   
   return wallpaperMap[wallpaperId] || wallpaperMap['sleepy'];
@@ -207,13 +237,43 @@ const getWallpaperSource = (wallpaperId: string) => {
 // Add wallpaper data mapping
 const getWallpaperData = (wallpaperId: string) => {
   const wallpapers = [
+    // Old wallpapers without sound
     { id: 'sleepy', hasSound: false },
     { id: 'sleepy2', hasSound: false },
     { id: 'cute', hasSound: false },
     { id: 'rabbit', hasSound: false },
     { id: 'ship', hasSound: false },
     { id: 'bliss', hasSound: false },
-    { id: 'Just do it', hasSound: true, sound: 'wall1' }, // Updated ID to match
+    
+    // New motivation wallpapers with sound
+    { id: 'another-life', hasSound: true, sound: 'another-life' },
+    { id: 'better', hasSound: true, sound: 'better' },
+    { id: 'comfort', hasSound: true, sound: 'comfort' },
+    { id: 'consistency', hasSound: true, sound: 'consistency' },
+    { id: 'do-it-now', hasSound: true, sound: 'do-it-now' },
+    { id: 'dream', hasSound: true, sound: 'dream' },
+    { id: 'good-morning', hasSound: true, sound: 'good-morning' },
+    { id: 'justdoit', hasSound: true, sound: 'justdoit' },
+    { id: 'kobe', hasSound: true, sound: 'kobe' },
+    { id: 'lazy-people', hasSound: true, sound: 'lazypeople' },
+    { id: 'lock-in', hasSound: true, sound: 'lock-in' },
+    { id: 'mission', hasSound: true, sound: 'mission' },
+    { id: 'onemore', hasSound: true, sound: 'onemore' },
+    { id: 'try-again', hasSound: true, sound: 'try-again' },
+    { id: 'wake-up', hasSound: true, sound: 'wake-up' },
+    { id: 'woman', hasSound: true, sound: 'woman' },
+    
+    // New funny wallpapers with sound
+    { id: 'cat-morning', hasSound: true, sound: 'cat-morning' },
+    { id: 'cat', hasSound: true, sound: 'cat' },
+    { id: 'elmo', hasSound: true, sound: 'elmo' },
+    { id: 'lewis', hasSound: true, sound: 'lewis' },
+    { id: 'party', hasSound: true, sound: 'party' },
+    { id: 'scary', hasSound: true, sound: 'scary' },
+    { id: 'wakey', hasSound: true, sound: 'wakey' },
+    { id: 'wind', hasSound: true, sound: 'wind' },
+    { id: 'loveisland', hasSound: true, sound: 'loveisland' },
+    { id: 'nokia', hasSound: true, sound: 'nokia' },
   ];
   
   return wallpapers.find(w => w.id === wallpaperId) || { id: 'sleepy', hasSound: false };
@@ -569,9 +629,12 @@ export default function AlarmRingScreen() {
     };
   }, []);
 
-  // Update the useEffect that handles sound playback (around line 507)
+  // Update the useEffect that handles sound playback
   useEffect(() => {
-    console.log('Sound management useEffect running');
+    // Only run sound logic AFTER currentAlarm is loaded
+    if (!currentAlarm) return;
+    
+    console.log('🎵 Sound management useEffect running with alarm loaded');
     
     const playSound = async () => {
       try {
@@ -605,16 +668,14 @@ export default function AlarmRingScreen() {
       }
     };
 
-    // Play sound for ALL alarms (not just ones with currentAlarm set)
-    if (params.alarmId) {
-      playSound();
-    }
+    // Play sound when currentAlarm is loaded
+    playSound();
     
     return () => {
       console.log('Sound management useEffect cleanup');
       // Don't stop sound in cleanup - let stopSound() handle it properly
     };
-  }, [soundName, volume, params.alarmId]);
+  }, [currentAlarm, soundName, volume]); // Added currentAlarm as dependency
 
   // Update the stopSound function to call this:
   const stopSound = async () => {

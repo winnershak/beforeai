@@ -10,10 +10,7 @@ export default function AddJournalEntry() {
   const wakeUpTime = params.time as string;
   
   const [message, setMessage] = useState('');
-  const [mood, setMood] = useState('😊');
   const [saving, setSaving] = useState(false);
-
-  const moods = ['😊', '🌟', '💪', '🔥', '✨', '🎉', '😴', '😅'];
 
   const saveJournalEntry = async () => {
     try {
@@ -24,7 +21,6 @@ export default function AddJournalEntry() {
         id: Date.now().toString(),
         wakeUpTime,
         message: message.trim(),
-        mood,
         date: new Date().toISOString().split('T')[0], // YYYY-MM-DD
         createdAt: new Date().toISOString(),
       };
@@ -64,34 +60,23 @@ export default function AddJournalEntry() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView style={styles.content}>
-        <View style={styles.wakeUpInfo}>
-          <Text style={styles.wakeUpTime}>⏰ {wakeUpTime}</Text>
-          <Text style={styles.wakeUpDate}>{new Date().toLocaleDateString('en-US', { 
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* Date Header */}
+        <Text style={styles.dateHeader}>
+          {new Date().toLocaleDateString('en-US', { 
             weekday: 'long',
-            year: 'numeric', 
             month: 'long', 
-            day: 'numeric' 
-          })}</Text>
-        </View>
+            day: 'numeric',
+            year: 'numeric'
+          })}
+        </Text>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How are you feeling?</Text>
-          <View style={styles.moodSelector}>
-            {moods.map((emoji) => (
-              <TouchableOpacity
-                key={emoji}
-                style={[styles.moodButton, mood === emoji && styles.moodButtonActive]}
-                onPress={() => setMood(emoji)}
-              >
-                <Text style={styles.moodEmoji}>{emoji}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
+        {/* Wake-up Time Display */}
+        <Text style={styles.timeDisplay}>{wakeUpTime}</Text>
 
+        {/* Message Input */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How was your morning? (Optional)</Text>
+          <Text style={styles.sectionTitle}>How was your morning?</Text>
           <TextInput
             style={styles.messageInput}
             value={message}
@@ -105,17 +90,22 @@ export default function AddJournalEntry() {
           <Text style={styles.characterCount}>{message.length}/300</Text>
         </View>
 
+        {/* Preview matching index design */}
         <View style={styles.section}>
           <Text style={styles.previewTitle}>Preview:</Text>
           <View style={styles.previewCard}>
-            <View style={styles.previewHeader}>
-              <Text style={styles.previewMood}>{mood}</Text>
-              <Text style={styles.previewTime}>{wakeUpTime}</Text>
-            </View>
+            <Text style={styles.premiumDate}>
+              {new Date().toLocaleDateString('en-US', { 
+                weekday: 'long',
+                month: 'long', 
+                day: 'numeric',
+                year: 'numeric'
+              })}
+            </Text>
+            <Text style={styles.premiumTime}>{wakeUpTime}</Text>
             {message.trim() && (
-              <Text style={styles.previewMessage}>{message}</Text>
+              <Text style={styles.premiumMessage}>{message}</Text>
             )}
-            <Text style={styles.previewDate}>{new Date().toLocaleDateString()}</Text>
           </View>
         </View>
       </ScrollView>
@@ -126,7 +116,7 @@ export default function AddJournalEntry() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: '#000',
   },
   header: {
     flexDirection: 'row',
@@ -153,22 +143,20 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
   },
-  wakeUpInfo: {
-    alignItems: 'center',
-    marginBottom: 30,
-    padding: 20,
-    backgroundColor: '#2C2C2E',
-    borderRadius: 16,
-  },
-  wakeUpTime: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
+  dateHeader: {
+    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
     marginBottom: 8,
   },
-  wakeUpDate: {
-    color: '#999',
-    fontSize: 16,
+  timeDisplay: {
+    color: '#007AFF',
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -1,
+    marginBottom: 32,
   },
   section: {
     marginBottom: 30,
@@ -179,28 +167,11 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
   },
-  moodSelector: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 12,
-  },
-  moodButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#2C2C2E',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  moodButtonActive: {
-    backgroundColor: '#007AFF',
-  },
-  moodEmoji: {
-    fontSize: 24,
-  },
   messageInput: {
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#1C1C1E',
     borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
     padding: 16,
     color: '#fff',
     fontSize: 16,
@@ -214,37 +185,46 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   previewTitle: {
-    color: '#999',
-    fontSize: 16,
+    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
     marginBottom: 12,
   },
   previewCard: {
-    backgroundColor: '#2C2C2E',
-    borderRadius: 12,
-    padding: 16,
+    backgroundColor: '#1C1C1E',
+    marginHorizontal: 0,
+    marginBottom: 24,
+    padding: 24,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#2C2C2E',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
-  previewHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  // Match the exact styles from index
+  premiumDate: {
+    color: '#8E8E93',
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.4,
     marginBottom: 8,
   },
-  previewMood: {
-    fontSize: 24,
-  },
-  previewTime: {
+  premiumTime: {
     color: '#007AFF',
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 32,
+    fontWeight: '700',
+    letterSpacing: -1,
+    marginBottom: 16,
   },
-  previewMessage: {
+  premiumMessage: {
     color: '#fff',
     fontSize: 16,
-    lineHeight: 22,
-    marginBottom: 12,
-  },
-  previewDate: {
-    color: '#666',
-    fontSize: 14,
+    lineHeight: 24,
+    fontWeight: '400',
   },
 });

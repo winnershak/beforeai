@@ -1069,11 +1069,47 @@ export default function NewAlarmScreen() {
   useEffect(() => {
     // When wallpaper changes, check if it has a built-in sound
     const wallpaperData = [
-      { id: 'Just do it', hasSound: true, sound: 'wall1' }
+      // Motivation wallpapers
+      { id: 'another-life', hasSound: true, sound: 'another-life' },
+      { id: 'better', hasSound: true, sound: 'better' },
+      { id: 'comfort', hasSound: true, sound: 'comfort' },
+      { id: 'consistency', hasSound: true, sound: 'consistency' },
+      { id: 'do-it-now', hasSound: true, sound: 'do-it-now' },
+      { id: 'dream', hasSound: true, sound: 'dream' },
+      { id: 'good-morning', hasSound: true, sound: 'good-morning' },
+      { id: 'justdoit', hasSound: true, sound: 'justdoit' },
+      { id: 'kobe', hasSound: true, sound: 'kobe' },
+      { id: 'lazy-people', hasSound: true, sound: 'lazypeople' },
+      { id: 'lock-in', hasSound: true, sound: 'lock-in' },
+      { id: 'mission', hasSound: true, sound: 'mission' },
+      { id: 'onemore', hasSound: true, sound: 'onemore' },
+      { id: 'try-again', hasSound: true, sound: 'try-again' },
+      { id: 'wake-up', hasSound: true, sound: 'wake-up' },
+      { id: 'woman', hasSound: true, sound: 'woman' },
+      
+      // Funny wallpapers
+      { id: 'cat-morning', hasSound: true, sound: 'cat-morning' },
+      { id: 'cat', hasSound: true, sound: 'cat' },
+      { id: 'elmo', hasSound: true, sound: 'elmo' },
+      { id: 'lewis', hasSound: true, sound: 'lewis' },
+      { id: 'party', hasSound: true, sound: 'party' },
+      { id: 'scary', hasSound: true, sound: 'scary' },
+      { id: 'wakey', hasSound: true, sound: 'wakey' },
+      { id: 'wind', hasSound: true, sound: 'wind' },
+      { id: 'loveisland', hasSound: true, sound: 'loveisland' },
+      { id: 'nokia', hasSound: true, sound: 'nokia' },
+      
+      // Old wallpapers without sound
+      { id: 'sleepy', hasSound: false },
+      { id: 'sleepy2', hasSound: false },
+      { id: 'cute', hasSound: false },
+      { id: 'rabbit', hasSound: false },
+      { id: 'ship', hasSound: false },
+      { id: 'bliss', hasSound: false },
     ].find(w => w.id === wallpaper);
     
     if (wallpaperData?.hasSound) {
-      setSound(wallpaperData.sound); // Automatically set sound to wall1
+      setSound(wallpaperData.sound || 'beacon'); // Fallback to 'beacon' if undefined
       console.log('Auto-selected sound for wallpaper:', wallpaperData.sound);
     }
   }, [wallpaper]);
@@ -1144,7 +1180,9 @@ export default function NewAlarmScreen() {
                 {(() => {
                   // Check if current wallpaper has sound
                   const wallpaperData = [
-                    { id: 'Just do it', hasSound: true, sound: 'wall1' }
+                    { id: 'another-life', hasSound: true, sound: 'another-life' },
+                    { id: 'better', hasSound: true, sound: 'better' },
+                    // ... (same list as above)
                   ].find(w => w.id === wallpaper);
                   
                   if (wallpaperData?.hasSound) {
@@ -1197,20 +1235,6 @@ export default function NewAlarmScreen() {
           >
             <Text style={styles.optionLabel}>Label</Text>
             <Text style={styles.optionValue}>{label || 'Add Label'}</Text>
-          </Pressable>
-        </View>
-
-        <View style={styles.section}>
-          <Pressable
-            style={styles.optionContainer}
-            onPress={() => router.push('/snooze')}
-          >
-            <Text style={styles.optionLabel}>Snooze</Text>
-            <Text style={[styles.optionValue, { color: '#666' }]}>
-              {snoozeEnabled ? 
-                maxSnoozes === 999 ? `${snoozeInterval} min` : `${snoozeInterval} min, ${maxSnoozes} time${maxSnoozes !== 1 ? 's' : ''}` 
-                : 'Off'}
-            </Text>
           </Pressable>
         </View>
       </ScrollView>

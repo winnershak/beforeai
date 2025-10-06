@@ -197,7 +197,7 @@ export default function QuizIntro() {
                 style={styles.button} 
                 onPress={() => router.push('/quiz/question1')}
               >
-                <Text style={styles.buttonText}>Start Quiz</Text>
+                <Text style={styles.buttonText}>Start</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -208,7 +208,7 @@ export default function QuizIntro() {
                   router.replace('/(tabs)');
                 }}
               >
-                <Text style={styles.buttonText}>I Have Bliss Alarm Card</Text>
+                <Text style={styles.buttonText}>Already Registered</Text>
               </TouchableOpacity>
             </View>
           </SafeAreaView>

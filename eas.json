@@ -18,7 +18,7 @@
         "EXPO_NO_ANDROID_PREBUILD": "1"
       },
       "prebuildCommand": "node ./fix-yoga.js",
-      "node": "18.18.0"
+      "node": "20.18.0"
     },
     "preview": {
       "distribution": "internal",
@@ -28,7 +28,7 @@
       "env": {
         "EXPO_NO_ANDROID_PREBUILD": "1"
       },
-      "node": "18.18.0"
+      "node": "20.18.0"
     },
     "production": {
       "ios": {
@@ -41,7 +41,7 @@
       "env": {
         "EXPO_NO_ANDROID_PREBUILD": "1"
       },
-      "node": "18.18.0"
+      "node": "20.18.0"
     },
     "production-new": {
       "ios": {
@@ -53,7 +53,7 @@
       "env": {
         "APP_BUILD_NUMBER": "3"
       },
-      "node": "18.18.0"
+      "node": "20.18.0"
     }
   },
   "submit": {

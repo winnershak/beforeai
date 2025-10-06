@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Alert, Linking, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, Dimensions, Alert, Linking, Platform, AppState } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ConfettiCannon from 'react-native-confetti-cannon';
@@ -19,7 +19,9 @@ export default function AlarmSuccess() {
   const storyViewRef = useRef<View>(null);
   const [showStoryView, setShowStoryView] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [streakData, setStreakData] = useState({ currentStreak: 0, longestStreak: 0 });
+  const [streakData, setStreakData] = useState({ currentStreak: 0, longestStreak: 0, target: 8 });
+  const [earlyBirdTarget, setEarlyBirdTarget] = useState(8); // Default to 8 AM
+  const [hasShared, setHasShared] = useState(false);
   
   // Use passed time or current time as fallback
   const currentTime = passedTime || new Date().toLocaleTimeString('en-US', {
@@ -28,6 +30,29 @@ export default function AlarmSuccess() {
     hour12: true
   });
   
+  // Prevent screen from being killed when app goes to background
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      if (nextAppState === 'background') {
+        console.log('📱 App going to background - keeping alarm-success alive');
+        // Save a flag that we're on alarm-success
+        AsyncStorage.setItem('onAlarmSuccess', 'true');
+      } else if (nextAppState === 'active') {
+        console.log('📱 App coming back to foreground');
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, []);
+
+  // Clear the flag when user manually leaves
+  useEffect(() => {
+    return () => {
+      AsyncStorage.removeItem('onAlarmSuccess');
+    };
+  }, []);
+
   useEffect(() => {
     const initializeSuccess = async () => {
       // Restore volume when success screen loads
@@ -40,15 +65,21 @@ export default function AlarmSuccess() {
         }
       }
       
-      // Update streak if waking up before 8 AM
-      const hours = new Date().getHours();
-      if (hours < 8) {
-        const today = new Date().toISOString().split('T')[0];
+      // Load early bird target and streak data
+      try {
+        // Get user's early bird target (default 8 AM)
+        const targetStr = await AsyncStorage.getItem('earlyBirdTarget');
+        const earlyBirdTarget = targetStr ? parseInt(targetStr) : 8;
         
-        try {
-          // Get existing streak data
-          const streakJson = await AsyncStorage.getItem('earlyWakeUpStreak');
-          let streak = streakJson ? JSON.parse(streakJson) : { currentStreak: 0, longestStreak: 0, lastWakeUpDate: '' };
+        const streakJson = await AsyncStorage.getItem('earlyWakeUpStreak');
+        let streak = streakJson ? JSON.parse(streakJson) : { currentStreak: 0, longestStreak: 0, lastWakeUpDate: '' };
+        
+        // Check if wake-up is before target time
+        const hours = new Date().getHours();
+        const isEarlyBird = hours < earlyBirdTarget;
+        
+        if (isEarlyBird) {
+          const today = new Date().toISOString().split('T')[0];
           
           // Only update if not already recorded today
           if (streak.lastWakeUpDate !== today) {
@@ -70,47 +101,76 @@ export default function AlarmSuccess() {
             
             // Save updated streak
             await AsyncStorage.setItem('earlyWakeUpStreak', JSON.stringify(streak));
-            console.log(`🔥 Early wake-up streak: ${streak.currentStreak} days`);
+            console.log(`🔥 Early bird streak: ${streak.currentStreak} days (target: ${earlyBirdTarget}:00)`);
           }
-          
-          setStreakData(streak);
-        } catch (error) {
-          console.error('Error updating streak:', error);
+        } else {
+          console.log(`⏰ Wake-up at ${hours}:xx - no streak update (target: ${earlyBirdTarget}:00)`);
         }
-      } else {
-        // Load existing streak data (no update)
-        try {
-          const streakJson = await AsyncStorage.getItem('earlyWakeUpStreak');
-          if (streakJson) {
-            setStreakData(JSON.parse(streakJson));
-          }
-        } catch (error) {
-          console.error('Error loading streak:', error);
-        }
+        
+        // Always set streak data for display, include target
+        setStreakData({ ...streak, target: earlyBirdTarget });
+        console.log(`📊 Loaded streak: ${streak.currentStreak} current, target: ${earlyBirdTarget}:00`);
+      } catch (error) {
+        console.error('Error with streak logic:', error);
       }
+      
+      // Fade in animation
+      Animated.timing(successOpacity, {
+        toValue: 1,
+        duration: 500,
+        useNativeDriver: true
+      }).start();
     };
     
     initializeSuccess();
-    
-    // Fade in animation
-    Animated.timing(successOpacity, {
-      toValue: 1,
-      duration: 500,
-      useNativeDriver: true
-    }).start();
   }, []);
+
+  // Save alarm-success state when app goes to background
+  useEffect(() => {
+    const handleAppStateChange = async (nextAppState: string) => {
+      if (nextAppState === 'background') {
+        console.log('📱 Saving alarm-success state');
+        await AsyncStorage.setItem('alarmSuccessData', JSON.stringify({
+          time: currentTime,
+          streakData: streakData,
+          timestamp: Date.now()
+        }));
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, [currentTime, streakData]);
+
+  // Prevent iOS from killing this screen when going to background
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState: string) => {
+      console.log('📱 App state changed to:', nextAppState);
+      // Just log it - don't do anything else
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription?.remove();
+  }, []);
+
+  const updateEarlyBirdTarget = async (hour: number) => {
+    try {
+      await AsyncStorage.setItem('earlyBirdTarget', hour.toString());
+      setEarlyBirdTarget(hour);
+      console.log(`Early bird target set to: ${hour}:00`);
+    } catch (error) {
+      console.error('Error saving early bird target:', error);
+    }
+  };
 
   const shareToInstagram = async () => {
     try {
-      console.log('🎯 Share to Instagram clicked!');
-      
-      // Show the story view
+      console.log('🎯 shareToInstagram FUNCTION CALLED');
       console.log('📱 Showing story view...');
       setShowStoryView(true);
       
-      // Wait for it to render properly
-      console.log('⏱️ Waiting for story view to render...');
-      await new Promise(resolve => setTimeout(resolve, 2000)); // 2 seconds so we can see it
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      console.log('⏱️ After 2 second wait');
       
       if (!storyViewRef.current) {
         console.log('❌ Story view ref is null');
@@ -118,23 +178,16 @@ export default function AlarmSuccess() {
         return;
       }
 
-      console.log('✅ Story view ref exists, ready to capture');
-
-      // Capture the image
-      console.log('📸 Capturing image...');
-      // Fix the capture settings to match screen size:
+      console.log('📸 About to capture image...');
       const uri = await captureRef(storyViewRef.current, {
         format: 'png',
         quality: 1.0,
         result: 'tmpfile',
-        // Remove fixed height/width - let it capture the actual screen size
       });
 
-      console.log('🖼️ Image captured successfully:', uri);
-
-      // Share to Instagram using stickerImage (the correct way)
+      console.log('🖼️ Image captured, about to share...');
       const shareOptions = {
-        stickerImage: uri,  // Use stickerImage instead of url
+        stickerImage: uri,
         social: Share.Social.INSTAGRAM_STORIES as any,
         appId: '1104244401532187',
         backgroundBottomColor: '#1a1a2e',
@@ -142,17 +195,39 @@ export default function AlarmSuccess() {
       };
       
       await Share.shareSingle(shareOptions);
-      console.log('✅ Successfully shared to Instagram!');
+      console.log('✅ SHARE COMPLETED - setting hasShared to true');
       
-      // Only hide after sharing
+      setHasShared(true);
       setShowStoryView(false);
-      router.replace('/(tabs)');
+      console.log('🎉 shareToInstagram function completed successfully');
       
     } catch (error: any) {
-      console.error('💥 Error sharing to Instagram:', error);
+      console.error('💥 Error in shareToInstagram:', error);
       setShowStoryView(false);
       Alert.alert('Sharing Error', 'Unable to share your achievement. Please try again.');
     }
+  };
+
+  const handleResetStreak = () => {
+    Alert.alert(
+      'Reset Streak?',
+      'This will permanently reset your early bird streak to 0. This cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { 
+          text: 'Reset', 
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await AsyncStorage.removeItem('earlyWakeUpStreak');
+              Alert.alert('Success', 'Your streak has been reset.');
+            } catch (error) {
+              Alert.alert('Error', 'Failed to reset streak.');
+            }
+          }
+        }
+      ]
+    );
   };
 
   return (
@@ -161,7 +236,7 @@ export default function AlarmSuccess() {
         options={{
           headerShown: false,
           gestureEnabled: false,
-          animation: 'slide_from_bottom'
+          animation: 'slide_from_bottom',
         }} 
       />
       
@@ -179,37 +254,53 @@ export default function AlarmSuccess() {
           <Text style={styles.title}>Good Morning!</Text>
           <Text style={styles.time}>Woke up at {currentTime}</Text>
           
-          {/* Show streak if before 8 AM and streak > 0 */}
-          {new Date().getHours() < 8 && streakData.currentStreak > 0 && (
+          {/* Early Bird Streak Display */}
+          {new Date().getHours() < (streakData.target || 8) && streakData.currentStreak > 0 && (
             <View style={styles.streakContainer}>
               <Text style={styles.streakEmoji}>🔥</Text>
               <Text style={styles.streakText}>
                 {streakData.currentStreak} day early bird streak!
               </Text>
+              <Text style={styles.streakTarget}>
+                Target: {streakData.target || 8}:00 AM
+              </Text>
             </View>
           )}
           
-          <Text style={styles.subtitle}>You're awake! ��</Text>
+          <Text style={styles.subtitle}>You're awake! </Text>
           
-          <TouchableOpacity style={styles.shareButton} onPress={() => setShowShareModal(true)}>
+          <TouchableOpacity 
+            style={styles.shareButton} 
+            onPress={() => {
+              console.log('🎯 SHARE BUTTON PRESSED');
+              setShowShareModal(true);
+            }}
+          >
             <Ionicons name="share" size={24} color="#fff" />
-            <Text style={styles.shareText}>Share Achievement</Text>
+            <Text style={styles.shareText}>
+              {hasShared ? 'Share Again' : 'Share Achievement'}
+            </Text>
           </TouchableOpacity>
           
           <TouchableOpacity style={styles.skipButton} onPress={() => router.replace('/(tabs)')}>
-            <Text style={styles.skipText}>Skip</Text>
+            <Text style={styles.skipText}>
+              {hasShared ? 'Done' : 'Skip'}
+            </Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
 
       <ShareModal
         visible={showShareModal}
-        onClose={() => setShowShareModal(false)}
+        onClose={() => {
+          console.log('🚫 ShareModal CLOSED');
+          setShowShareModal(false);
+        }}
         wakeUpTime={currentTime}
         onShareToJournal={() => {
+          console.log('📝 JOURNAL SHARE CLICKED');
           setShowShareModal(false);
-          // Automatically go to journal instead of showing button
-          router.push(`/journal/add?time=${currentTime}`);
+          // Don't navigate to journal - keep alarm-success alive
         }}
       />
 
@@ -221,6 +312,11 @@ export default function AlarmSuccess() {
         >
           <View style={styles.centerContent}>
             <Text style={styles.timeText}>⏰ {currentTime}</Text>
+            {streakData.currentStreak > 0 && (
+              <Text style={styles.streakStoryText}>
+                🔥 {streakData.currentStreak} day streak!
+              </Text>
+            )}
             <Text style={styles.brandingText}>by Bliss Alarm</Text>
           </View>
         </View>
@@ -343,5 +439,49 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#FFD700',
     textAlign: 'center',
+  },
+  streakTarget: {
+    fontSize: 12,
+    color: '#999',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  settingSubtext: {
+    color: '#999',
+    fontSize: 13,
+    marginTop: 2,
+  },
+  targetSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  targetButton: {
+    backgroundColor: '#007AFF',
+    borderRadius: 20,
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  targetTime: {
+    color: '#FFD700',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginHorizontal: 16,
+    minWidth: 60,
+    textAlign: 'center',
+  },
+  streakStoryText: {
+    color: '#FFD700',
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  dangerItem: {
+    backgroundColor: 'rgba(255, 59, 48, 0.1)',
+  },
+  dangerText: {
+    color: '#FF3B30',
   },
 }); 
