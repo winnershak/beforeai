@@ -539,12 +539,13 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
     // When disabling an alarm, make sure to cancel its notifications
     await cancelAlarmNotification(alarm.id);
     
-    // Schedule the actual notification with the unique ID
+    // Lines 543-561 - Add sound to the MAIN notification
     const scheduledNotificationId = await Notifications.scheduleNotificationAsync({
       content: {
         title: alarm.label || 'Wake Up!',
         body: 'Time to wake up!',
-        badge: 0,  // Set to 0 to avoid badge
+        badge: 0,
+        sound: `${alarm.sound.toLowerCase()}.caf`, // ✅ ADD THIS - Main notification needs sound too!
         categoryIdentifier: 'alarmV2',
         data: {
           alarmId: alarm.id,
@@ -562,27 +563,29 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
     
     console.log(`Scheduled notification with ID: ${scheduledNotificationId} for ${scheduledDate.toLocaleString()}`);
     
-    // Schedule 30 backup notifications (one every 6 seconds for 180 seconds = 3 minutes)
-    // This ensures the alarm will keep trying if the user doesn't respond
+    // Schedule 30 backup notifications with unique identifiers to prevent iOS grouping
     for (let i = 1; i <= 30; i++) {
       const backupTrigger = {
         date: new Date(scheduledDate.getTime() + (i * 6000)), // 6 seconds apart
         type: 'date'
       } as Notifications.DateTriggerInput;
       
+      // Lines 573-592 - Make each notification truly unique
       const backupNotificationId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: 'Wake Up!',
-          body: alarm.label ? `${alarm.label} is still ringing (${i})` : `Your alarm is still ringing (${i})`,
+          title: alarm.label || 'Wake Up!',
+          body: `Time to wake up!${'\u200B'.repeat(i)}`, // ✅ Invisible zero-width spaces
           sound: `${alarm.sound.toLowerCase()}.caf`,
-          categoryIdentifier: 'alarmV2',
+          badge: i, // ✅ Use badge number as differentiator (iOS shows this)
+          categoryIdentifier: `alarmV2-backup-${i}`,
           data: {
             alarmId: alarm.id,
             sound: alarm.sound,
             soundVolume: alarm.soundVolume,
             mission: alarm.mission,
             hasMission: Boolean(alarm.mission),
-            fromNotification: 'true'
+            fromNotification: 'true',
+            backupNumber: i
           },
         },
         trigger: backupTrigger,

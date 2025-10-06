@@ -108,7 +108,7 @@ class AlarmSound: NSObject {
     DispatchQueue.main.async {
       do {
         // Set system volume to maximum for alarms
-        self.volumeControl.setSystemVolume(NSNumber(value: 1.0), 
+        self.volumeControl.setSystemVolume(1.0,  // ✅ Changed from NSNumber(value: 1.0) to 1.0
                                          resolver: { _ in print("🔊 System volume set to maximum") },
                                          rejecter: { _, _, _ in print("❌ Failed to set system volume") })
         
@@ -156,7 +156,7 @@ class AlarmSound: NSObject {
         self.maxVolume = 1.0  // Always ramp up to maximum
         self.startVolumeRampUp()
 
-        capturedResolver(true)
+        capturedResolver(NSNumber(value: true))
         print("✅ Alarm sound playing: \(soundName).caf at volume \(player.volume)")
       } catch {
         capturedRejecter("error", "Playback failed: \(error.localizedDescription)", error)
@@ -273,7 +273,7 @@ class AlarmSound: NSObject {
     // PRODUCTION SAFETY: Don't download sounds at startup in production
     #if RELEASE
       print("Production build: Bypassing sound downloads for stability")
-      resolver(true)
+      resolver(NSNumber(value: true))
       return
     #endif
     
@@ -299,7 +299,7 @@ class AlarmSound: NSObject {
   
   @objc
   func isPlayingAlarmSound(_ resolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) {
-    resolver(audioPlayer != nil && audioPlayer!.isPlaying)
+    resolver(NSNumber(value: audioPlayer != nil && audioPlayer!.isPlaying))
   }
 
   @objc

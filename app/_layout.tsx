@@ -29,7 +29,6 @@ import { registerBackgroundTask } from './background-task';
 import * as TaskManager from 'expo-task-manager';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
 
-const { ScreenTimeBridge } = NativeModules;
 
 const handleError = (error: Error) => {
   console.log('Caught error:', error);
@@ -44,18 +43,18 @@ export default function AppLayout() {
   
   const [loading, setLoading] = useState(true);
 
+  // Lines 46-77 - Wait for navigation to be ready
   useEffect(() => {
     const initializeApp = async () => {
       if (loaded) {
         console.log('✅ Fonts loaded, checking quiz...');
         
         try {
-          // Just wait a bit for Firebase to auto-initialize from plist
-          await new Promise(resolve => setTimeout(resolve, 500));
-          console.log('🔥 Firebase should be ready now');
-          
           const quizCompleted = await AsyncStorage.getItem('quizCompleted');
           console.log('📱 Quiz completed:', quizCompleted);
+          
+          // ✅ ADD SMALL DELAY to let navigation mount
+          await new Promise(resolve => setTimeout(resolve, 100));
           
           if (quizCompleted === 'true') {
             console.log('➡️ Navigating to tabs');

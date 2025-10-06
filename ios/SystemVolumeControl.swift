@@ -18,7 +18,9 @@ class SystemVolumeControl: NSObject {
   }
   
   @objc
-  func setSystemVolume(_ volume: NSNumber, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
+  func setSystemVolume(_ volume: Float,  // Change NSNumber to Float
+                     resolver: @escaping RCTPromiseResolveBlock, 
+                     rejecter: @escaping RCTPromiseRejectBlock) {
     DispatchQueue.main.async {
       // Store the original volume before changing it
       if let volumeView = self.volumeView,
@@ -49,13 +51,13 @@ class SystemVolumeControl: NSObject {
       // Set volume to max
       if let volumeView = self.volumeView,
          let volumeSlider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
-        volumeSlider.value = volume.floatValue
-        print("🔊 Set volume to: \(volume.floatValue) (original saved as: \(self.originalVolume))")
-        resolver(true)
+        volumeSlider.value = volume
+        print("🔊 Set volume to: \(volume) (original saved as: \(self.originalVolume))")
+        resolver(NSNumber(value: true))
       } else {
         print("⚠️ Could not find volume slider for setting - this is normal on app startup")
         // Don't throw an error, just resolve with false to indicate volume wasn't set
-        resolver(false)
+        resolver(NSNumber(value: false))
       }
     }
   }
@@ -68,11 +70,11 @@ class SystemVolumeControl: NSObject {
          let volumeSlider = volumeView.subviews.first(where: { $0 is UISlider }) as? UISlider {
         volumeSlider.value = self.originalVolume
         print("✅ Volume restored to: \(self.originalVolume)")
-        resolver(true)
+        resolver(NSNumber(value: true))
       } else {
         print("⚠️ Could not find volume slider for restoration - this is normal on app startup")
         // Don't throw an error, just resolve with false to indicate volume wasn't restored
-        resolver(false)
+        resolver(NSNumber(value: false))
       }
     }
   }
