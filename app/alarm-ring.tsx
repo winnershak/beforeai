@@ -191,6 +191,18 @@ const restoreSystemVolume = async () => {
 
 // Add this function at the top of alarm-ring.tsx, after the imports
 const getWallpaperSource = (wallpaperId: string) => {
+  // Handle custom wallpapers - check if it's a URI
+  if (wallpaperId && wallpaperId.startsWith('file://')) {
+    return { uri: wallpaperId };
+  }
+  
+  // Handle custom-N format
+  if (wallpaperId && wallpaperId.startsWith('custom-')) {
+    // For custom wallpapers, we need to load from AsyncStorage
+    // For now, return black background and we'll handle async loading separately
+    return require('../assets/images/wallpaper/better.png');
+  }
+  
   const wallpaperMap: { [key: string]: any } = {
 
     // New motivation wallpapers (using PNG instead of GIF)
@@ -635,30 +647,15 @@ export default function AlarmRingScreen() {
     
     const playSound = async () => {
       try {
-        console.log('🎵 Current alarm wallpaper:', currentAlarm?.wallpaper);
+        // ❌ REMOVE lines 650-665 (all the wallpaper sound checking)
+        // ✅ Just always use the user's selected sound!
         
-        // Check if wallpaper has its own sound
-        const wallpaperData = getWallpaperData(currentAlarm?.wallpaper || 'sleepy');
-        console.log('🎨 Wallpaper data:', wallpaperData);
-        
-        if (wallpaperData.hasSound && wallpaperData.sound) {
-          // Play wallpaper's built-in sound
-          console.log('🔊 Using wallpaper sound:', wallpaperData.sound);
-          if (Platform.OS === 'ios') {
-            AlarmSoundModule.playAlarmSound(wallpaperData.sound, volume)
-              .catch((error: Error) => {
-                console.error('Error with wallpaper sound:', error);
-              });
-          }
-        } else {
-          // Play user's selected alarm sound (existing logic)
-          console.log('🔊 Using selected alarm sound:', soundName);
-          if (Platform.OS === 'ios') {
-            AlarmSoundModule.playAlarmSound(soundName, volume)
-              .catch((error: Error) => {
-                console.error('Error with AlarmSoundModule playback:', error);
-              });
-          }
+        console.log('🔊 Using selected alarm sound:', soundName);
+        if (Platform.OS === 'ios') {
+          AlarmSoundModule.playAlarmSound(soundName, volume)
+            .catch((error: Error) => {
+              console.error('Error with AlarmSoundModule playback:', error);
+            });
         }
       } catch (error) {
         console.error('Error in playSound:', error);
@@ -1009,6 +1006,68 @@ export default function AlarmRingScreen() {
     }
   };
 
+  // Add this useEffect after the existing ones (around line 355-387)
+  useEffect(() => {
+    // Listen for notifications while alarm screen is open
+    const notificationListener = Notifications.addNotificationReceivedListener(async (notification) => {
+      console.log('🔔 Received notification while alarm ringing:', notification);
+      
+      // Check if this is a backup alarm notification
+      const data = notification.request.content.data;
+      if (data?.alarmId === params.alarmId && data?.backupNumber) {
+        console.log(`🔊 Backup notification ${data.backupNumber} - Resetting volume to MAX!`);
+        
+        // Force volume back to max with each notification!
+        try {
+          await SystemVolumeModule.setSystemVolume(1.0);
+          console.log('✅ Volume forced back to MAX by backup notification');
+        } catch (error) {
+          console.log('⚠️ Failed to reset volume:', error);
+        }
+        
+        // Also replay the sound to ensure it's loud
+        try {
+          const soundToPlay = data.sound || soundName;
+          await AlarmSoundModule.stopAlarmSound();
+          await AlarmSoundModule.playAlarmSound(soundToPlay, 1.0);
+          console.log('✅ Sound replayed at MAX volume');
+        } catch (error) {
+          console.log('⚠️ Failed to replay sound:', error);
+        }
+      }
+    });
+    
+    return () => {
+      notificationListener.remove();
+    };
+  }, [params.alarmId, soundName]);
+
+  // Add this useEffect after line 387 (after the audio setup useEffect)
+  useEffect(() => {
+    // Set up interval to force volume back to max every 5 seconds
+    // This fights against user turning down volume
+    const volumeEnforcementInterval = setInterval(async () => {
+      console.log('🔊 Enforcing MAX volume...');
+      
+      try {
+        // ✅ Just set system volume - DON'T restart the sound!
+        await SystemVolumeModule.setSystemVolume(1.0);
+        console.log('✅ Volume forced back to MAX (without restarting sound)');
+      } catch (error) {
+        console.log('⚠️ Failed to enforce volume:', error);
+      }
+      
+      // ❌ REMOVE: The sound replay logic (lines ~1061-1068)
+      // Don't stop and restart - just let the volume change handle it
+      
+    }, 6000); // Every 6 seconds (same as notification interval)
+    
+    return () => {
+      clearInterval(volumeEnforcementInterval);
+      console.log('🔊 Volume enforcement stopped');
+    };
+  }, [currentAlarm, soundName]);
+
   return (
     <>
       {console.log('🚨 ALARM-RING RENDERING - currentAlarm:', currentAlarm?.id || 'null')}
@@ -1020,16 +1079,24 @@ export default function AlarmRingScreen() {
         }} 
       />
       
-      {/* Use simple SafeAreaView like the old working code */}
-      <SafeAreaView style={styles.container}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Wake Up!</Text>
-          <Text style={styles.subtitle}>
-            {String(currentAlarm?.label || "It's time to rise and shine")}
-          </Text>
+      {/* Add ImageBackground back to show wallpapers */}
+      <ImageBackground 
+        source={getWallpaperSource(currentAlarm?.wallpaper || 'better')} 
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <SafeAreaView style={styles.container}>
+          <View style={styles.content}>
+            {/* ❌ REMOVE: All text */}
+            {currentAlarm?.label && (
+              <Text style={styles.subtitle}>
+                {String(currentAlarm.label)}
+              </Text>
+            )}
+          </View>
           
-          {/* Remove snooze buttons - keep only mission/stop */}
-          <View style={styles.buttonContainer}>
+          {/* ✅ MOVE: Buttons to bottom as sticky */}
+          <View style={styles.bottomButtonContainer}>
             {currentAlarm?.mission ? (
               <TouchableOpacity 
                 style={[styles.button, styles.missionButton]} 
@@ -1046,8 +1113,8 @@ export default function AlarmRingScreen() {
               </TouchableOpacity>
             )}
           </View>
-        </View>
-      </SafeAreaView>
+        </SafeAreaView>
+      </ImageBackground>
     </>
   );
 }
@@ -1058,7 +1125,7 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    backgroundColor: '#000000', // Pure black background
+    backgroundColor: 'transparent', // ✅ Changed from '#000000' to transparent so wallpaper shows through
   },
   content: {
     flex: 1,
@@ -1079,6 +1146,13 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     width: '100%',
+    gap: 15,
+  },
+  bottomButtonContainer: {
+    position: 'absolute',
+    bottom: 20,
+    width: '100%',
+    paddingHorizontal: 20,
     gap: 15,
   },
   button: {

@@ -1066,54 +1066,6 @@ export default function NewAlarmScreen() {
     }, [])
   );
 
-  useEffect(() => {
-    // When wallpaper changes, check if it has a built-in sound
-    const wallpaperData = [
-      // Motivation wallpapers
-      { id: 'another-life', hasSound: true, sound: 'another-life' },
-      { id: 'better', hasSound: true, sound: 'better' },
-      { id: 'comfort', hasSound: true, sound: 'comfort' },
-      { id: 'consistency', hasSound: true, sound: 'consistency' },
-      { id: 'do-it-now', hasSound: true, sound: 'do-it-now' },
-      { id: 'dream', hasSound: true, sound: 'dream' },
-      { id: 'good-morning', hasSound: true, sound: 'good-morning' },
-      { id: 'justdoit', hasSound: true, sound: 'justdoit' },
-      { id: 'kobe', hasSound: true, sound: 'kobe' },
-      { id: 'lazy-people', hasSound: true, sound: 'lazypeople' },
-      { id: 'lock-in', hasSound: true, sound: 'lock-in' },
-      { id: 'mission', hasSound: true, sound: 'mission' },
-      { id: 'onemore', hasSound: true, sound: 'onemore' },
-      { id: 'try-again', hasSound: true, sound: 'try-again' },
-      { id: 'wake-up', hasSound: true, sound: 'wake-up' },
-      { id: 'woman', hasSound: true, sound: 'woman' },
-      
-      // Funny wallpapers
-      { id: 'cat-morning', hasSound: true, sound: 'cat-morning' },
-      { id: 'cat', hasSound: true, sound: 'cat' },
-      { id: 'elmo', hasSound: true, sound: 'elmo' },
-      { id: 'lewis', hasSound: true, sound: 'lewis' },
-      { id: 'party', hasSound: true, sound: 'party' },
-      { id: 'scary', hasSound: true, sound: 'scary' },
-      { id: 'wakey', hasSound: true, sound: 'wakey' },
-      { id: 'wind', hasSound: true, sound: 'wind' },
-      { id: 'loveisland', hasSound: true, sound: 'loveisland' },
-      { id: 'nokia', hasSound: true, sound: 'nokia' },
-      
-      // Old wallpapers without sound
-      { id: 'sleepy', hasSound: false },
-      { id: 'sleepy2', hasSound: false },
-      { id: 'cute', hasSound: false },
-      { id: 'rabbit', hasSound: false },
-      { id: 'ship', hasSound: false },
-      { id: 'bliss', hasSound: false },
-    ].find(w => w.id === wallpaper);
-    
-    if (wallpaperData?.hasSound) {
-      setSound(wallpaperData.sound || 'beacon'); // Fallback to 'beacon' if undefined
-      console.log('Auto-selected sound for wallpaper:', wallpaperData.sound);
-    }
-  }, [wallpaper]);
-
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -1177,19 +1129,7 @@ export default function NewAlarmScreen() {
             <View style={styles.sectionContent}>
               <Text style={styles.sectionTitle}>Sound</Text>
               <Text style={styles.sectionValue}>
-                {(() => {
-                  // Check if current wallpaper has sound
-                  const wallpaperData = [
-                    { id: 'another-life', hasSound: true, sound: 'another-life' },
-                    { id: 'better', hasSound: true, sound: 'better' },
-                    // ... (same list as above)
-                  ].find(w => w.id === wallpaper);
-                  
-                  if (wallpaperData?.hasSound) {
-                    return `${wallpaperData.sound} (Theme Sound)`;
-                  }
-                  return sound;
-                })()}
+                {sound}
               </Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
@@ -1223,6 +1163,20 @@ export default function NewAlarmScreen() {
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity>
+          
+          {/* Clear Wallpaper button */}
+          {wallpaper !== 'none' && (
+            <TouchableOpacity 
+              style={styles.clearMissionButton}
+              onPress={() => {
+                setWallpaper('none');
+                AsyncStorage.removeItem('selectedWallpaper');
+              }}
+            >
+              <Ionicons name="close-circle" size={20} color="#FF3B30" />
+              <Text style={styles.clearMissionText}>Clear Wallpaper</Text>
+            </TouchableOpacity>
+          )}
         </View>
 
         <View style={styles.section}>
@@ -1485,13 +1439,16 @@ const styles = StyleSheet.create({
   clearMissionButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 10,
-    padding: 8,
+    backgroundColor: '#2C2C2E',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 16,
+    alignSelf: 'center',
   },
   clearMissionText: {
     color: '#FF3B30',
-    fontSize: 15,
+    fontSize: 14,
+    fontWeight: '600',
     marginLeft: 8,
   },
   intervalContainer: {
@@ -1530,5 +1487,11 @@ const styles = StyleSheet.create({
   intervalText: {
     color: '#fff',
     fontSize: 17,
+  },
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
   },
 }); 

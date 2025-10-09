@@ -550,7 +550,7 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
         data: {
           alarmId: alarm.id,
           sound: alarm.sound,
-          soundVolume: alarm.soundVolume,
+          soundVolume: 1.0, // ✅ Always send max volume - Swift sets system volume to max every time!
           mission: alarm.mission,
           fromNotification: true,
         },
@@ -570,18 +570,17 @@ export const scheduleAlarmNotification = async (alarm: Alarm) => {
         type: 'date'
       } as Notifications.DateTriggerInput;
       
-      // Lines 573-592 - Make each notification truly unique
       const backupNotificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: alarm.label || 'Wake Up!',
-          body: `Time to wake up!${'\u200B'.repeat(i)}`, // ✅ Invisible zero-width spaces
+          body: `Time to wake up!${'\u200B'.repeat(i)}`,
           sound: `${alarm.sound.toLowerCase()}.caf`,
-          badge: i, // ✅ Use badge number as differentiator (iOS shows this)
+          badge: i,
           categoryIdentifier: `alarmV2-backup-${i}`,
           data: {
             alarmId: alarm.id,
             sound: alarm.sound,
-            soundVolume: alarm.soundVolume,
+            soundVolume: 1.0, // ✅ Always send max volume - Swift sets system volume to max every time!
             mission: alarm.mission,
             hasMission: Boolean(alarm.mission),
             fromNotification: 'true',

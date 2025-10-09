@@ -3,9 +3,9 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, Dimensions
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 
 const { width } = Dimensions.get('window');
 const ITEM_WIDTH = (width - 48) / 2; // 2 items per row with padding
@@ -18,8 +18,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/another-life.png'), 
     thumbnail: require('../assets/images/wallpaper/another-life.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/another-life.caf'),
     category: 'motivation'
   },
   { 
@@ -28,8 +26,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/better.png'), 
     thumbnail: require('../assets/images/wallpaper/better.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/better.caf'),
     category: 'motivation'
   },
   { 
@@ -38,8 +34,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/comfort.png'), 
     thumbnail: require('../assets/images/wallpaper/comfort.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/comfort.caf'),
     category: 'motivation'
   },
   { 
@@ -48,8 +42,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/consistency.png'), 
     thumbnail: require('../assets/images/wallpaper/consistency.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/consistency.caf'),
     category: 'motivation'
   },
   { 
@@ -58,8 +50,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/doitnow.png'), 
     thumbnail: require('../assets/images/wallpaper/doitnow.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/do-it-now.caf'),
     category: 'motivation'
   },
   { 
@@ -68,8 +58,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/dream.png'), 
     thumbnail: require('../assets/images/wallpaper/dream.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/dream.caf'),
     category: 'motivation'
   },
   { 
@@ -78,8 +66,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/goodmorning.png'), 
     thumbnail: require('../assets/images/wallpaper/goodmorning.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/good-morning.caf'),
     category: 'motivation'
   },
   { 
@@ -88,8 +74,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/justdoit.png'), 
     thumbnail: require('../assets/images/wallpaper/justdoit.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/justdoit.caf'),
     category: 'motivation'
   },
   { 
@@ -98,8 +82,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/kobe.png'), 
     thumbnail: require('../assets/images/wallpaper/kobe.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/kobe.caf'),
     category: 'motivation'
   },
   { 
@@ -108,8 +90,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/lazypeople.png'), 
     thumbnail: require('../assets/images/wallpaper/lazypeople.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/lazypeople.caf'),
     category: 'motivation'
   },
   { 
@@ -118,8 +98,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/lockin.png'), 
     thumbnail: require('../assets/images/wallpaper/lockin.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/lock-in.caf'),
     category: 'motivation'
   },
   { 
@@ -128,8 +106,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/mission.png'), 
     thumbnail: require('../assets/images/wallpaper/mission.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/mission.caf'),
     category: 'motivation'
   },
   { 
@@ -138,8 +114,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/onemore.png'), 
     thumbnail: require('../assets/images/wallpaper/onemore.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/onemore.caf'),
     category: 'motivation'
   },
   { 
@@ -148,8 +122,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/tryagain.png'), 
     thumbnail: require('../assets/images/wallpaper/tryagain.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/try-again.caf'),
     category: 'motivation'
   },
   { 
@@ -158,8 +130,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/wakeup.png'), 
     thumbnail: require('../assets/images/wallpaper/wakeup.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/wake-up.caf'),
     category: 'motivation'
   },
   { 
@@ -168,8 +138,6 @@ const wallpapers = [
     file: require('../assets/images/wallpaper/woman.png'), 
     thumbnail: require('../assets/images/wallpaper/woman.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/woman.caf'),
     category: 'motivation'
   },
 
@@ -180,8 +148,6 @@ const wallpapers = [
     file: require('../assets/images/funny/cat-morning.png'), 
     thumbnail: require('../assets/images/funny/cat-morning.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/cat-morning.caf'),
     category: 'funny'
   },
   { 
@@ -190,8 +156,6 @@ const wallpapers = [
     file: require('../assets/images/funny/cat.png'), 
     thumbnail: require('../assets/images/funny/cat.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/cat.caf'),
     category: 'funny'
   },
   { 
@@ -200,8 +164,6 @@ const wallpapers = [
     file: require('../assets/images/funny/elmo.png'), 
     thumbnail: require('../assets/images/funny/elmo.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/elmo.caf'),
     category: 'funny'
   },
   { 
@@ -210,8 +172,6 @@ const wallpapers = [
     file: require('../assets/images/funny/lewis.png'), 
     thumbnail: require('../assets/images/funny/lewis.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/lewis.caf'),
     category: 'funny'
   },
   { 
@@ -220,8 +180,6 @@ const wallpapers = [
     file: require('../assets/images/funny/party.png'), 
     thumbnail: require('../assets/images/funny/party.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/party.caf'),
     category: 'funny'
   },
   { 
@@ -230,8 +188,6 @@ const wallpapers = [
     file: require('../assets/images/funny/scary.png'), 
     thumbnail: require('../assets/images/funny/scary.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/scary.caf'),
     category: 'funny'
   },
   { 
@@ -240,8 +196,6 @@ const wallpapers = [
     file: require('../assets/images/funny/wakey.png'), 
     thumbnail: require('../assets/images/funny/wakey.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/wakey.caf'),
     category: 'funny'
   },
   { 
@@ -250,8 +204,6 @@ const wallpapers = [
     file: require('../assets/images/funny/wind.png'), 
     thumbnail: require('../assets/images/funny/wind.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/wind.caf'),
     category: 'funny'
   },
 
@@ -262,8 +214,6 @@ const wallpapers = [
     file: require('../assets/images/funny/loveisland.png'), 
     thumbnail: require('../assets/images/funny/loveisland.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/loveisland.caf'),
     category: 'funny'
   },
   { 
@@ -272,73 +222,39 @@ const wallpapers = [
     file: require('../assets/images/funny/nokia.png'), 
     thumbnail: require('../assets/images/funny/nokia.png'),
     type: 'image',
-    hasSound: true,
-    sound: require('../assets/sounds/wallpaper/funny/nokia.caf'),
     category: 'funny'
   },
 ];
 
 export default function WallpaperSelector() {
   const [selectedWallpaper, setSelectedWallpaper] = useState('sleepy');
-  const [previewSound, setPreviewSound] = useState<Audio.Sound | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [previewWallpaper, setPreviewWallpaper] = useState<any>(null);
-  const [selectedCategory, setSelectedCategory] = useState('motivation'); // Changed from 'all' to 'motivation'
+  const [selectedCategory, setSelectedCategory] = useState('motivation');
+  const [customImages, setCustomImages] = useState<string[]>([]);
+
+  // Load custom images on mount
+  useEffect(() => {
+    const loadCustomImages = async () => {
+      const saved = await AsyncStorage.getItem('customWallpapers');
+      if (saved) {
+        setCustomImages(JSON.parse(saved));
+      }
+    };
+    loadCustomImages();
+  }, []);
 
   // Filter wallpapers based on selected category
   const filteredWallpapers = wallpapers.filter(w => w.category === selectedCategory);
-
-  // Clean up sound when component unmounts
-  useEffect(() => {
-    return () => {
-      if (previewSound) {
-        previewSound.unloadAsync();
-      }
-    };
-  }, [previewSound]);
 
   const handleWallpaperPress = async (wallpaper: any) => {
     console.log('🎯 Wallpaper pressed:', wallpaper.name);
     setSelectedWallpaper(wallpaper.id);
     setPreviewWallpaper(wallpaper);
     setShowPreview(true); // Show fullscreen preview
-    
-    // Stop any currently playing sound
-    if (previewSound) {
-      await previewSound.stopAsync();
-      await previewSound.unloadAsync();
-      setPreviewSound(null);
-      setIsPlaying(false);
-    }
-    
-    // Play sound preview if wallpaper has sound
-    if (wallpaper.hasSound && wallpaper.sound) {
-      try {
-        console.log('🎵 Playing preview sound for:', wallpaper.name);
-        await Audio.setAudioModeAsync({
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: true,
-        });
-        
-        const { sound } = await Audio.Sound.createAsync(wallpaper.sound);
-        setPreviewSound(sound);
-        setIsPlaying(true);
-        
-        await sound.playAsync();
-        
-      } catch (error) {
-        console.error('Error playing preview:', error);
-      }
-    }
   };
 
   const handleSelect = () => {
-    // Stop any playing sound
-    if (previewSound) {
-      previewSound.stopAsync();
-    }
-    
     // Save selected wallpaper to AsyncStorage so new-alarm can pick it up
     AsyncStorage.setItem('selectedWallpaper', selectedWallpaper);
     
@@ -346,12 +262,28 @@ export default function WallpaperSelector() {
     router.back();
   };
 
-  const closePreview = () => {
-    // Stop sound
-    if (previewSound) {
-      previewSound.stopAsync();
-      setIsPlaying(false);
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      alert('Sorry, we need camera roll permissions to upload images!');
+      return;
     }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [9, 16],
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets[0]) {
+      const newCustomImages = [...customImages, result.assets[0].uri];
+      setCustomImages(newCustomImages);
+      await AsyncStorage.setItem('customWallpapers', JSON.stringify(newCustomImages));
+    }
+  };
+
+  const closePreview = () => {
     setShowPreview(false);
   };
 
@@ -381,31 +313,62 @@ export default function WallpaperSelector() {
         >
           <Text style={[styles.categoryButtonText, selectedCategory === 'funny' && styles.categoryButtonTextActive]}>Funny</Text>
         </TouchableOpacity>
+
+        {/* Custom tab */}
+        <TouchableOpacity 
+          style={[styles.categoryButton, selectedCategory === 'custom' && styles.categoryButtonActive]}
+          onPress={() => setSelectedCategory('custom')}
+        >
+          <Text style={[styles.categoryButtonText, selectedCategory === 'custom' && styles.categoryButtonTextActive]}>Custom</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content}>
         <View style={styles.wallpaperGrid}>
-          {filteredWallpapers.map((wallpaper) => (
-            <TouchableOpacity
-              key={wallpaper.id}
-              style={styles.wallpaperItem}
-              onPress={() => handleWallpaperPress(wallpaper)}
-            >
-              <Image 
-                source={wallpaper.thumbnail || wallpaper.file} 
-                style={styles.wallpaperImage}
-                resizeMode="cover"
-                fadeDuration={0}
-                progressiveRenderingEnabled={true}
-              />
-              <Text style={styles.wallpaperName}>{wallpaper.name}</Text>
-              {wallpaper.hasSound && (
-                <View style={styles.soundIndicator}>
-                  <Text style={styles.soundIcon}>🔊</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
+          {selectedCategory === 'custom' ? (
+            <>
+              {/* Upload button */}
+              <TouchableOpacity
+                style={[styles.wallpaperItem, styles.uploadButton]}
+                onPress={pickImage}
+              >
+                <Ionicons name="add-circle" size={48} color="#007AFF" />
+                <Text style={styles.uploadButtonText}>Upload Image</Text>
+              </TouchableOpacity>
+              
+              {/* Custom images */}
+              {customImages.map((uri, index) => (
+                <TouchableOpacity
+                  key={`custom-${index}`}
+                  style={styles.wallpaperItem}
+                  onPress={() => handleWallpaperPress({ id: `custom-${index}`, name: 'Custom', file: { uri }, thumbnail: { uri } })}
+                >
+                  <Image 
+                    source={{ uri }} 
+                    style={styles.wallpaperImage}
+                    resizeMode="cover"
+                  />
+                  <Text style={styles.wallpaperName}>Custom {index + 1}</Text>
+                </TouchableOpacity>
+              ))}
+            </>
+          ) : (
+            filteredWallpapers.map((wallpaper) => (
+              <TouchableOpacity
+                key={wallpaper.id}
+                style={styles.wallpaperItem}
+                onPress={() => handleWallpaperPress(wallpaper)}
+              >
+                <Image 
+                  source={wallpaper.thumbnail || wallpaper.file} 
+                  style={styles.wallpaperImage}
+                  resizeMode="cover"
+                  fadeDuration={0}
+                />
+                <Text style={styles.wallpaperName}>{wallpaper.name}</Text>
+              </TouchableOpacity>
+            ))
+          )}
         </View>
       </ScrollView>
       
@@ -613,5 +576,19 @@ const styles = StyleSheet.create({
   },
   categoryButtonTextActive: {
     color: '#FFFFFF',
+  },
+  uploadButton: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#2C2C2E',
+    borderWidth: 2,
+    borderColor: '#007AFF',
+    borderStyle: 'dashed',
+  },
+  uploadButtonText: {
+    color: '#007AFF',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 8,
   },
 });
