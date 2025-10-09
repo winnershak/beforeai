@@ -694,6 +694,10 @@ export default function AlarmRingScreen() {
       stopVibration();
       console.log('✅ Vibration stopped');
       
+      // ✅ Cancel notifications ONLY when user dismisses alarm
+      await Notifications.cancelAllScheduledNotificationsAsync();
+      console.log('✅ Cancelled remaining notifications');
+      
       // Record wake-up time and navigate
       if (currentAlarm) {
         await recordWakeupTime(currentAlarm.id, currentAlarm);

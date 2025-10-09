@@ -2,7 +2,7 @@
   "expo": {
     "name": "Bliss Alarm",
     "slug": "bliss-alarm-clock",
-    "version": "4.4.1",
+    "version": "4.4.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
@@ -52,7 +52,7 @@
           "NSAllowsArbitraryLoads": false
         }
       },
-      "buildNumber": "130",
+      "buildNumber": "131",
       "entitlements": {
         "com.apple.developer.family-controls": true,
         "com.apple.developer.usernotifications.time-sensitive": true,
