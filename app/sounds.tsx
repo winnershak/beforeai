@@ -322,7 +322,7 @@ export default function SoundsScreen() {
               />
               <TouchableOpacity
                 onPress={async () => {
-                  const selectedSound = alarmSound.name;
+                  const selectedSound = alarmSound.id;
                   
                   // Save to both temp state and main alarm state
                   const savedState = await AsyncStorage.getItem('tempAlarmState');
