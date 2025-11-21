@@ -965,6 +965,22 @@ export default function NewAlarmScreen() {
     }
   };
 
+  // Add this helper function near the top, after the imports
+const getWallpaperDisplayName = (wallpaperValue: string) => {
+  if (!wallpaperValue || wallpaperValue === 'none') {
+    return 'None';
+  }
+  // If it's a file URI (custom wallpaper), show "Custom"
+  if (wallpaperValue.startsWith('file://')) {
+    return 'Custom';
+  }
+  // For built-in wallpapers, capitalize and format nicely
+  return wallpaperValue
+    .split('-')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+};
+
   // Add this at the beginning of the component
   useEffect(() => {
     // Reset all state when component mounts
@@ -1159,7 +1175,7 @@ export default function NewAlarmScreen() {
           >
             <View style={styles.sectionContent}>
               <Text style={styles.sectionTitle}>Wallpaper</Text>
-              <Text style={styles.sectionValue}>{wallpaper}</Text>
+              <Text style={styles.sectionValue}>{getWallpaperDisplayName(wallpaper)}</Text>
             </View>
             <Ionicons name="chevron-forward" size={24} color="#666" />
           </TouchableOpacity>

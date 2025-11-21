@@ -230,7 +230,7 @@ export default function WallpaperSelector() {
   const [selectedWallpaper, setSelectedWallpaper] = useState('sleepy');
   const [showPreview, setShowPreview] = useState(false);
   const [previewWallpaper, setPreviewWallpaper] = useState<any>(null);
-  const [selectedCategory, setSelectedCategory] = useState('motivation');
+  const [selectedCategory, setSelectedCategory] = useState('custom');
   const [customImages, setCustomImages] = useState<string[]>([]);
 
   // Load custom images on mount
@@ -255,8 +255,13 @@ export default function WallpaperSelector() {
   };
 
   const handleSelect = () => {
-    // Save selected wallpaper to AsyncStorage so new-alarm can pick it up
-    AsyncStorage.setItem('selectedWallpaper', selectedWallpaper);
+    // For custom wallpapers, save the URI instead of the ID
+    if (previewWallpaper?.id?.startsWith('custom-')) {
+      AsyncStorage.setItem('selectedWallpaper', previewWallpaper.file.uri);
+    } else {
+      // For built-in wallpapers, save the ID
+      AsyncStorage.setItem('selectedWallpaper', selectedWallpaper);
+    }
     
     // Navigate back with selected wallpaper as params
     router.back();
@@ -271,8 +276,7 @@ export default function WallpaperSelector() {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [9, 16],
+      allowsEditing: false,
       quality: 1,
     });
 
@@ -281,6 +285,12 @@ export default function WallpaperSelector() {
       setCustomImages(newCustomImages);
       await AsyncStorage.setItem('customWallpapers', JSON.stringify(newCustomImages));
     }
+  };
+
+  const deleteCustomImage = async (index: number) => {
+    const newCustomImages = customImages.filter((_, i) => i !== index);
+    setCustomImages(newCustomImages);
+    await AsyncStorage.setItem('customWallpapers', JSON.stringify(newCustomImages));
   };
 
   const closePreview = () => {
@@ -300,6 +310,14 @@ export default function WallpaperSelector() {
 
       {/* Category Filter Buttons */}
       <View style={styles.categoryButtons}>
+        {/* Custom tab - FIRST */}
+        <TouchableOpacity 
+          style={[styles.categoryButton, selectedCategory === 'custom' && styles.categoryButtonActive]}
+          onPress={() => setSelectedCategory('custom')}
+        >
+          <Text style={[styles.categoryButtonText, selectedCategory === 'custom' && styles.categoryButtonTextActive]}>Custom</Text>
+        </TouchableOpacity>
+
         <TouchableOpacity 
           style={[styles.categoryButton, selectedCategory === 'motivation' && styles.categoryButtonActive]}
           onPress={() => setSelectedCategory('motivation')}
@@ -312,14 +330,6 @@ export default function WallpaperSelector() {
           onPress={() => setSelectedCategory('funny')}
         >
           <Text style={[styles.categoryButtonText, selectedCategory === 'funny' && styles.categoryButtonTextActive]}>Funny</Text>
-        </TouchableOpacity>
-
-        {/* Custom tab */}
-        <TouchableOpacity 
-          style={[styles.categoryButton, selectedCategory === 'custom' && styles.categoryButtonActive]}
-          onPress={() => setSelectedCategory('custom')}
-        >
-          <Text style={[styles.categoryButtonText, selectedCategory === 'custom' && styles.categoryButtonTextActive]}>Custom</Text>
         </TouchableOpacity>
       </View>
 
@@ -349,6 +359,17 @@ export default function WallpaperSelector() {
                     resizeMode="cover"
                   />
                   <Text style={styles.wallpaperName}>Custom {index + 1}</Text>
+                  
+                  {/* Delete button - absolute positioned on top */}
+                  <TouchableOpacity 
+                    style={styles.deleteButton}
+                    onPress={(e) => {
+                      e.stopPropagation();
+                      deleteCustomImage(index);
+                    }}
+                  >
+                    <Ionicons name="trash" size={18} color="#FF3B30" />
+                  </TouchableOpacity>
                 </TouchableOpacity>
               ))}
             </>
@@ -590,5 +611,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     marginTop: 8,
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    borderRadius: 16,
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
 });

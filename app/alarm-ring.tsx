@@ -9,6 +9,7 @@ import soundAssets from './sounds';
 import AlarmSoundModule from './native-modules/AlarmSoundModule';
 import SystemVolumeModule from './native-modules/SystemVolumeModule';
 // import { saveWakeupToFirestore, getCurrentUser } from './config/firebase';
+import { format } from 'date-fns'; // If you don't have date-fns, you can use native Date methods
 
 
 // Add this type definition at the top of your file
@@ -282,6 +283,22 @@ const getWallpaperData = (wallpaperId: string) => {
   ];
   
   return wallpapers.find(w => w.id === wallpaperId) || { id: 'sleepy', hasSound: false };
+};
+
+// Add this helper function near the top:
+const formatLockScreenDate = () => {
+  const now = new Date();
+  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  return `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]}`;
+};
+
+const formatLockScreenTime = () => {
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  return `${hours}:${minutes}`;
 };
 
 export default function AlarmRingScreen() {
@@ -1083,11 +1100,16 @@ export default function AlarmRingScreen() {
       <ImageBackground 
         source={getWallpaperSource(currentAlarm?.wallpaper || 'better')} 
         style={styles.backgroundImage}
-        resizeMode="cover"
+        resizeMode="stretch"
       >
         <SafeAreaView style={styles.container}>
+          {/* iOS Lock Screen Style Date and Time */}
+          <View style={styles.lockScreenHeader}>
+            <Text style={styles.dateText}>{formatLockScreenDate()}</Text>
+            <Text style={styles.timeText}>{formatLockScreenTime()}</Text>
+          </View>
+          
           <View style={styles.content}>
-            {/* ❌ REMOVE: All text */}
             {currentAlarm?.label && (
               <Text style={styles.subtitle}>
                 {String(currentAlarm.label)}
@@ -1176,5 +1198,28 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  lockScreenHeader: {
+    alignItems: 'center',
+    paddingTop: 80,  // Moved down more
+    paddingBottom: 20,
+  },
+  dateText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#fff',
+    marginBottom: 4,  // Less space between date and time
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  timeText: {
+    fontSize: 92,  // Bigger like iOS
+    fontWeight: '200',  // Thinner weight (was '300')
+    color: '#fff',
+    letterSpacing: 0,  // iOS doesn't use negative letter spacing
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
   },
 }); 
